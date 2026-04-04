@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Configurações para Ecrã Total (Modo App) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    
+    <title>TRAMAL - Gestão</title>
+    
+    <!-- Tailwind CSS para Estilo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Recharts para o Gráfico de Barras -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Remove setas do input number */
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList } = Recharts;
+
+        // Configuração do Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'tramal-final-pwa';
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [logs, setLogs] = useState({});
+            const [replenishments, setReplenishments] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [savingStatus, setSavingStatus] = useState({});
+            const [showSupplyModal, setShowSupplyModal] = useState(false);
+            const [supplyAmount, setSupplyAmount] = useState('');
+            const [hideFooter, setHideFooter] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [editData, setEditData] = useState({ d1: 0, d2: 0, d3: 0 });
+
+            const estoqueInicialBase = 54;
+
+            // 1. Autenticação e Sincronização
+            useEffect(() => {
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } else {
+                        await auth.signInAnonymously();
+                    }
+                };
+                initAuth();
+                auth.onAuthStateChanged(setUser);
+            }, []);
+
+            // 2. Ouvinte de Dados em Tempo Real
+            useEffect(() => {
+                if (!user) return;
+                
+                const path = db.collection('artifacts').doc(appId).collection('public').doc('data');
+                
+                const unsubLogs = path.collection('medication_logs').onSnapshot(snap => {
+                    const dataMap = {};
+                    snap.forEach(doc => { dataMap[doc.id] = { id: doc.id, ...doc.data() }; });
+                    setLogs(dataMap);
+                    setLoading(false);
+                });
+
+                const unsubSupply = path.collection('replenishments').onSnapshot(snap => {
+                    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setReplenishments(data);
+                });
+
+                return () => { unsubLogs(); unsubSupply(); };
+            }, [user]);
+
+            // 3. Cálculos Dinâmicos
+            const stats = useMemo(() => {
+                const allEntries = Object.values(logs);
+                const totalSaida = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
+                const totalEntrada = replenishments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                
+                const today = new Date(); today.setHours(0,0,0,0);
+                const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
+
+                const total7Dias = allEntries.reduce((acc, curr) => {
+                    const d = new Date(curr.data + 'T00:00:00');
+                    return (d >= sevenDaysAgo && d <= today) ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc;
+                }, 0);
+
+                return { estoque: estoqueInicialBase + totalEntrada - totalSaida, total7Dias };
+            }, [logs, replenishments]);
+
+            const chartData = useMemo(() => {
+                const data = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(); d.setDate(d.getDate() - i);
+                    const ds = d.toISOString().split('T')[0];
+                    const log = logs[ds] || {};
+                    data.push({
+                        name: d.toLocaleDateString('pt-BR', { day: '2-digit' }),
+                        Total: (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0)
+                    });
+                }
+                return data;
+            }, [logs]);
+
+            const calendarDays = useMemo(() => {
+                const days = [];
+                const today = new Date(); today.setHours(0,0,0,0);
+                for (let i = 0; i <= 30; i++) {
+                    const d = new Date(today); d.setDate(today.getDate() + i);
+                    days.push({
+                        dateStr: d.toISOString().split('T')[0],
+                        label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                        isToday: i === 0
+                    });
+                }
+                return days;
+            }, []);
+
+            const historyLogs = useMemo(() => {
+                const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
+                return Object.values(logs)
+                    .filter(l => new Date(l.data + 'T00:00:00') >= thirty)
+                    .sort((a,b) => b.data.localeCompare(a.data));
+            }, [logs]);
+
+            // 4. Ações
+            const autoSave = async (dateStr, manualData = null) => {
+                const data = manualData || logs[dateStr];
+                if (!data) return;
+                setSavingStatus(prev => ({ ...prev, [dateStr]: 'saving' }));
+                
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('medication_logs').doc(dateStr).set({
+                    ...data, data: dateStr, updatedAt: Date.now()
+                }, { merge: true });
+
+                setSavingStatus(prev => ({ ...prev, [dateStr]: 'saved' }));
+                setTimeout(() => setSavingStatus(prev => { const n = {...prev}; delete n[dateStr]; return n; }), 1000);
+            };
+
+            const handleInputChange = (dateStr, field, value) => {
+                const curr = logs[dateStr] || { d1: '', d2: '', d3: '' };
+                setLogs(prev => ({ ...prev, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) } }));
+            };
+
+            const handleSupply = async () => {
+                if (!supplyAmount) return;
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('replenishments').add({
+                    amount: Number(supplyAmount), date: new Date().toISOString(), timestamp: Date.now()
+                });
+                setSupplyAmount(''); setShowSupplyModal(false);
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+                    <h1 className="text-4xl font-black italic tracking-tighter animate-pulse">TRAMAL</h1>
+                    <p className="text-[10px] uppercase tracking-widest mt-2 text-emerald-500">A carregar dados...</p>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen pb-24">
+                    {/* HEADER IMPOSTO E GIGANTE */}
+                    <header className="bg-slate-900 text-white pt-10 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-emerald-500">
+                        <div className="max-w-md mx-auto flex justify-between items-center">
+                            <div>
+                                <h1 className="text-5xl font-black italic tracking-tighter leading-none mb-1">TRAMAL</h1>
+                                <p className="text-xs font-black text-emerald-500 uppercase tracking-[0.2em]">Gerenciamento de Doses</p>
+                            </div>
+                            <div className={`p-3 px-5 rounded-[2rem] border-2 backdrop-blur-md transition-all ${stats.estoque < 0 ? 'bg-rose-500/10 border-rose-500 text-rose-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>
+                                <span className="block text-[10px] font-black uppercase text-center opacity-60">Estoque</span>
+                                <span className="text-4xl font-black leading-none">{stats.estoque}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 animate-fade">
+                        
+                        {/* TAB: INÍCIO */}
+                        {activeTab === 'dashboard' && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
+                                        <p className="text-slate-400 text-[10px] font-black uppercase mb-1">Últimos 7 Dias</p>
+                                        <p className="text-4xl font-black text-indigo-600">{stats.total7Dias}</p>
+                                        <div className="bg-indigo-50 text-indigo-700 py-2 rounded-xl text-center text-[9px] font-black uppercase">Cápsulas</div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
+                                        <p className="text-slate-400 text-[10px] font-black uppercase mb-1">Estoque Total</p>
+                                        <p className={`text-4xl font-black ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
+                                        <button onClick={() => setShowSupplyModal(true)} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                                            <i data-lucide="plus" className="w-3 h-3 mr-1 text-emerald-400"></i> ABASTECER
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center">
+                                        <i data-lucide="trending-up" className="w-4 h-4 mr-2 text-indigo-500"></i> Histórico Semanal
+                                    </h3>
+                                    <div className="h-60 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartData} margin={{ top: 20, right: 5, left: -30, bottom: 0 }}>
+                                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                                <Bar dataKey="Total" radius={[8, 8, 0, 0]} barSize={35}>
+                                                    {chartData.map((e, i) => <Cell key={i} fill={e.Total > 0 ? '#6366f1' : '#f1f5f9'} />)}
+                                                    <LabelList dataKey="Total" position="top" style={{ fill: '#1e293b', fontSize: 12, fontWeight: '900' }} />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: LANÇAR */}
+                        {activeTab === 'agenda' && (
+                            <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden">
+                                <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
+                                    <h2 className="text-[10px] font-black uppercase tracking-widest flex items-center text-emerald-400">
+                                        <i data-lucide="table" className="w-4 h-4 mr-2"></i> Grade de Doses
+                                    </h2>
+                                    {Object.keys(savingStatus).length > 0 && <div className="animate-pulse text-[8px] font-black uppercase text-emerald-400">A Gravar...</div>}
+                                </div>
+                                <div className="p-2">
+                                    <div className="grid grid-cols-5 gap-1 text-[8px] font-black text-slate-400 uppercase text-center mb-2 mt-2">
+                                        <div className="text-left pl-1">Data</div><div>D1</div><div>D2</div><div>D3</div><div>Total</div>
+                                    </div>
+                                    <div className="space-y-1 max-h-[65vh] overflow-y-auto pr-1 pb-10 scrollbar-hide">
+                                        {calendarDays.map(day => {
+                                            const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
+                                            const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                            const isSaved = savingStatus[day.dateStr] === 'saved';
+
+                                            return (
+                                                <div key={day.dateStr} className={`grid grid-cols-5 gap-1 items-center p-1 py-2 rounded-xl transition-colors ${day.isToday ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                                                    <div className={`text-[10px] font-bold pl-1 ${day.isToday ? 'text-emerald-700 font-black' : 'text-slate-500'}`}>{day.label}</div>
+                                                    <input type="number" placeholder="-" 
+                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all" 
+                                                        value={log.d1} 
+                                                        onFocus={() => setHideFooter(true)} 
+                                                        onBlur={() => { setHideFooter(false); autoSave(day.dateStr); }} 
+                                                        onChange={e => handleInputChange(day.dateStr, 'd1', e.target.value)} 
+                                                    />
+                                                    <input type="number" placeholder="-" 
+                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all" 
+                                                        value={log.d2} 
+                                                        onFocus={() => setHideFooter(true)} 
+                                                        onBlur={() => { setHideFooter(false); autoSave(day.dateStr); }} 
+                                                        onChange={e => handleInputChange(day.dateStr, 'd2', e.target.value)} 
+                                                    />
+                                                    <input type="number" placeholder="-" 
+                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all" 
+                                                        value={log.d3} 
+                                                        onFocus={() => setHideFooter(true)} 
+                                                        onBlur={() => { setHideFooter(false); autoSave(day.dateStr); }} 
+                                                        onChange={e => handleInputChange(day.dateStr, 'd3', e.target.value)} 
+                                                    />
+                                                    <div className="text-center relative">
+                                                        <span className={`text-[13px] font-black px-2 py-1 rounded-lg shadow-sm inline-block min-w-[28px] ${total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300'}`}>{total}</span>
+                                                        {isSaved && <i data-lucide="check-circle-2" className="absolute -top-1 -right-1 w-3 h-3 text-emerald-500 animate-in"></i>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: LOGS */}
+                        {activeTab === 'history' && (
+                            <div className="space-y-3">
+                                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Histórico 30 Dias</h2>
+                                {historyLogs.map(log => (
+                                    <div key={log.id} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between group">
+                                        <div className="flex items-center flex-1">
+                                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-lg shrink-0">
+                                                <span className="text-[10px] font-bold uppercase opacity-60 leading-none">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
+                                                <span className="text-lg font-black leading-none">{log.data.split('-')[2]}</span>
+                                            </div>
+                                            {editingId === log.id ? (
+                                                <div className="flex space-x-1 flex-1">
+                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs" value={editData.d1} onChange={e=>setEditData({...editData, d1:Number(e.target.value)})} />
+                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs" value={editData.d2} onChange={e=>setEditData({...editData, d2:Number(e.target.value)})} />
+                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs" value={editData.d3} onChange={e=>setEditData({...editData, d3:Number(e.target.value)})} />
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-800 leading-none mb-1">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}</p>
+                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">Total: {(log.d1||0)+(log.d2||0)+(log.d3||0)} cápsulas</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex space-x-1 shrink-0 ml-2">
+                                            {editingId === log.id ? (
+                                                <React.Fragment>
+                                                    <button onClick={async()=>{ await autoSave(log.data, editData); setEditingId(null); }} className="p-2 text-emerald-600 active:scale-90"><i data-lucide="save" className="w-5 h-5"></i></button>
+                                                    <button onClick={()=>setEditingId(null)} className="p-2 text-rose-600 active:scale-90"><i data-lucide="x" className="w-5 h-5"></i></button>
+                                                </React.Fragment>
+                                            ) : (
+                                                <React.Fragment>
+                                                    <button onClick={()=>{ setEditingId(log.id); setEditData({d1:log.d1||0, d2:log.d2||0, d3:log.d3||0}); }} className="p-2 text-slate-300 active:scale-90"><i data-lucide="pencil" className="w-5 h-5"></i></button>
+                                                    <button onClick={async()=>{ if(confirm('Eliminar registo?')) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('medication_logs').doc(log.id).delete(); }} className="p-2 text-slate-200 active:scale-90"><i data-lucide="trash-2" className="w-5 h-5"></i></button>
+                                                </React.Fragment>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* MODAL ABASTECER */}
+                    {showSupplyModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
+                            <div className="bg-white w-full max-w-xs rounded-[3rem] p-10 shadow-2xl border-t-8 border-emerald-500">
+                                <h2 className="text-2xl font-black text-center italic mb-4 uppercase">ENTRADA</h2>
+                                <p className="text-center text-[10px] font-black text-slate-400 mb-8 tracking-widest uppercase">Cápsulas Recebidas</p>
+                                <input type="number" autoFocus placeholder="0" className="w-full text-6xl font-black text-center bg-slate-50 border-none rounded-[2rem] py-8 mb-8 text-emerald-600" value={supplyAmount} onChange={e=>setSupplyAmount(e.target.value)} />
+                                <div className="flex space-x-3">
+                                    <button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Voltar</button>
+                                    <button onClick={handleSupply} className="flex-[2] py-4 bg-emerald-600 text-white text-xs font-black rounded-2xl shadow-xl uppercase tracking-widest">Salvar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BARRA DE NAVEGAÇÃO INFERIOR */}
+                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-around items-center py-2 px-6 pb-10 shadow-2xl z-40 transition-transform duration-300 ${hideFooter ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'dashboard' ? 'text-slate-900 bg-emerald-50 scale-110' : 'text-slate-400'}`}>
+                            <i data-lucide="layout-dashboard" className="w-6 h-6"></i>
+                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Início</span>
+                        </button>
+                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'agenda' ? 'text-slate-900 bg-emerald-50 scale-110' : 'text-slate-400'}`}>
+                            <i data-lucide="table" className="w-6 h-6"></i>
+                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Lançar</span>
+                        </button>
+                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'history' ? 'text-slate-900 bg-emerald-50 scale-110' : 'text-slate-400'}`}>
+                            <i data-lucide="history" className="w-6 h-6"></i>
+                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Logs</span>
+                        </button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        // Inicializa ícones Lucide
+        setTimeout(() => lucide.createIcons(), 500);
+    </script>
+</body>
+</html>
+
