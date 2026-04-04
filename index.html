@@ -190,7 +190,7 @@
                 const today = new Date(); today.setHours(0,0,0,0);
                 const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
                 const total7 = allEntries.reduce((acc, curr) => {
-                    const dateObj = new Date(curr.data + 'T00:00:00');
+                    const dateObj = new Date(curr.data + 'T12:00:00');
                     return (dateObj >= sevenDaysAgo && dateObj <= today) ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc;
                 }, 0);
                 
@@ -228,7 +228,7 @@
 
             const historyLogsList = useMemo(() => {
                 const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
-                return Object.values(logs).filter(l => new Date(l.data + 'T00:00:00') >= thirty).sort((a,b) => b.data.localeCompare(a.data));
+                return Object.values(logs).filter(l => new Date(l.data + 'T12:00:00') >= thirty).sort((a,b) => b.data.localeCompare(a.data));
             }, [logs]);
 
             const handleInputChange = (dateStr, field, value) => {
@@ -308,13 +308,12 @@
                 setShowSupplyModal(false);
             };
 
+            // Exclusão Direta (Sem confirmação)
             const deletePurchase = (id) => {
-                if(confirm('Tem certeza que deseja excluir este registro de compra? O seu estoque será recalculado.')) {
-                    const updated = replenishments.filter(r => r.id !== id);
-                    setReplenishments(updated);
-                    updateCloud(null, updated);
-                    setSelectedPurchase(null);
-                }
+                const updated = replenishments.filter(r => r.id !== id);
+                setReplenishments(updated);
+                updateCloud(null, updated);
+                setSelectedPurchase(null);
             };
 
             // FUNÇÕES DA ABA PASSADAS (LOGS)
@@ -345,11 +344,10 @@
                 setIsEditingLog(false);
             };
 
+            // Exclusão Direta (Sem confirmação)
             const deleteLogRecord = (dateStr) => {
-                if(confirm('Tem certeza que deseja excluir as doses deste dia?')) {
-                    handleClearRow(dateStr);
-                    setSelectedLog(null);
-                }
+                handleClearRow(dateStr);
+                setSelectedLog(null);
             };
 
 
@@ -465,15 +463,17 @@
                                             <div key={log.data} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                                 <div className="flex items-center flex-1">
                                                     <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-slate-800">
-                                                        <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
-                                                        <span className="text-lg leading-none">{log.data.split('-')[2]}</span>
+                                                        {/* Correção do timezone: Adicionado T12:00:00 */}
+                                                        <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
+                                                        <span className="text-lg leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                     </div>
                                                     <div>
                                                         <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">
                                                             {total} Cápsulas
                                                         </p>
+                                                        {/* Correção do timezone: Adicionado T12:00:00 */}
                                                         <span className="text-[9px] font-bold text-slate-400 block truncate max-w-[150px]">
-                                                            {new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
+                                                            {new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -507,8 +507,9 @@
                                         <div key={compra.id} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                             <div className="flex items-center flex-1">
                                                 <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-emerald-100">
-                                                    <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date).toLocaleDateString('pt-BR', { month: 'short' })}</span>
-                                                    <span className="text-lg leading-none">{new Date(compra.date).toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
+                                                    {/* Correção do timezone: Adicionado T12:00:00 */}
+                                                    <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
+                                                    <span className="text-lg leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">
@@ -581,7 +582,8 @@
                                 <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</p>
-                                        <p className="text-sm font-bold text-slate-800">{new Date(selectedPurchase.date + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                                        {/* Correção do timezone: Adicionado T12:00:00 */}
+                                        <p className="text-sm font-bold text-slate-800">{new Date(selectedPurchase.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantidade</p>
@@ -639,7 +641,8 @@
                                     <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                         <div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data do Lançamento</p>
-                                            <p className="text-sm font-bold text-slate-800 capitalize">{new Date(selectedLog.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                            {/* Correção do timezone: Adicionado T12:00:00 */}
+                                            <p className="text-sm font-bold text-slate-800 capitalize">{new Date(selectedLog.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 pt-4">
                                             <div className="bg-white border border-slate-200 rounded-xl p-2 text-center">
