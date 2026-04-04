@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- Configurações PWA (Força o Ecrã Total no Android) -->
+    <!-- Configurações PWA para Android e iOS -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22Tramal%22%2C%22short_name%22%3A%22Tramal%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%230f172a%22%7D'>
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22Medicacao%22%2C%22short_name%22%3A%22Medicacao%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%230f172a%22%7D'>
     
-    <title>TRAMAL</title>
+    <title>MEDICAÇÃO - Gestão</title>
     
-    <!-- Apenas as bibliotecas fundamentais que não falham -->
+    <!-- Bibliotecas em Versão Estável -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -30,143 +30,122 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .tab-active { transform: scale(1.1); color: #0f172a; }
+        .tab-active { transform: scale(1.1); color: #0f172a; font-weight: 900; }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
-        // Ícones Nativos (Sem dependência de links externos para não falhar)
+        // Ícones em SVG Nativo
         const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
         const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
         const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
         const IconPlus = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-        const IconTrending = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>;
         const IconCheck = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
-        const IconPencil = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
         const IconTrash = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
-        const IconSave = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
-        const IconX = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
-        const IconMaximize = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>;
 
-        // Gráfico de Barras Nativo (À prova de falhas)
-        const CustomBarChart = ({ data }) => {
+        const ManualBarChart = ({ data }) => {
             const maxVal = Math.max(...data.map(d => d.Total), 1);
             return (
                 <div className="flex items-end justify-between h-full pt-6 pb-2 px-2">
                     {data.map((d, i) => (
                         <div key={i} className="flex flex-col items-center justify-end h-full flex-1">
-                            <span className="text-[12px] font-black text-slate-800 mb-1">{d.Total > 0 ? d.Total : ''}</span>
-                            <div 
-                                className="w-full max-w-[35px] rounded-t-xl transition-all duration-500"
-                                style={{ 
-                                    height: `${(d.Total / maxVal) * 100}%`, 
-                                    backgroundColor: d.Total > 0 ? '#6366f1' : '#f1f5f9',
-                                    minHeight: d.Total > 0 ? '10%' : '5%'
-                                }}
-                            ></div>
-                            <span className="text-[10px] font-bold text-slate-400 mt-2">{d.name}</span>
+                            <span className="text-[11px] font-black text-slate-800 mb-1">{d.Total > 0 ? d.Total : ''}</span>
+                            <div className="w-full max-w-[28px] rounded-t-lg transition-all duration-500"
+                                style={{ height: `${(d.Total / maxVal) * 100}%`, backgroundColor: d.Total > 0 ? '#6366f1' : '#f1f5f9', minHeight: d.Total > 0 ? '6px' : '3px' }}>
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-400 mt-2">{d.name}</span>
                         </div>
                     ))}
                 </div>
             );
         };
 
-        // Funções Auxiliares
-        const getLocalYYYYMMDD = (date) => {
-            const offset = date.getTimezoneOffset() * 60000;
-            return new Date(date.getTime() - offset).toISOString().split('T')[0];
-        };
-
         const App = () => {
             const [activeTab, setActiveTab] = useState('dashboard');
-            
-            // Dados guardados no telemóvel
-            const [logs, setLogs] = useState(() => {
-                const saved = localStorage.getItem('tramal_app_logs_v2');
-                return saved ? JSON.parse(saved) : {};
-            });
-            const [replenishments, setReplenishments] = useState(() => {
-                const saved = localStorage.getItem('tramal_app_supply_v2');
-                return saved ? JSON.parse(saved) : [];
-            });
-
+            const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
+            const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
             const [savingId, setSavingId] = useState(null);
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [supplyAmount, setSupplyAmount] = useState('');
-            const [isTyping, setIsTyping] = useState(false); 
-            
-            const [editingId, setEditingId] = useState(null);
-            const [editData, setEditData] = useState({ d1: 0, d2: 0, d3: 0 });
+            const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+            const fileInputRef = useRef(null);
 
             const estoqueInicialBase = 54;
 
-            // Salvar automaticamente no Telemóvel
-            useEffect(() => { localStorage.setItem('tramal_app_logs_v2', JSON.stringify(logs)); }, [logs]);
-            useEffect(() => { localStorage.setItem('tramal_app_supply_v2', JSON.stringify(replenishments)); }, [replenishments]);
+            useEffect(() => { localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs)); }, [logs]);
+            useEffect(() => { localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments)); }, [replenishments]);
 
             const stats = useMemo(() => {
                 const allEntries = Object.values(logs);
                 const totalSaida = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                
                 const today = new Date(); today.setHours(0,0,0,0);
                 const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
-
-                const total7Dias = allEntries.reduce((acc, curr) => {
+                const total7 = allEntries.reduce((acc, curr) => {
                     const d = new Date(curr.data + 'T00:00:00');
                     return (d >= sevenDaysAgo && d <= today) ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc;
                 }, 0);
-
-                return { estoque: estoqueInicialBase + totalEntrada - totalSaida, total7Dias };
+                return { estoque: estoqueInicialBase + totalEntrada - totalSaida, total7Dias: total7 };
             }, [logs, replenishments]);
 
             const chartData = useMemo(() => {
                 const data = [];
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(); d.setDate(d.getDate() - i);
-                    const ds = getLocalYYYYMMDD(d);
+                    const ds = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                     const log = logs[ds] || {};
-                    data.push({
-                        name: d.toLocaleDateString('pt-BR', { day: '2-digit' }),
-                        Total: (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0)
-                    });
+                    data.push({ name: d.toLocaleDateString('pt-BR', { day: '2-digit' }), Total: (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) });
                 }
                 return data;
             }, [logs]);
 
             const calendarDays = useMemo(() => {
                 const days = [];
-                const today = new Date(); today.setHours(0,0,0,0);
                 for (let i = 0; i <= 30; i++) {
-                    const d = new Date(today); d.setDate(today.getDate() + i);
-                    days.push({
-                        dateStr: getLocalYYYYMMDD(d),
-                        label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                        isToday: i === 0
+                    const d = new Date(); d.setDate(d.getDate() + i);
+                    days.push({ 
+                        dateStr: new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0], 
+                        label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        isToday: i === 0 
                     });
                 }
                 return days;
             }, []);
 
-            const historyLogs = useMemo(() => {
+            const historyLogsList = useMemo(() => {
                 const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
-                return Object.values(logs)
-                    .filter(l => new Date(l.data + 'T00:00:00') >= thirty)
-                    .sort((a,b) => b.data.localeCompare(a.data));
+                return Object.values(logs).filter(l => new Date(l.data + 'T00:00:00') >= thirty).sort((a,b) => b.data.localeCompare(a.data));
             }, [logs]);
-
-            const triggerSave = (dateStr) => {
-                setSavingId(dateStr);
-                setTimeout(() => setSavingId(null), 1000);
-            };
 
             const handleInputChange = (dateStr, field, value) => {
                 const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
                 setLogs({...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }});
+            };
+
+            // LÓGICA DE NAVEGAÇÃO POR SETAS
+            const handleKeyDown = (e, dayIdx, doseIdx) => {
+                let nextDay = dayIdx;
+                let nextDose = doseIdx;
+
+                switch (e.key) {
+                    case 'ArrowUp': nextDay--; break;
+                    case 'ArrowDown': nextDay++; break;
+                    case 'ArrowLeft': nextDose--; break;
+                    case 'ArrowRight': nextDose++; break;
+                    default: return;
+                }
+
+                const nextEl = document.getElementById(`cell-${nextDay}-${nextDose}`);
+                if (nextEl) {
+                    e.preventDefault();
+                    nextEl.focus();
+                }
             };
 
             const handleSupply = () => {
@@ -175,123 +154,77 @@
                 setSupplyAmount(''); setShowSupplyModal(false);
             };
 
-            const toggleFullscreen = () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(()=>{});
-                } else {
-                    document.exitFullscreen().catch(()=>{});
-                }
-            };
-
             return (
-                <div className="min-h-screen pb-24">
-                    {/* CABEÇALHO CLARO / ESCURO (O Favorito do Mestre) */}
+                <div className="min-h-screen flex flex-col">
                     <header className="bg-slate-900 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-emerald-500">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div>
-                                <h1 className="text-4xl font-black italic tracking-tighter leading-none mb-1">TRAMAL</h1>
+                                <h1 className="text-4xl font-black italic tracking-tighter leading-none mb-1">MEDICAÇÃO</h1>
                                 <p className="text-xs font-black text-emerald-500 uppercase tracking-[0.2em]">Gerenciamento de Doses</p>
                             </div>
-                            <div className={`p-3 px-5 rounded-[2rem] border-2 backdrop-blur-md transition-colors ${stats.estoque < 0 ? 'bg-rose-500/10 border-rose-500 text-rose-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>
+                            <div className={`p-3 px-5 rounded-[2rem] border-2 backdrop-blur-md transition-all ${stats.estoque < 0 ? 'bg-rose-500/10 border-rose-500 text-rose-400' : 'bg-emerald-500/10 border-emerald-500 text-emerald-400'}`}>
                                 <span className="block text-[8px] font-black uppercase text-center opacity-60">Estoque</span>
                                 <span className="text-3xl font-black leading-none">{stats.estoque}</span>
                             </div>
                         </div>
                     </header>
 
-                    <main className="max-w-md mx-auto px-4 -mt-4 relative z-10">
-                        
-                        {/* INÍCIO */}
+                    <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
                         {activeTab === 'dashboard' && (
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-4 pt-2 animate-fade">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
-                                        <div>
-                                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Últimos 7 Dias</p>
-                                            <p className="text-4xl font-black text-indigo-600">{stats.total7Dias}</p>
-                                        </div>
-                                        <div className="bg-indigo-50 text-indigo-700 py-2 rounded-xl text-center text-[9px] font-black uppercase tracking-widest">Cápsulas</div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase">Últimos 7 Dias</p>
+                                        <p className="text-4xl font-black text-indigo-600 leading-none">{stats.total7Dias}</p>
+                                        <div className="bg-indigo-50 text-indigo-700 py-2 rounded-xl text-center text-[9px] font-black uppercase tracking-tighter">Cápsulas</div>
                                     </div>
-                                    <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
-                                        <div>
-                                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Estoque Total</p>
-                                            <p className={`text-4xl font-black ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
-                                        </div>
-                                        <button onClick={() => setShowSupplyModal(true)} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center active:scale-95 transition-all shadow-lg">
-                                            <span className="mr-1 text-emerald-400"><IconPlus /></span> ABASTECER
-                                        </button>
+                                    <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square text-center">
+                                        <p className="text-slate-400 text-[10px] font-black uppercase">Saldo Atual</p>
+                                        <p className={`text-4xl font-black leading-none ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
+                                        <button onClick={() => setShowSupplyModal(true)} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all"><span className="mr-1 text-emerald-400"><IconPlus /></span> ABASTECER</button>
                                     </div>
                                 </div>
-
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center">
-                                        <span className="mr-2 text-indigo-500"><IconTrending /></span> Histórico Semanal
-                                    </h3>
-                                    <div className="h-48 w-full">
-                                        <CustomBarChart data={chartData} />
-                                    </div>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Histórico Semanal</h3>
+                                    <div className="h-48 w-full"><ManualBarChart data={chartData} /></div>
                                 </div>
-
-                                <button onClick={toggleFullscreen} className="w-full bg-white border border-slate-200 text-slate-400 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-center active:scale-95 transition-all">
-                                    <span className="mr-2"><IconMaximize /></span> Forçar Ecrã Total
-                                </button>
                             </div>
                         )}
 
-                        {/* LANÇAR / GRADE */}
                         {activeTab === 'agenda' && (
-                            <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden mt-2">
+                            <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden mt-4 animate-fade">
                                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
-                                    <h2 className="text-[10px] font-black uppercase tracking-widest flex items-center text-emerald-400">
-                                        <span className="mr-2"><IconTable /></span> Grade 3 Doses
-                                    </h2>
-                                    {savingId && <div className="animate-pulse text-[8px] font-black text-emerald-400">SALVANDO...</div>}
+                                    <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Grade de Lançamento</h2>
+                                    {savingId && <div className="animate-pulse text-[8px] font-black uppercase text-emerald-400">Gravado</div>}
                                 </div>
-                                
-                                <div className="p-1 px-2">
+                                <div className="p-2">
                                     <div className="grid grid-cols-5 gap-1 text-[8px] font-black text-slate-400 uppercase text-center mb-2 mt-2">
                                         <div className="text-left pl-1">Data</div><div>D1</div><div>D2</div><div>D3</div><div>Total</div>
                                     </div>
-                                    <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1 pb-4 scrollbar-hide">
-                                        {calendarDays.map((day) => {
+                                    <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1 pb-10 scrollbar-hide">
+                                        {calendarDays.map((day, dIdx) => {
                                             const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
-                                            const total = (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0);
-                                            const isSaved = savingId === day.dateStr;
-
+                                            const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
                                             return (
-                                                <div key={day.dateStr} className={`grid grid-cols-5 gap-1 items-center p-1 py-2 rounded-xl transition-colors ${day.isToday ? 'bg-emerald-50 border border-emerald-100' : 'hover:bg-slate-50'}`}>
-                                                    <div className={`text-[10px] font-bold pl-1 ${day.isToday ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                                        {day.label}
-                                                    </div>
-                                                    <input 
-                                                        type="number" placeholder="-"
-                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black text-slate-800 focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all placeholder:text-yellow-200 outline-none"
-                                                        value={log.d1}
-                                                        onFocus={() => setIsTyping(true)}
-                                                        onBlur={() => { setIsTyping(false); triggerSave(day.dateStr); }}
-                                                        onChange={(e) => handleInputChange(day.dateStr, 'd1', e.target.value)}
-                                                    />
-                                                    <input 
-                                                        type="number" placeholder="-"
-                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black text-slate-800 focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all placeholder:text-yellow-200 outline-none"
-                                                        value={log.d2}
-                                                        onFocus={() => setIsTyping(true)}
-                                                        onBlur={() => { setIsTyping(false); triggerSave(day.dateStr); }}
-                                                        onChange={(e) => handleInputChange(day.dateStr, 'd2', e.target.value)}
-                                                    />
-                                                    <input 
-                                                        type="number" placeholder="-"
-                                                        className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black text-slate-800 focus:bg-white focus:ring-1 focus:ring-yellow-400 transition-all placeholder:text-yellow-200 outline-none"
-                                                        value={log.d3}
-                                                        onFocus={() => setIsTyping(true)}
-                                                        onBlur={() => { setIsTyping(false); triggerSave(day.dateStr); }}
-                                                        onChange={(e) => handleInputChange(day.dateStr, 'd3', e.target.value)}
-                                                    />
+                                                <div key={day.dateStr} className={`grid grid-cols-5 gap-1 items-center p-1 py-1.5 rounded-xl transition-colors ${day.isToday ? 'bg-emerald-50 border border-emerald-100' : ''}`}>
+                                                    <div className={`text-[10px] font-bold pl-1 ${day.isToday ? 'text-emerald-700 font-black' : 'text-slate-500'}`}>{day.label}</div>
+                                                    {[1,2,3].map((num, doseIdx) => (
+                                                        <input 
+                                                            key={num} 
+                                                            id={`cell-${dIdx}-${doseIdx}`}
+                                                            type="number" 
+                                                            placeholder="-" 
+                                                            className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black focus:bg-white focus:ring-1 focus:ring-yellow-400 outline-none transition-all" 
+                                                            value={log[`d${num}`]} 
+                                                            onFocus={()=>setIsKeyboardVisible(true)} 
+                                                            onBlur={()=>{setIsKeyboardVisible(false); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} 
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)}
+                                                            onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
+                                                        />
+                                                    ))}
                                                     <div className="text-center relative">
-                                                        <span className={`text-[13px] font-black px-2 py-1 rounded-lg shadow-sm inline-block min-w-[28px] ${total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300'}`}>
-                                                            {total}
-                                                        </span>
-                                                        {isSaved && <span className="absolute -top-1 -right-1 text-emerald-500"><IconCheck /></span>}
+                                                        <span className={`text-[13px] font-black px-2 py-1 rounded-lg ${total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300'}`}>{total}</span>
+                                                        {savingId === day.dateStr && <div className="absolute -top-1 -right-1 text-emerald-500"><IconCheck /></div>}
                                                     </div>
                                                 </div>
                                             );
@@ -301,88 +234,70 @@
                             </div>
                         )}
 
-                        {/* HISTÓRICO */}
                         {activeTab === 'history' && (
-                            <div className="space-y-3 pt-2">
-                                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-2 mb-4">Histórico 30 Dias</h2>
-                                {historyLogs.length === 0 && <p className="text-center text-slate-400 font-bold py-10">Nenhum registo salvo.</p>}
-                                {historyLogs.map(log => (
+                            <div className="space-y-3 pt-4 animate-fade">
+                                <div className="flex justify-between items-center px-2 mb-4">
+                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico 30 Dias</h2>
+                                    <div className="flex space-x-2">
+                                        <button onClick={() => fileInputRef.current.click()} className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 shadow-sm">Restaurar</button>
+                                        <button onClick={() => {
+                                            const data = JSON.stringify({ logs, replenishments });
+                                            const blob = new Blob([data], { type: 'application/json' });
+                                            const a = document.createElement('a');
+                                            a.href = URL.createObjectURL(blob);
+                                            a.download = "backup_medicacao.json";
+                                            a.click();
+                                        }} className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">Backup</button>
+                                    </div>
+                                    <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                            const data = JSON.parse(event.target.result);
+                                            if (data.logs) setLogs(data.logs);
+                                            if (data.replenishments) setReplenishments(data.replenishments);
+                                            alert("Dados sincronizados!");
+                                        };
+                                        reader.readAsText(file);
+                                    }} />
+                                </div>
+                                {historyLogsList.map(log => (
                                     <div key={log.data} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                         <div className="flex items-center flex-1">
-                                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-lg shrink-0">
-                                                <span className="text-[10px] font-bold uppercase opacity-60 leading-none">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
-                                                <span className="text-lg font-black leading-none">{log.data.split('-')[2]}</span>
+                                            <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-lg shrink-0 font-black">
+                                                <span className="text-[10px] uppercase opacity-60 leading-none">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
+                                                <span className="text-lg leading-none">{log.data.split('-')[2]}</span>
                                             </div>
-                                            
-                                            {editingId === log.data ? (
-                                                <div className="flex space-x-1 flex-1">
-                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs border border-yellow-200 outline-none" value={editData.d1} onChange={(e) => setEditData({...editData, d1: Number(e.target.value)})} />
-                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs border border-yellow-200 outline-none" value={editData.d2} onChange={(e) => setEditData({...editData, d2: Number(e.target.value)})} />
-                                                    <input type="number" className="w-10 p-1 text-center bg-yellow-50 rounded-lg font-black text-xs border border-yellow-200 outline-none" value={editData.d3} onChange={(e) => setEditData({...editData, d3: Number(e.target.value)})} />
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-800 capitalize leading-none mb-1">
-                                                        {new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
-                                                    </p>
-                                                    <div className="flex space-x-2">
-                                                        <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">{(log.d1||0) + (log.d2||0) + (log.d3||0)} cápsulas</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <div>
+                                                <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">{new Date(log.data + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}</p>
+                                                <span className="text-[9px] font-bold text-slate-400">Total: {(log.d1||0)+(log.d2||0)+(log.d3||0)} cápsulas</span>
+                                            </div>
                                         </div>
-                                        
-                                        <div className="flex space-x-1 shrink-0 ml-2">
-                                            {editingId === log.data ? (
-                                                <React.Fragment>
-                                                    <button onClick={() => { setLogs({...logs, [log.data]: {...logs[log.data], ...editData}}); setEditingId(null); }} className="p-2 text-emerald-600 bg-emerald-50 rounded-xl"><IconSave /></button>
-                                                    <button onClick={() => setEditingId(null)} className="p-2 text-rose-600 bg-rose-50 rounded-xl"><IconX /></button>
-                                                </React.Fragment>
-                                            ) : (
-                                                <React.Fragment>
-                                                    <button onClick={() => { setEditingId(log.data); setEditData({d1: log.d1||0, d2: log.d2||0, d3: log.d3||0}); }} className="p-2 text-slate-400 hover:text-indigo-500"><IconPencil /></button>
-                                                    <button onClick={() => { if(window.confirm('Excluir?')) { const n = {...logs}; delete n[log.data]; setLogs(n); } }} className="p-2 text-slate-300 hover:text-rose-500"><IconTrash /></button>
-                                                </React.Fragment>
-                                            )}
-                                        </div>
+                                        <button onClick={()=>{ if(confirm('Apagar?')) { const n = {...logs}; delete n[log.data]; setLogs(n); } }} className="p-2 text-rose-300 active:scale-90 transition-all"><IconTrash /></button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </main>
 
-                    {/* MODAL ABASTECER */}
                     {showSupplyModal && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-xs rounded-[3rem] p-10 shadow-2xl border-t-8 border-emerald-500">
-                                <h2 className="text-2xl font-black text-center italic tracking-tighter mb-8 uppercase">Entrada</h2>
-                                <input 
-                                    type="number" autoFocus placeholder="0"
-                                    className="w-full text-5xl font-black text-center bg-slate-50 border-none rounded-[2rem] py-8 mb-8 text-emerald-600 focus:outline-none"
-                                    value={supplyAmount} onChange={(e) => setSupplyAmount(e.target.value)}
-                                />
+                                <h2 className="text-2xl font-black text-center italic mb-4 uppercase text-slate-800">ENTRADA</h2>
+                                <input type="number" autoFocus placeholder="0" className="w-full text-7xl font-black text-center bg-slate-50 border-none rounded-[2rem] py-10 mb-8 text-emerald-600 outline-none" value={supplyAmount} onChange={e=>setSupplyAmount(e.target.value)} />
                                 <div className="flex space-x-3">
-                                    <button onClick={() => setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-400">VOLTAR</button>
-                                    <button onClick={handleSupply} className="flex-[2] py-4 bg-emerald-600 text-white text-xs font-black rounded-2xl shadow-xl">SALVAR</button>
+                                    <button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase">Voltar</button>
+                                    <button onClick={handleSupply} className="flex-[2] py-4 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase">Salvar</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* NAV INFERIOR COM ESCONDER NO FOCO */}
-                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-around items-center py-2 px-6 pb-10 shadow-2xl z-40 transition-transform duration-300 ${isTyping ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
-                        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'dashboard' ? 'tab-active bg-emerald-50' : 'text-slate-400'}`}>
-                            <IconHome />
-                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Início</span>
-                        </button>
-                        <button onClick={() => setActiveTab('agenda')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'agenda' ? 'tab-active bg-emerald-50' : 'text-slate-400'}`}>
-                            <IconTable />
-                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Lançar</span>
-                        </button>
-                        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'history' ? 'tab-active bg-emerald-50' : 'text-slate-400'}`}>
-                            <IconHistory />
-                            <span className="text-[9px] font-black mt-1 uppercase tracking-widest">Logs</span>
-                        </button>
+                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-around items-center py-2 px-6 pb-10 shadow-2xl z-40 transition-transform duration-300 ${isKeyboardVisible ? 'translate-y-full opacity-0' : 'translate-y-0'}`}>
+                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'dashboard' ? 'tab-active' : 'text-slate-400'}`}><IconHome /><span className="text-[9px] mt-1 uppercase">Início</span></button>
+                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'agenda' ? 'tab-active' : 'text-slate-400'}`}><IconTable /><span className="text-[9px] mt-1 uppercase">Lançar</span></button>
+                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-4 rounded-3xl transition-all ${activeTab === 'history' ? 'tab-active' : 'text-slate-400'}`}><IconHistory /><span className="text-[9px] mt-1 uppercase">Logs</span></button>
                     </nav>
                 </div>
             );
@@ -393,5 +308,3 @@
     </script>
 </body>
 </html>
-
-
