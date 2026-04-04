@@ -8,7 +8,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22Medicacao%22%2C%22short_name%22%3A%22Medicacao%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%230f172a%22%7D'>
+    
+    <!-- Manifesto Otimizado para permitir a instalação no Chrome -->
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22MEDICA%C3%87%C3%83O%22%2C%22short_name%22%3A%22Medica%C3%87%C3%83o%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <title>MEDICAÇÃO - Gestão Cloud</title>
     
@@ -39,6 +41,17 @@
 <body class="text-slate-900">
     <div id="root"></div>
 
+    <!-- Service Worker Oculto para ativar o "Instalar App" no Chrome -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = "self.addEventListener('fetch', () => {});";
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+            });
+        }
+    </script>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
@@ -66,12 +79,15 @@
         const IconCheck = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
         const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
         const IconCloud = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.4-1.9-4.3-4.2-4.5C17.3 6.6 14.4 4 11 4 7.6 4 4.8 6.6 4.2 10.1 1.9 10.3 0 12.3 0 14.7 0 17.1 1.9 19 4.3 19h13.2Z"/></svg>;
-        const IconX = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const IconX = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
         const IconBag = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>;
         const IconPencil = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
         const IconDownload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
         const IconUpload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
         const IconLock = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
+        const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
+        const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
+        const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
 
         const ManualBarChart = ({ data }) => {
             const maxVal = Math.max(...data.map(d => d.Total), 1);
@@ -91,24 +107,62 @@
         };
 
         const App = () => {
-            // ESTADO DE AUTENTICAÇÃO (NOVO)
             const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('tramal_app_auth_2280') === 'true');
             const [passwordInput, setPasswordInput] = useState('');
             const [loginError, setLoginError] = useState(false);
 
             const [activeTab, setActiveTab] = useState('dashboard');
             
-            // ESTADOS DE DADOS
-            const [syncId] = useState('mestrekaio'); // Chave oculta
+            const [syncId] = useState('mestrekaio'); 
             const [status, setStatus] = useState('Local');
             const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
             const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
             
             const [savingId, setSavingId] = useState(null);
+            
+            // ESTADOS DE TECLADO E PWA
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+            const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-            // Estados da Nova Janela de Compras e Logs (Passadas)
+            // Escutar prompt de instalação PWA (Chrome)
+            useEffect(() => {
+                const handleBeforeInstallPrompt = (e) => {
+                    e.preventDefault(); // Impede o mini-info bar
+                    setDeferredPrompt(e); // Guarda o evento para o nosso botão
+                };
+                window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }, []);
+
+            // Escutar redimensionamento de tela para esconder/mostrar o Menu (Inteligência 2 Segundos)
+            useEffect(() => {
+                const handleResize = () => {
+                    if (window.visualViewport) {
+                        // Se a tela visível for muito menor que a tela real, o teclado está aberto
+                        if (window.visualViewport.height < window.screen.height * 0.7) {
+                            if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                            setIsKeyboardVisible(true);
+                        } else {
+                            // Se a tela voltou ao normal (teclado desceu)
+                            if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                            keyboardTimeoutRef.current = setTimeout(() => {
+                                setIsKeyboardVisible(false);
+                            }, 2000); // 2 segundos de atraso
+                        }
+                    }
+                };
+
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', handleResize);
+                }
+                return () => {
+                    if (window.visualViewport) window.visualViewport.removeEventListener('resize', handleResize);
+                    if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                };
+            }, []);
+
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [selectedPurchase, setSelectedPurchase] = useState(null);
             
@@ -116,31 +170,26 @@
             const [isEditingLog, setIsEditingLog] = useState(false);
             const [editLogData, setEditLogData] = useState({ d1: '', d2: '', d3: '' });
             
-            // Pega a data de hoje formatada (YYYY-MM-DD)
             const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
             const [supplyData, setSupplyData] = useState({ 
-                id: null,
-                amount: '', 
-                date: getTodayDateStr(), 
-                patient: '', 
-                pharmacy: '' 
+                id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' 
             });
 
             const estoqueInicialBase = 54;
 
-            // GERENCIADORES DE TECLADO UNIFICADOS
-            const onInputFocus = () => setIsKeyboardVisible(true);
-            const onInputBlur = () => setTimeout(() => setIsKeyboardVisible(false), 150);
+            // Mantido o onFocus nativo por redundância imediata, mas o onBlur é coberto pelo Resize Observer
+            const onInputFocus = () => {
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(true);
+            };
 
-            // SALVAR LOCALMENTE
             useEffect(() => { 
                 if (!isAuthenticated) return;
                 localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs)); 
                 localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
             }, [logs, replenishments, isAuthenticated]);
 
-            // SINCRONIZAR COM FIREBASE (APENAS SE ESTIVER AUTENTICADO)
             useEffect(() => {
                 if (!isAuthenticated || !db || !syncId) {
                     if (!isAuthenticated) setStatus('Bloqueado');
@@ -166,7 +215,6 @@
                 return () => unsub();
             }, [syncId, isAuthenticated]);
 
-            // FUNÇÃO PARA ATUALIZAR NUVEM
             const updateCloud = (newLogs, newSupply) => {
                 if (!isAuthenticated || !db || !syncId) return;
                 db.collection('medicacao_users').doc(syncId).update({ 
@@ -179,23 +227,15 @@
 
             const stats = useMemo(() => {
                 const allEntries = Object.values(logs);
-                
-                // Soma TODAS as saídas (Passado + Futuro)
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
-                
-                // Calcula a data de HOJE no fuso horário correto
                 const todayStr = getTodayDateStr();
                 
-                // Soma APENAS as saídas até o dia de hoje (Estoque Real)
                 const totalSaidaAteHoje = allEntries.reduce((acc, curr) => {
-                    if (curr.data <= todayStr) {
-                        return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
-                    }
+                    if (curr.data <= todayStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                     return acc;
                 }, 0);
 
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                
                 const today = new Date(); today.setHours(0,0,0,0);
                 const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
                 const total7 = allEntries.reduce((acc, curr) => {
@@ -226,20 +266,24 @@
                 const days = [];
                 for (let i = 0; i <= 30; i++) {
                     const d = new Date(); d.setDate(d.getDate() + i);
+                    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    const weekday = new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
                     days.push({ 
-                        dateStr: new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0], 
-                        label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        dateStr, 
+                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        weekday,
                         isToday: i === 0 
                     });
                 }
                 return days;
             }, []);
 
+            const daysArr = useMemo(() => calendarDays.map(d => d.dateStr), [calendarDays]);
+
             const historyLogsList = useMemo(() => {
                 const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
-                const todayStr = getTodayDateStr(); // Pega a data de hoje para comparar
+                const todayStr = getTodayDateStr(); 
                 return Object.values(logs)
-                    // Mantém apenas os últimos 30 dias E estritamente antes de hoje (l.data < todayStr)
                     .filter(l => new Date(l.data + 'T12:00:00') >= thirty && l.data < todayStr)
                     .sort((a,b) => b.data.localeCompare(a.data));
             }, [logs]);
@@ -272,12 +316,47 @@
                 updateCloud(updatedLogs, null);
             };
 
+            const handleInsertRow = (targetDate) => {
+                const idx = daysArr.indexOf(targetDate);
+                if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = daysArr.length - 1; i > idx; i--) {
+                    const prevDate = daysArr[i-1];
+                    const currDate = daysArr[i];
+                    if (newLogs[prevDate]) {
+                        newLogs[currDate] = { ...newLogs[prevDate], data: currDate };
+                    } else {
+                        delete newLogs[currDate];
+                    }
+                }
+                delete newLogs[targetDate];
+                setLogs(newLogs);
+                updateCloud(newLogs, null);
+            };
+
+            const handleDeleteRow = (targetDate) => {
+                const idx = daysArr.indexOf(targetDate);
+                if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = idx; i < daysArr.length - 1; i++) {
+                    const currDate = daysArr[i];
+                    const nextDate = daysArr[i+1];
+                    if (newLogs[nextDate]) {
+                        newLogs[currDate] = { ...newLogs[nextDate], data: currDate };
+                    } else {
+                        delete newLogs[currDate];
+                    }
+                }
+                delete newLogs[daysArr[daysArr.length - 1]];
+                setLogs(newLogs);
+                updateCloud(newLogs, null);
+            };
+
             const handleClearAll = () => {
                 setLogs({});
                 updateCloud({}, null);
             };
 
-            // FUNÇÕES DE COMPRA (ABASTECER)
             const openNewSupplyModal = () => {
                 setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' });
                 setShowSupplyModal(true);
@@ -294,34 +373,23 @@
                     alert("Por favor, preencha a quantidade.");
                     return;
                 }
-                
                 let updatedReplenishments;
                 if (supplyData.id) {
-                    // Editar existente
                     updatedReplenishments = replenishments.map(r => 
-                        r.id === supplyData.id 
-                            ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy } 
-                            : r
+                        r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy } : r
                     );
                 } else {
-                    // Novo
                     const newReplenishment = { 
-                        amount: Number(supplyData.amount), 
-                        date: supplyData.date || getTodayDateStr(), 
-                        patient: supplyData.patient || '',
-                        pharmacy: supplyData.pharmacy || '',
-                        id: Date.now() 
+                        amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient || '', pharmacy: supplyData.pharmacy || '', id: Date.now() 
                     };
                     updatedReplenishments = [...replenishments, newReplenishment];
                 }
-                
                 setReplenishments(updatedReplenishments);
                 updateCloud(null, updatedReplenishments);
                 setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' }); 
                 setShowSupplyModal(false);
             };
 
-            // Exclusão Direta (Sem confirmação)
             const deletePurchase = (id) => {
                 const updated = replenishments.filter(r => r.id !== id);
                 setReplenishments(updated);
@@ -329,7 +397,6 @@
                 setSelectedPurchase(null);
             };
 
-            // FUNÇÕES DA ABA PASSADAS (LOGS)
             const openLogDetails = (log) => {
                 setSelectedLog(log);
                 setIsEditingLog(false);
@@ -351,19 +418,15 @@
                 }};
                 setLogs(updatedLogs);
                 updateCloud(updatedLogs, null);
-                
-                // Atualiza a view do modal
                 setSelectedLog(updatedLogs[dateStr]);
                 setIsEditingLog(false);
             };
 
-            // Exclusão Direta (Sem confirmação)
             const deleteLogRecord = (dateStr) => {
                 handleClearRow(dateStr);
                 setSelectedLog(null);
             };
 
-            // FUNÇÕES DE BACKUP E RESTAURAR
             const handleBackup = () => {
                 const data = JSON.stringify({ logs, replenishments });
                 const blob = new Blob([data], { type: 'application/json' });
@@ -384,14 +447,13 @@
                         if (data.replenishments) { setReplenishments(data.replenishments); updateCloud(null, data.replenishments); }
                         alert("Backup restaurado com sucesso! Dados sincronizados localmente e na nuvem.");
                     } catch (err) {
-                        alert("Erro ao ler o arquivo. Certifique-se de que é um arquivo de backup válido.");
+                        alert("Erro ao ler o arquivo.");
                     }
                 };
                 reader.readAsText(file);
-                e.target.value = ''; // Limpa o input para permitir enviar o mesmo arquivo de novo
+                e.target.value = ''; 
             };
 
-            // FUNÇÕES DE LOGIN (NOVO)
             const handleLogin = (e) => {
                 e.preventDefault();
                 if (passwordInput === '2280') {
@@ -410,7 +472,16 @@
                 setPasswordInput('');
             };
 
-            // TELA DE LOGIN
+            const handleInstallApp = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                    }
+                }
+            };
+
             if (!isAuthenticated) {
                 return (
                     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 animate-fade">
@@ -422,40 +493,24 @@
                                 <h1 className="text-3xl font-black italic tracking-tighter text-white mb-1">MEDICAÇÃO</h1>
                                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Acesso Restrito</p>
                             </div>
-                            
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
                                     <input 
-                                        type="password" 
-                                        inputMode="numeric" 
-                                        pattern="[0-9]*"
-                                        autoFocus
+                                        type="password" inputMode="numeric" pattern="[0-9]*" autoFocus
                                         className={`w-full bg-slate-800 border-2 ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-2xl p-4 text-center text-4xl font-black text-white tracking-[0.5em] outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600`}
-                                        value={passwordInput}
-                                        onChange={(e) => {
-                                            setPasswordInput(e.target.value);
-                                            setLoginError(false);
-                                        }}
-                                        placeholder="••••"
+                                        value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }} placeholder="••••"
                                     />
                                     {loginError && <p className="text-rose-500 text-[10px] font-bold text-center mt-3 uppercase tracking-widest">Senha Incorreta</p>}
                                 </div>
-                                <button 
-                                    type="submit" 
-                                    className="w-full py-5 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all mt-4"
-                                >
-                                    Entrar
-                                </button>
+                                <button type="submit" className="w-full py-5 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all mt-4">Entrar</button>
                             </form>
                         </div>
                     </div>
                 );
             }
 
-            // TELA PRINCIPAL (APP)
             return (
                 <div className="min-h-screen flex flex-col">
-                    {/* HEADER */}
                     <header className="bg-slate-900 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-emerald-500">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div>
@@ -463,11 +518,7 @@
                                 <div className="flex items-center space-x-1">
                                     <span className={`transition-colors ${status === 'Erro Cloud' ? 'text-rose-500 animate-pulse' : 'text-emerald-500 ' + (status === 'Nuvem Ativa' ? 'animate-pulse' : '')}`}><IconCloud /></span>
                                     <p className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors ${status === 'Erro Cloud' ? 'text-rose-500' : 'text-emerald-500'}`}>Controle de Doses</p>
-                                    
-                                    {/* Botão para deslogar/bloquear o app */}
-                                    <button onClick={handleLogout} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors" title="Bloquear App">
-                                        <IconLock />
-                                    </button>
+                                    <button onClick={handleLogout} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors" title="Bloquear App"><IconLock /></button>
                                 </div>
                             </div>
                             <div className={`p-3 px-5 rounded-[2rem] border-2 backdrop-blur-md transition-all ${stats.previsao < 0 ? 'bg-rose-500/10 border-rose-500 text-rose-400' : 'bg-emerald-500/10 border-emerald-500 text-emerald-400'}`}>
@@ -478,8 +529,7 @@
                     </header>
 
                     <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
-                        
-                        {/* INÍCIO (DASHBOARD) */}
+                        {/* INÍCIO */}
                         {activeTab === 'dashboard' && (
                             <div className="space-y-4 pt-2 animate-fade">
                                 <div className="grid grid-cols-2 gap-3">
@@ -498,8 +548,16 @@
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Histórico Semanal</h3>
                                     <div className="h-48 w-full"><ManualBarChart data={chartData} /></div>
                                 </div>
+                                
+                                {/* BOTÃO INSTALAR PWA (Aparece se suportado pelo Chrome) */}
+                                {deferredPrompt && (
+                                    <div className="pb-2">
+                                        <button onClick={handleInstallApp} className="w-full py-4 bg-indigo-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">
+                                            <span className="mr-2"><IconDevice /></span> Instalar Aplicativo
+                                        </button>
+                                    </div>
+                                )}
 
-                                {/* BOTÕES DE BACKUP E RESTAURAR */}
                                 <div className="flex space-x-3 pb-2">
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm active:scale-95 transition-all">
                                         <span className="mr-2 text-indigo-500"><IconDownload /></span> Backup
@@ -512,7 +570,7 @@
                             </div>
                         )}
 
-                        {/* GRADE DE LANÇAMENTO */}
+                        {/* GRADE DE LANÇAMENTO PREMIUM */}
                         {activeTab === 'agenda' && (
                             <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden mt-4 animate-fade">
                                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
@@ -522,58 +580,84 @@
                                         <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-400 border border-rose-500/50 bg-rose-500/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Tudo</button>
                                     </div>
                                 </div>
-                                <div className="p-2">
-                                    <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_0.8fr_24px] gap-1 text-[8px] font-black text-slate-400 uppercase text-center mb-2 mt-2 px-1">
-                                        <div className="text-left pl-1">Data</div><div>D1</div><div>D2</div><div>D3</div><div>Tot</div><div></div>
+                                
+                                <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] font-black text-slate-400 uppercase text-center mb-2 mt-4 px-3">
+                                    <div className="w-6 shrink-0"></div>
+                                    <div className="w-10 sm:w-11 shrink-0 text-center">Data</div>
+                                    <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
+                                        <div className="flex-1 max-w-[40px]">D1</div>
+                                        <div className="flex-1 max-w-[40px]">D2</div>
+                                        <div className="flex-1 max-w-[40px]">D3</div>
                                     </div>
-                                    <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1 pb-10 scrollbar-hide">
-                                        {calendarDays.map((day, dIdx) => {
-                                            const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
-                                            const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                            
-                                            const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => {
-                                                if (curr.data <= day.dateStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
-                                                return acc;
-                                            }, 0);
-                                            
-                                            const runningStock = estoqueInicialBase + stats.totalEntrada - totalSaidaAteData;
-                                            
-                                            let badgeClass = total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300';
-                                            if (runningStock <= 0) {
-                                                badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
-                                            }
+                                    <div className="w-8 shrink-0 text-center">Tot</div>
+                                    <div className="w-6 shrink-0"></div>
+                                </div>
 
-                                            return (
-                                                <div key={day.dateStr} className={`grid grid-cols-[1.2fr_1fr_1fr_1fr_0.8fr_24px] gap-1 items-center p-1 py-1.5 rounded-xl transition-colors ${day.isToday ? 'bg-emerald-50 border border-emerald-100' : ''}`}>
-                                                    <div className={`text-[10px] font-bold pl-1 ${day.isToday ? 'text-emerald-700 font-black' : 'text-slate-500'}`}>{day.label}</div>
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pb-10 scrollbar-hide">
+                                    {calendarDays.map((day, dIdx) => {
+                                        const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
+                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                        
+                                        const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => {
+                                            if (curr.data <= day.dateStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
+                                            return acc;
+                                        }, 0);
+                                        
+                                        const runningStock = estoqueInicialBase + stats.totalEntrada - totalSaidaAteData;
+                                        let badgeClass = total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300';
+                                        if (runningStock <= 0) badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
+
+                                        return (
+                                            <div key={day.dateStr} className={`flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border ${day.isToday ? 'bg-emerald-50 border-emerald-200 shadow-md' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                                                
+                                                <div className="flex flex-col gap-1 items-center justify-center w-6 shrink-0">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-emerald-100 text-emerald-600 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Inserir Linha">
+                                                        <IconInsertRow />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-600 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Excluir Linha">
+                                                        <IconDeleteRow />
+                                                    </button>
+                                                </div>
+
+                                                <div className={`h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border ${day.isToday ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                                    <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{day.weekday}</span>
+                                                    <span className="text-[16px] leading-none">{day.label.split('/')[0]}</span>
+                                                </div>
+
+                                                <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
                                                     {[1,2,3].map((num, doseIdx) => (
                                                         <input 
                                                             key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
-                                                            className="w-full py-2 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-[13px] font-black focus:bg-white focus:ring-1 focus:ring-yellow-400 outline-none transition-all" 
-                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
+                                                            className="w-full max-w-[40px] h-10 text-center bg-yellow-50 border border-yellow-200 rounded-[0.8rem] text-[14px] font-black focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none transition-all placeholder:text-yellow-300" 
+                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{ setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
                                                         />
                                                     ))}
-                                                    <div className="text-center relative flex items-center justify-center">
-                                                        <span className={`text-[13px] font-black px-2 py-1 rounded-lg transition-colors ${badgeClass}`}>{total || '-'}</span>
-                                                        {savingId === day.dateStr && <div className="absolute -top-1 -right-1 text-emerald-500"><IconCheck /></div>}
-                                                    </div>
-                                                    <button onClick={() => handleClearRow(day.dateStr)} className="flex items-center justify-center text-rose-300 hover:text-rose-500 active:scale-90 transition-all p-1" title="Limpar Dia"><IconX /></button>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+
+                                                <div className="w-8 flex justify-center shrink-0 relative">
+                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
+                                                    {savingId === day.dateStr && <div className="absolute -top-1 -right-1 text-emerald-500"><IconCheck /></div>}
+                                                </div>
+
+                                                <div className="w-6 flex justify-center shrink-0">
+                                                    <button onClick={() => handleClearRow(day.dateStr)} className="flex items-center justify-center text-rose-300 hover:text-rose-500 active:scale-90 transition-all p-1" title="Limpar Dia">
+                                                        <IconX />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
 
-                        {/* NOVA ABA: PASSADAS (ANTIGA LOGS) */}
+                        {/* PASSADAS */}
                         {activeTab === 'history' && (
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
                                     <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico 30 Dias</h2>
                                     <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">{historyLogsList.length} Registros</div>
                                 </div>
-                                
                                 <div className="space-y-3 pb-10">
                                     {historyLogsList.map(log => {
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
@@ -581,27 +665,18 @@
                                             <div key={log.data} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                                 <div className="flex items-center flex-1">
                                                     <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-slate-800">
-                                                        {/* Correção do timezone: Adicionado T12:00:00 */}
                                                         <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
                                                         <span className="text-lg leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">
-                                                            {total} Cápsulas
-                                                        </p>
-                                                        {/* Correção do timezone: Adicionado T12:00:00 */}
-                                                        <span className="text-[9px] font-bold text-slate-400 block truncate max-w-[150px]">
-                                                            {new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
-                                                        </span>
+                                                        <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">{total} Cápsulas</p>
+                                                        <span className="text-[9px] font-bold text-slate-400 block truncate max-w-[150px]">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => openLogDetails(log)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2">
-                                                    <IconPlus />
-                                                </button>
+                                                <button onClick={() => openLogDetails(log)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
                                             </div>
                                         );
                                     })}
-                                    
                                     {historyLogsList.length === 0 && (
                                         <div className="text-center py-10 opacity-50">
                                             <div className="flex justify-center mb-2 text-slate-400"><IconHistory /></div>
@@ -612,38 +687,31 @@
                             </div>
                         )}
 
-                        {/* ABA: COMPRAS */}
+                        {/* COMPRAS */}
                         {activeTab === 'purchases' && (
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
                                     <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico de Compras</h2>
                                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black">{replenishments.length} Registros</div>
                                 </div>
-                                
                                 <div className="space-y-3 pb-10">
                                     {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date)).map(compra => (
                                         <div key={compra.id} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                             <div className="flex items-center flex-1">
                                                 <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-emerald-100">
-                                                    {/* Correção do timezone: Adicionado T12:00:00 */}
                                                     <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
                                                     <span className="text-lg leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">
-                                                        {compra.amount} Cápsulas
-                                                    </p>
+                                                    <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">{compra.amount} Cápsulas</p>
                                                     <span className="text-[11px] font-bold text-slate-500 block truncate max-w-[160px]">
                                                         {compra.patient ? `${compra.patient.split(' ')[0]} - ` : ''}{compra.pharmacy || 'Farmácia não informada'}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <button onClick={() => setSelectedPurchase(compra)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2">
-                                                <IconPlus />
-                                            </button>
+                                            <button onClick={() => setSelectedPurchase(compra)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
                                         </div>
                                     ))}
-
                                     {replenishments.length === 0 && (
                                         <div className="text-center py-10 opacity-50">
                                             <div className="flex justify-center mb-2 text-slate-400"><IconBag /></div>
@@ -655,31 +723,30 @@
                         )}
                     </main>
 
-                    {/* MODAL: REGISTRAR/EDITAR COMPRA */}
+                    {/* MODAIS (Abastecer, Compras e Logs) mantidos exatamente como a sua versão limpa sem confirmações */}
+                    
                     {showSupplyModal && (
                         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 max-h-[90vh] overflow-y-auto animate-fade">
                                 <h2 className="text-xl font-black text-center italic mb-6 uppercase text-slate-800">{supplyData.id ? 'Editar Compra' : 'Nova Compra'}</h2>
-                                
                                 <div className="space-y-4 mb-8">
                                     <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100">
                                         <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2 block mb-2">Quantidade (Cápsulas)*</label>
-                                        <input type="number" placeholder="0" className="w-full text-4xl font-black text-center bg-transparent border-none text-emerald-600 outline-none placeholder:text-emerald-200" value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} />
+                                        <input type="number" placeholder="0" className="w-full text-4xl font-black text-center bg-transparent border-none text-emerald-600 outline-none placeholder:text-emerald-200" value={supplyData.amount} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Data da Compra</label>
-                                        <input type="date" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
+                                        <input type="date" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.date} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Paciente (Opcional)</label>
-                                        <input type="text" placeholder="Nome do paciente" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.patient} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, patient: e.target.value})} />
+                                        <input type="text" placeholder="Nome do paciente" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.patient} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, patient: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Farmácia (Opcional)</label>
-                                        <input type="text" placeholder="Nome da farmácia" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.pharmacy} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, pharmacy: e.target.value})} />
+                                        <input type="text" placeholder="Nome da farmácia" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.pharmacy} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, pharmacy: e.target.value})} />
                                     </div>
                                 </div>
-
                                 <div className="flex space-x-3">
                                     <button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase bg-slate-100 rounded-2xl active:scale-95 transition-all">Cancelar</button>
                                     <button onClick={handleSupply} className="flex-[2] py-4 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase shadow-lg shadow-emerald-500/30 active:scale-95 transition-all">Salvar</button>
@@ -688,7 +755,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: DETALHES DA COMPRA (C/ Editar e Excluir) */}
                     {selectedPurchase && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 animate-fade">
@@ -696,11 +762,9 @@
                                     <h2 className="text-xl font-black italic uppercase text-slate-800">Recibo de Entrada</h2>
                                     <button onClick={() => setSelectedPurchase(null)} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
                                 </div>
-                                
                                 <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</p>
-                                        {/* Correção do timezone: Adicionado T12:00:00 */}
                                         <p className="text-sm font-bold text-slate-800">{new Date(selectedPurchase.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
                                     </div>
                                     <div>
@@ -716,20 +780,14 @@
                                         <p className="text-sm font-bold text-slate-800">{selectedPurchase.pharmacy || 'Não informada'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex space-x-3">
-                                    <button onClick={() => deletePurchase(selectedPurchase.id)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all">
-                                        <span className="mr-2"><IconTrash /></span> Excluir
-                                    </button>
-                                    <button onClick={() => handleEditPurchase(selectedPurchase)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all">
-                                        <span className="mr-2"><IconPencil /></span> Editar
-                                    </button>
+                                    <button onClick={() => deletePurchase(selectedPurchase.id)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
+                                    <button onClick={() => handleEditPurchase(selectedPurchase)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconPencil /></span> Editar</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* MODAL: DETALHES DE PASSADAS (LOGS) */}
                     {selectedLog && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 animate-fade">
@@ -737,21 +795,20 @@
                                     <h2 className="text-xl font-black italic uppercase text-slate-800">Detalhes do Dia</h2>
                                     <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
                                 </div>
-
                                 {isEditingLog ? (
                                     <div className="space-y-4 mb-8">
                                         <div className="bg-indigo-50 p-4 rounded-3xl border border-indigo-100 flex space-x-2">
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 1</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d1} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d1: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d1} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d1: e.target.value})} />
                                             </div>
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 2</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d2} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d2: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d2} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d2: e.target.value})} />
                                             </div>
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 3</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d3} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d3: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d3} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d3: e.target.value})} />
                                             </div>
                                         </div>
                                     </div>
@@ -759,7 +816,6 @@
                                     <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                                         <div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data do Lançamento</p>
-                                            {/* Correção do timezone: Adicionado T12:00:00 */}
                                             <p className="text-sm font-bold text-slate-800 capitalize">{new Date(selectedLog.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 pt-4">
@@ -782,7 +838,6 @@
                                         </div>
                                     </div>
                                 )}
-
                                 {isEditingLog ? (
                                     <div className="flex space-x-3">
                                         <button onClick={() => setIsEditingLog(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase bg-slate-100 rounded-2xl active:scale-95 transition-all">Cancelar</button>
@@ -790,20 +845,16 @@
                                     </div>
                                 ) : (
                                     <div className="flex space-x-3">
-                                        <button onClick={() => deleteLogRecord(selectedLog.data)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all">
-                                            <span className="mr-2"><IconTrash /></span> Excluir
-                                        </button>
-                                        <button onClick={() => startEditingLog(selectedLog)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all">
-                                            <span className="mr-2"><IconPencil /></span> Editar
-                                        </button>
+                                        <button onClick={() => deleteLogRecord(selectedLog.data)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
+                                        <button onClick={() => startEditingLog(selectedLog)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconPencil /></span> Editar</button>
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* MENU INFERIOR - Nova Ordem e Controle de Teclado Rígido */}
-                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-2xl z-40 transition-transform duration-300 ${isKeyboardVisible ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                    {/* MENU INFERIOR */}
+                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-2xl z-40 transition-transform duration-500 ${isKeyboardVisible ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
                         <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'dashboard' ? 'tab-active' : 'text-slate-400'}`}><IconHome /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Início</span></button>
                         <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'agenda' ? 'tab-active' : 'text-slate-400'}`}><IconTable /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Lançar</span></button>
                         <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'history' ? 'tab-active' : 'text-slate-400'}`}><IconHistory /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Passadas</span></button>
@@ -818,3 +869,5 @@
     </script>
 </body>
 </html>
+
+
