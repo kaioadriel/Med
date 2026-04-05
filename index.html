@@ -34,7 +34,9 @@
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .tab-active { transform: scale(1.1); color: #0f172a; font-weight: 900; }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>"); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%; }
     </style>
 </head>
@@ -89,8 +91,11 @@
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
         const IconUser = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
         const IconBuilding = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
+        const IconHospital = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M12 7v6"></path><path d="M9 10h6"></path><path d="M12 22v-4"></path></svg>;
         const IconHeartBeat = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>;
         const IconTrophy = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>;
+        const IconSettings = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+        const IconAlertCircle = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 
         const ManualBarChart = ({ data }) => {
             const maxVal = Math.max(...data.map(d => d.Total), 1);
@@ -110,13 +115,16 @@
         };
 
         const App = () => {
-            const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('tramal_app_auth_2280') === 'true');
+            const getAppPassword = () => localStorage.getItem('tramal_app_password') || '2280';
+            const getSyncId = () => localStorage.getItem('tramal_app_sync_id') || 'mestrekaio';
+
+            const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('tramal_app_auth') === 'true');
             const [passwordInput, setPasswordInput] = useState('');
             const [loginError, setLoginError] = useState(false);
 
             const [activeTab, setActiveTab] = useState('dashboard');
             
-            const [syncId] = useState('mestrekaio'); 
+            const [syncId, setSyncId] = useState(getSyncId()); 
             const [status, setStatus] = useState('Local');
             
             const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
@@ -124,6 +132,7 @@
             
             const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem('tramal_app_patients') || '[]'));
             const [pharmacies, setPharmacies] = useState(() => JSON.parse(localStorage.getItem('tramal_app_pharmacies') || '[]'));
+            const [clinics, setClinics] = useState(() => JSON.parse(localStorage.getItem('tramal_app_clinics') || '[]'));
             const [doctors, setDoctors] = useState(() => JSON.parse(localStorage.getItem('tramal_app_doctors') || '[]'));
 
             const [manageListType, setManageListType] = useState(null); 
@@ -141,6 +150,23 @@
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+            // Toast State
+            const [toast, setToast] = useState(null);
+            const toastTimeout = useRef(null);
+
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                toastTimeout.current = setTimeout(() => setToast(null), 3000);
+            };
+
+            const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+            // Configurações
+            const [showSettings, setShowSettings] = useState(false);
+            const [tempSyncId, setTempSyncId] = useState('');
+            const [tempPassword, setTempPassword] = useState('');
 
             useEffect(() => {
                 const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -173,9 +199,7 @@
             const [isEditingLog, setIsEditingLog] = useState(false);
             const [editLogData, setEditLogData] = useState({ d1: '', d2: '', d3: '' });
             
-            const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' });
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' });
 
             const estoqueInicialBase = 54;
 
@@ -195,8 +219,9 @@
                 localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
                 localStorage.setItem('tramal_app_patients', JSON.stringify(patients)); 
                 localStorage.setItem('tramal_app_pharmacies', JSON.stringify(pharmacies)); 
+                localStorage.setItem('tramal_app_clinics', JSON.stringify(clinics)); 
                 localStorage.setItem('tramal_app_doctors', JSON.stringify(doctors)); 
-            }, [logs, replenishments, patients, pharmacies, doctors, isAuthenticated]);
+            }, [logs, replenishments, patients, pharmacies, clinics, doctors, isAuthenticated]);
 
             useEffect(() => {
                 if (!isAuthenticated || !db || !syncId) {
@@ -211,11 +236,12 @@
                         if (data.replenishments) setReplenishments(data.replenishments);
                         if (data.patients) setPatients(data.patients);
                         if (data.pharmacies) setPharmacies(data.pharmacies);
+                        if (data.clinics) setClinics(data.clinics);
                         if (data.doctors) setDoctors(data.doctors);
                         setStatus('Nuvem Ativa');
                     } else {
                         setStatus('A criar Nuvem...');
-                        db.collection('medicacao_users').doc(syncId).set({ logs, replenishments, patients, pharmacies, doctors });
+                        db.collection('medicacao_users').doc(syncId).set({ logs, replenishments, patients, pharmacies, clinics, doctors });
                     }
                 }, (error) => {
                     console.error("Erro Firebase:", error);
@@ -224,15 +250,17 @@
                 return () => unsub();
             }, [syncId, isAuthenticated]);
 
-            const updateCloud = (newLogs, newSupply, newPatients, newPharmacies, newDoctors) => {
+            const updateCloud = (updates) => {
                 if (!isAuthenticated || !db || !syncId) return;
-                db.collection('medicacao_users').doc(syncId).update({ 
-                    logs: newLogs || logs, 
-                    replenishments: newSupply || replenishments,
-                    patients: newPatients || patients,
-                    pharmacies: newPharmacies || pharmacies,
-                    doctors: newDoctors || doctors
-                }).catch(() => { setStatus('Erro Cloud'); });
+                const cloudData = {
+                    logs: updates.logs || logs,
+                    replenishments: updates.replenishments || replenishments,
+                    patients: updates.patients || patients,
+                    pharmacies: updates.pharmacies || pharmacies,
+                    clinics: updates.clinics || clinics,
+                    doctors: updates.doctors || doctors
+                };
+                db.collection('medicacao_users').doc(syncId).update(cloudData).catch(() => { setStatus('Erro Cloud'); });
             };
 
             const calculateDaysAgo = (dateStr) => {
@@ -300,6 +328,7 @@
                 return data;
             }, [logs]);
 
+            // Grade: Mostra 30 dias a partir do dia atual
             const calendarDays = useMemo(() => {
                 const days = [];
                 for (let i = 0; i <= 30; i++) {
@@ -322,13 +351,16 @@
             const getTargetList = () => {
                 if (manageListType === 'patients') return patients;
                 if (manageListType === 'pharmacies') return pharmacies;
+                if (manageListType === 'clinics') return clinics;
                 return doctors;
             };
             const translateType = (type) => {
                 if (type === 'patients') return 'Pacientes';
                 if (type === 'pharmacies') return 'Farmácias';
+                if (type === 'clinics') return 'Clínicas';
                 return 'Médicos';
             };
+
             const handleSaveListItem = () => {
                 if(!manageItemInput.trim()) return;
                 const targetList = getTargetList();
@@ -336,43 +368,49 @@
                 if(editingItemId) updatedList = targetList.map(item => item.id === editingItemId ? {...item, name: manageItemInput} : item);
                 else updatedList = [...targetList, { id: Date.now(), name: manageItemInput }];
 
-                let newP = patients; let newF = pharmacies; let newD = doctors;
-                if (manageListType === 'patients') { newP = updatedList; setPatients(updatedList); }
-                else if (manageListType === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); }
-                else { newD = updatedList; setDoctors(updatedList); }
+                let updates = {};
+                if (manageListType === 'patients') { updates.patients = updatedList; setPatients(updatedList); }
+                else if (manageListType === 'pharmacies') { updates.pharmacies = updatedList; setPharmacies(updatedList); }
+                else if (manageListType === 'clinics') { updates.clinics = updatedList; setClinics(updatedList); }
+                else { updates.doctors = updatedList; setDoctors(updatedList); }
 
-                updateCloud(null, null, newP, newF, newD);
+                updateCloud(updates);
                 setManageItemInput(''); setEditingItemId(null);
+                showToast("Registro salvo com sucesso.");
             };
             const handleDeleteListItem = (id) => {
                 const targetList = getTargetList();
                 const updatedList = targetList.filter(item => item.id !== id);
-                let newP = patients; let newF = pharmacies; let newD = doctors;
-                if (manageListType === 'patients') { newP = updatedList; setPatients(updatedList); }
-                else if (manageListType === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); }
-                else { newD = updatedList; setDoctors(updatedList); }
-                updateCloud(null, null, newP, newF, newD);
+                let updates = {};
+                if (manageListType === 'patients') { updates.patients = updatedList; setPatients(updatedList); }
+                else if (manageListType === 'pharmacies') { updates.pharmacies = updatedList; setPharmacies(updatedList); }
+                else if (manageListType === 'clinics') { updates.clinics = updatedList; setClinics(updatedList); }
+                else { updates.doctors = updatedList; setDoctors(updatedList); }
+                updateCloud(updates);
+                showToast("Registro removido.", "error");
             };
 
             const handleQuickAddSave = () => {
                 if (!quickAddValue.trim()) return;
-                const targetList = quickAdd.listName === 'patients' ? patients : quickAdd.listName === 'pharmacies' ? pharmacies : doctors;
+                const targetList = quickAdd.listName === 'patients' ? patients : quickAdd.listName === 'pharmacies' ? pharmacies : quickAdd.listName === 'clinics' ? clinics : doctors;
                 const newItem = { id: Date.now(), name: quickAddValue };
                 const updatedList = [...targetList, newItem];
                 
-                let newP = patients; let newF = pharmacies; let newD = doctors;
-                if (quickAdd.listName === 'patients') { newP = updatedList; setPatients(updatedList); setSupplyData({...supplyData, patient: newItem.name}); }
-                else if (quickAdd.listName === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); setSupplyData({...supplyData, pharmacy: newItem.name}); }
-                else { newD = updatedList; setDoctors(updatedList); setSupplyData({...supplyData, doctor: newItem.name}); }
+                let updates = {};
+                if (quickAdd.listName === 'patients') { updates.patients = updatedList; setPatients(updatedList); setSupplyData({...supplyData, patient: newItem.name}); }
+                else if (quickAdd.listName === 'pharmacies') { updates.pharmacies = updatedList; setPharmacies(updatedList); setSupplyData({...supplyData, pharmacy: newItem.name}); }
+                else if (quickAdd.listName === 'clinics') { updates.clinics = updatedList; setClinics(updatedList); setSupplyData({...supplyData, clinic: newItem.name}); }
+                else { updates.doctors = updatedList; setDoctors(updatedList); setSupplyData({...supplyData, doctor: newItem.name}); }
 
-                updateCloud(null, null, newP, newF, newD);
+                updateCloud(updates);
                 setQuickAdd(null); setQuickAddValue('');
+                showToast("Adicionado com sucesso.");
             };
 
             const handleInputChange = (dateStr, field, value) => {
                 const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
                 const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
-                setLogs(updatedLogs); updateCloud(updatedLogs, null);
+                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
             };
             const handleKeyDown = (e, dayIdx, doseIdx) => {
                 let nextDay = dayIdx; let nextDose = doseIdx;
@@ -382,7 +420,7 @@
             };
             const handleClearRow = (dateStr) => {
                 const updatedLogs = { ...logs }; delete updatedLogs[dateStr]; 
-                setLogs(updatedLogs); updateCloud(updatedLogs, null);
+                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
             };
             const handleInsertRow = (targetDate) => {
                 const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
@@ -392,7 +430,7 @@
                     if (newLogs[prevDate]) newLogs[currDate] = { ...newLogs[prevDate], data: currDate };
                     else delete newLogs[currDate];
                 }
-                delete newLogs[targetDate]; setLogs(newLogs); updateCloud(newLogs, null);
+                delete newLogs[targetDate]; setLogs(newLogs); updateCloud({ logs: newLogs });
             };
             const handleDeleteRow = (targetDate) => {
                 const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
@@ -402,27 +440,29 @@
                     if (newLogs[nextDate]) newLogs[currDate] = { ...newLogs[nextDate], data: currDate };
                     else delete newLogs[currDate];
                 }
-                delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud(newLogs, null);
+                delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud({ logs: newLogs });
             };
-            const handleClearAll = () => { setLogs({}); updateCloud({}, null); };
+            const handleClearAll = () => { setLogs({}); updateCloud({ logs: {} }); showToast("Grade limpa com sucesso.", "error"); };
 
-            const openNewSupplyModal = () => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' }); setShowSupplyModal(true); };
-            const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, patient: compra.patient || '', pharmacy: compra.pharmacy || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
+            const openNewSupplyModal = () => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(true); };
+            const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, patient: compra.patient || '', pharmacy: compra.pharmacy || '', clinic: compra.clinic || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
             const handleSupply = () => {
-                if (!supplyData.amount) { alert("Por favor, preencha a quantidade."); return; }
+                if (!supplyData.amount) { showToast("Por favor, preencha a quantidade.", "error"); return; }
                 let updatedReplenishments;
                 if (supplyData.id) {
-                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy, doctor: supplyData.doctor } : r);
+                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor } : r);
                 } else {
-                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient, pharmacy: supplyData.pharmacy, doctor: supplyData.doctor, id: Date.now() };
+                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor, id: Date.now() };
                     updatedReplenishments = [...replenishments, newReplenishment];
                 }
-                setReplenishments(updatedReplenishments); updateCloud(null, updatedReplenishments);
-                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' }); setShowSupplyModal(false);
+                setReplenishments(updatedReplenishments); updateCloud({ replenishments: updatedReplenishments });
+                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(false);
+                showToast("Compra salva com sucesso!");
             };
             const deletePurchase = (id) => {
                 const updated = replenishments.filter(r => r.id !== id);
-                setReplenishments(updated); updateCloud(null, updated); setSelectedPurchase(null);
+                setReplenishments(updated); updateCloud({ replenishments: updated }); setSelectedPurchase(null);
+                showToast("Compra excluída.", "error");
             };
 
             const openLogDetails = (log) => { setSelectedLog(log); setIsEditingLog(false); };
@@ -430,13 +470,15 @@
             const saveLogEdit = () => {
                 const dateStr = selectedLog.data; const curr = logs[dateStr] || { data: dateStr };
                 const updatedLogs = {...logs, [dateStr]: { ...curr, d1: editLogData.d1 === '' ? '' : Number(editLogData.d1), d2: editLogData.d2 === '' ? '' : Number(editLogData.d2), d3: editLogData.d3 === '' ? '' : Number(editLogData.d3) }};
-                setLogs(updatedLogs); updateCloud(updatedLogs, null); setSelectedLog(updatedLogs[dateStr]); setIsEditingLog(false);
+                setLogs(updatedLogs); updateCloud({ logs: updatedLogs }); setSelectedLog(updatedLogs[dateStr]); setIsEditingLog(false);
+                showToast("Alterações salvas!");
             };
-            const deleteLogRecord = (dateStr) => { handleClearRow(dateStr); setSelectedLog(null); };
+            const deleteLogRecord = (dateStr) => { handleClearRow(dateStr); setSelectedLog(null); showToast("Registro excluído.", "error"); };
 
             const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments, patients, pharmacies, doctors });
+                const data = JSON.stringify({ logs, replenishments, patients, pharmacies, clinics, doctors });
                 const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_medicacao_${getTodayDateStr()}.json`; a.click();
+                showToast("Backup gerado com sucesso!");
             };
             const handleRestore = (e) => {
                 const file = e.target.files[0]; if (!file) return;
@@ -444,24 +486,55 @@
                 reader.onload = (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments); if (data.patients) setPatients(data.patients); if (data.pharmacies) setPharmacies(data.pharmacies); if (data.doctors) setDoctors(data.doctors);
-                        updateCloud(data.logs, data.replenishments, data.patients, data.pharmacies, data.doctors);
-                        alert("Backup restaurado com sucesso! Dados sincronizados localmente e na nuvem.");
-                    } catch (err) { alert("Erro ao ler o arquivo."); }
+                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments); if (data.patients) setPatients(data.patients); if (data.pharmacies) setPharmacies(data.pharmacies); if (data.clinics) setClinics(data.clinics); if (data.doctors) setDoctors(data.doctors);
+                        updateCloud(data);
+                        showToast("Backup restaurado! Dados sincronizados.");
+                    } catch (err) { showToast("Erro ao ler o arquivo.", "error"); }
                 };
                 reader.readAsText(file); e.target.value = ''; 
             };
+            
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (passwordInput === '2280') { setIsAuthenticated(true); localStorage.setItem('tramal_app_auth_2280', 'true'); setLoginError(false); } 
+                if (passwordInput === getAppPassword()) { setIsAuthenticated(true); localStorage.setItem('tramal_app_auth', 'true'); setLoginError(false); } 
                 else { setLoginError(true); setPasswordInput(''); }
             };
-            const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('tramal_app_auth_2280'); setPasswordInput(''); };
+            const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('tramal_app_auth'); setPasswordInput(''); };
             const handleInstallApp = async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { setDeferredPrompt(null); } } };
+
+            const saveSettings = () => {
+                if(!tempPassword) return showToast("Senha não pode ser vazia", "error");
+                setSyncId(tempSyncId || 'mestrekaio');
+                localStorage.setItem('tramal_app_sync_id', tempSyncId || 'mestrekaio');
+                localStorage.setItem('tramal_app_password', tempPassword);
+                setShowSettings(false);
+                showToast("Configurações salvas!");
+            };
+
+            const openSettings = () => {
+                setTempSyncId(syncId);
+                setTempPassword(getAppPassword());
+                setShowSettings(true);
+            };
+
+            // Notificações em Toast
+            const ToastComponent = () => {
+                if (!toast) return null;
+                const isError = toast.type === 'error';
+                return (
+                    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-slide-up w-full max-w-xs px-4">
+                        <div className={`flex items-center p-4 rounded-2xl shadow-xl border ${isError ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
+                            {isError ? <IconAlertCircle /> : <IconCheck />}
+                            <span className="ml-3 font-bold text-sm leading-tight">{toast.message}</span>
+                        </div>
+                    </div>
+                );
+            };
 
             if (!isAuthenticated) {
                 return (
-                    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 animate-fade">
+                    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative">
+                        <ToastComponent />
                         <div className="w-full max-w-xs space-y-8">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_15px_rgba(16,185,129,0.2)]"><IconLock /></div>
@@ -482,6 +555,8 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
+                    <ToastComponent />
+
                     <header className="bg-slate-900 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-emerald-500">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div>
@@ -489,7 +564,9 @@
                                 <div className="flex items-center space-x-1">
                                     <span className={`transition-colors ${status === 'Erro Cloud' ? 'text-rose-500 animate-pulse' : 'text-emerald-500 ' + (status === 'Nuvem Ativa' ? 'animate-pulse' : '')}`}><IconCloud /></span>
                                     <p className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors ${status === 'Erro Cloud' ? 'text-rose-500' : 'text-emerald-500'}`}>Controle de Doses</p>
-                                    <button onClick={handleLogout} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors" title="Bloquear App"><IconLock /></button>
+                                    
+                                    <button onClick={openSettings} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors" title="Configurações"><IconSettings /></button>
+                                    <button onClick={handleLogout} className="ml-1 p-1 text-slate-500 hover:text-white transition-colors" title="Bloquear App"><IconLock /></button>
                                 </div>
                             </div>
                             <div className={`p-3 px-5 rounded-[2rem] border-2 backdrop-blur-md transition-all ${stats.previsao < 0 ? 'bg-rose-500/10 border-rose-500 text-rose-400' : 'bg-emerald-500/10 border-emerald-500 text-emerald-400'}`}>
@@ -507,15 +584,18 @@
                                 {/* ERP TOP */}
                                 <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 mb-4">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Cadastros ERP</h3>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button onClick={() => setManageListType('patients')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">
-                                            <span className="mb-1"><IconUser /></span> Pacientes
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={() => setManageListType('patients')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">
+                                            <span className="mr-2"><IconUser /></span> Pacientes
                                         </button>
-                                        <button onClick={() => setManageListType('pharmacies')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600 transition-colors">
-                                            <span className="mb-1"><IconBuilding /></span> Farmácias
+                                        <button onClick={() => setManageListType('pharmacies')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600 transition-colors">
+                                            <span className="mr-2"><IconBuilding /></span> Farmácias
                                         </button>
-                                        <button onClick={() => setManageListType('doctors')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-colors">
-                                            <span className="mb-1"><IconHeartBeat /></span> Médicos
+                                        <button onClick={() => setManageListType('clinics')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-colors">
+                                            <span className="mr-2"><IconHospital /></span> Clínicas
+                                        </button>
+                                        <button onClick={() => setManageListType('doctors')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-colors">
+                                            <span className="mr-2"><IconHeartBeat /></span> Médicos
                                         </button>
                                     </div>
                                 </div>
@@ -529,8 +609,8 @@
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square text-center">
                                         <p className="text-slate-400 text-[10px] font-black uppercase">Estoque Real</p>
                                         <p className={`text-4xl font-black leading-none ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
-                                        <button onClick={openNewSupplyModal} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all">
-                                            <span className="mr-1 text-emerald-400"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span> ABASTECER
+                                        <button onClick={openNewSupplyModal} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all mt-2">
+                                            <span className="mr-1 text-emerald-400"><IconPlus /></span> ABASTECER
                                         </button>
                                     </div>
                                 </div>
@@ -548,10 +628,11 @@
                                         </h3>
                                     </div>
                                     
-                                    <div className="flex space-x-1 bg-white/10 p-1 rounded-xl mb-4 relative z-10">
-                                        <button onClick={() => setInsightTab('pharmacy')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'pharmacy' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Farmácias</button>
-                                        <button onClick={() => setInsightTab('patient')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'patient' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Pacientes</button>
-                                        <button onClick={() => setInsightTab('doctor')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'doctor' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Médicos</button>
+                                    <div className="flex flex-wrap gap-1 bg-white/10 p-1 rounded-xl mb-4 relative z-10">
+                                        <button onClick={() => setInsightTab('pharmacy')} className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'pharmacy' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Farmácia</button>
+                                        <button onClick={() => setInsightTab('patient')} className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'patient' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Paciente</button>
+                                        <button onClick={() => setInsightTab('clinic')} className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'clinic' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Clínica</button>
+                                        <button onClick={() => setInsightTab('doctor')} className={`flex-1 min-w-[70px] py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'doctor' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Médico</button>
                                     </div>
 
                                     <div className="space-y-2 relative z-10">
@@ -605,7 +686,7 @@
                                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
                                     <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Grade de Lançamento</h2>
                                     <div className="flex items-center space-x-3">
-                                        {savingId && <div className="animate-pulse text-[8px] font-black uppercase text-emerald-400">Gravado</div>}
+                                        {savingId && <div className="animate-pulse text-[8px] font-black uppercase text-emerald-400 flex items-center"><IconCheck /><span className="ml-1">Gravado</span></div>}
                                         <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-400 border border-rose-500/50 bg-rose-500/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Tudo</button>
                                     </div>
                                 </div>
@@ -766,7 +847,42 @@
                         )}
                     </main>
 
-                    {/* MODAL: GERENCIAR LISTAS (PACIENTE, FARMÁCIA, MÉDICO) COM BOTÃO + */}
+                    {/* MODAL: CONFIGURAÇÕES */}
+                    {showSettings && (
+                        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
+                            <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-slate-900 animate-slide-up">
+                                <div className="flex justify-between items-start mb-6">
+                                    <h2 className="text-xl font-black italic uppercase text-slate-800 flex items-center"><IconSettings /><span className="ml-2">Configurações</span></h2>
+                                    <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
+                                </div>
+                                <div className="space-y-5 mb-8">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">ID da Nuvem (Sync)</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400"
+                                            value={tempSyncId} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempSyncId(e.target.value)}
+                                        />
+                                        <p className="text-[9px] text-slate-400 ml-2 mt-1">Use a mesma ID em outros aparelhos para sincronizar.</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Senha do App</label>
+                                        <input 
+                                            type="password" inputMode="numeric"
+                                            className="w-full font-black text-2xl tracking-[0.5em] bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400 text-center"
+                                            value={tempPassword} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempPassword(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button onClick={() => setShowSettings(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase bg-slate-100 rounded-2xl active:scale-95 transition-all">Cancelar</button>
+                                    <button onClick={saveSettings} className="flex-[2] py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase shadow-lg shadow-slate-900/30 active:scale-95 transition-all">Salvar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: GERENCIAR LISTAS */}
                     {manageListType && (
                         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 max-h-[90vh] flex flex-col animate-fade">
@@ -777,7 +893,7 @@
                                 
                                 <div className="flex space-x-2 mb-6 shrink-0 items-center">
                                     <input 
-                                        type="text" placeholder={`Adicionar novo...`} 
+                                        type="text" placeholder={`Adicionar ${translateType(manageListType).toLowerCase().replace('s', '')}...`} 
                                         className="flex-1 font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 h-14"
                                         value={manageItemInput} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setManageItemInput(e.target.value)}
                                     />
@@ -788,7 +904,7 @@
 
                                 <div className="space-y-3 overflow-y-auto flex-1 pr-2 scrollbar-hide pb-4 min-h-[30vh]">
                                     {getTargetList().map(item => {
-                                        const dbType = manageListType === 'patients' ? 'patient' : manageListType === 'pharmacies' ? 'pharmacy' : 'doctor';
+                                        const dbType = manageListType === 'patients' ? 'patient' : manageListType === 'pharmacies' ? 'pharmacy' : manageListType === 'clinics' ? 'clinic' : 'doctor';
                                         const stat = getEntityStats(dbType, item.name);
                                         
                                         return (
@@ -820,7 +936,7 @@
                         </div>
                     )}
 
-                    {/* MODAL: ABASTECER (COM BOTÃO +) */}
+                    {/* MODAL: ABASTECER */}
                     {showSupplyModal && (
                         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 max-h-[90vh] overflow-y-auto animate-fade">
@@ -852,6 +968,16 @@
                                         <select className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.pharmacy} onChange={e=>setSupplyData({...supplyData, pharmacy: e.target.value})}>
                                             <option value="">Selecione ou adicione nova...</option>
                                             {pharmacies.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block">Clínica</label>
+                                            <button onClick={() => setQuickAdd({ label: 'Clínica', listName: 'clinics' })} className="text-emerald-600 bg-emerald-50 p-1 rounded-md text-[10px] font-black flex items-center hover:bg-emerald-100 transition-colors"><IconPlus /><span className="ml-1">Nova</span></button>
+                                        </div>
+                                        <select className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.clinic} onChange={e=>setSupplyData({...supplyData, clinic: e.target.value})}>
+                                            <option value="">Selecione ou adicione nova...</option>
+                                            {clinics.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -916,6 +1042,10 @@
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Farmácia</p>
                                         <p className="text-sm font-bold text-slate-800">{selectedPurchase.pharmacy || 'Não informada'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clínica</p>
+                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.clinic || 'Não informada'}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Médico</p>
