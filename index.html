@@ -38,6 +38,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>"); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%; }
+        html { scroll-behavior: smooth; }
     </style>
 </head>
 <body class="text-slate-900">
@@ -150,6 +151,9 @@
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
+            
+            // Ref para a rolagem
+            const todayRowRef = useRef(null);
 
             // Toast State
             const [toast, setToast] = useState(null);
@@ -162,6 +166,16 @@
             };
 
             const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+            // Auto-scroll ao abrir a aba Lançar
+            useEffect(() => {
+                if (activeTab === 'agenda' && todayRowRef.current) {
+                    // Timeout garante que o DOM já renderizou a lista
+                    setTimeout(() => {
+                        todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 50);
+                }
+            }, [activeTab]);
 
             // Configurações
             const [showSettings, setShowSettings] = useState(false);
@@ -328,14 +342,20 @@
                 return data;
             }, [logs]);
 
-            // Grade: Mostra 30 dias a partir do dia atual
+            // Grade: 3 dias antes + hoje + 30 dias depois
             const calendarDays = useMemo(() => {
                 const days = [];
-                for (let i = 0; i <= 30; i++) {
+                for (let i = -3; i <= 30; i++) {
                     const d = new Date(); d.setDate(d.getDate() + i);
                     const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                     const weekday = new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
-                    days.push({ dateStr, label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), weekday, isToday: i === 0 });
+                    days.push({ 
+                        dateStr, 
+                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        weekday, 
+                        isToday: i === 0,
+                        isPast: i < 0
+                    });
                 }
                 return days;
             }, []);
@@ -703,7 +723,7 @@
                                     <div className="w-6 shrink-0"></div>
                                 </div>
 
-                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pb-10 scrollbar-hide">
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pb-10 scrollbar-hide relative">
                                     {calendarDays.map((day, dIdx) => {
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
@@ -714,22 +734,49 @@
                                         }, 0);
                                         
                                         const runningStock = estoqueInicialBase + stats.totalEntrada - totalSaidaAteData;
+                                        
+                                        // Estilização baseada em dia passado vs atual/futuro - LARANJA CLARO
+                                        let rowClass = day.isPast 
+                                            ? 'bg-orange-50 border-orange-200 shadow-sm' 
+                                            : day.isToday 
+                                                ? 'bg-emerald-50 border-emerald-200 shadow-md' 
+                                                : 'bg-white border-slate-100 shadow-sm hover:border-slate-200';
+
+                                        let iconBtnClassInsert = day.isPast ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-emerald-100 text-emerald-600';
+                                        let iconBtnClassDelete = day.isPast ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-rose-100 text-rose-600';
+                                        
+                                        let dateBoxClass = day.isPast 
+                                            ? 'bg-orange-200 text-orange-800 border-orange-300' 
+                                            : day.isToday 
+                                                ? 'bg-emerald-500 text-white border-emerald-600' 
+                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100';
+
+                                        let inputClass = day.isPast 
+                                            ? 'bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400'
+                                            : 'bg-yellow-50 border-yellow-200 text-slate-900 placeholder:text-yellow-300 focus:bg-white focus:ring-yellow-400';
+
+                                        let closeIconClass = day.isPast ? 'text-orange-400 hover:text-orange-600' : 'text-rose-300 hover:text-rose-500';
+
                                         let badgeClass = total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300';
                                         if (runningStock <= 0) badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
+                                        
+                                        if (day.isPast) {
+                                            badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
+                                        }
 
                                         return (
-                                            <div key={day.dateStr} className={`flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border ${day.isToday ? 'bg-emerald-50 border-emerald-200 shadow-md' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200'}`}>
+                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border ${rowClass}`}>
                                                 
                                                 <div className="flex flex-col gap-1 items-center justify-center w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-emerald-100 text-emerald-600 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Inserir Linha">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className={`${iconBtnClassInsert} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Inserir Linha">
                                                         <IconInsertRow />
                                                     </button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-600 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Excluir Linha">
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className={`${iconBtnClassDelete} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Excluir Linha">
                                                         <IconDeleteRow />
                                                     </button>
                                                 </div>
 
-                                                <div className={`h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border ${day.isToday ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                                <div className={`h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border ${dateBoxClass}`}>
                                                     <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{day.weekday}</span>
                                                     <span className="text-[16px] leading-none">{day.label.split('/')[0]}</span>
                                                 </div>
@@ -738,7 +785,7 @@
                                                     {[1,2,3].map((num, doseIdx) => (
                                                         <input 
                                                             key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
-                                                            className="w-full max-w-[40px] h-10 text-center bg-yellow-50 border border-yellow-200 rounded-[0.8rem] text-[14px] font-black focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none transition-all placeholder:text-yellow-300" 
+                                                            className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${inputClass}`} 
                                                             value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
                                                         />
                                                     ))}
@@ -746,11 +793,11 @@
 
                                                 <div className="w-8 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
-                                                    {savingId === day.dateStr && <div className="absolute -top-1 -right-1 text-emerald-500"><IconCheck /></div>}
+                                                    {savingId === day.dateStr && <div className={`absolute -top-1 -right-1 ${day.isPast ? 'text-orange-500' : 'text-emerald-500'}`}><IconCheck /></div>}
                                                 </div>
 
                                                 <div className="w-6 flex justify-center shrink-0">
-                                                    <button onClick={() => handleClearRow(day.dateStr)} className="flex items-center justify-center text-rose-300 hover:text-rose-500 active:scale-90 transition-all p-1" title="Limpar Dia">
+                                                    <button onClick={() => handleClearRow(day.dateStr)} className={`flex items-center justify-center active:scale-90 transition-all p-1 ${closeIconClass}`} title="Limpar Dia">
                                                         <IconX />
                                                     </button>
                                                 </div>
