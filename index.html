@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f172a">
     
-    <!-- Manifesto Otimizado para permitir a instalação no Chrome -->
     <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22MEDICA%C3%87%C3%83O%22%2C%22short_name%22%3A%22Medica%C3%87%C3%83o%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <title>MEDICAÇÃO - Gestão Cloud</title>
@@ -36,12 +35,12 @@
         .tab-active { transform: scale(1.1); color: #0f172a; font-weight: 900; }
         .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>"); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%; }
     </style>
 </head>
 <body class="text-slate-900">
     <div id="root"></div>
 
-    <!-- Service Worker Oculto para ativar o "Instalar App" no Chrome -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -75,8 +74,8 @@
         const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
         const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
         const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
-        const IconPlus = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-        const IconCheck = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+        const IconPlus = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
         const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
         const IconCloud = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.4-1.9-4.3-4.2-4.5C17.3 6.6 14.4 4 11 4 7.6 4 4.8 6.6 4.2 10.1 1.9 10.3 0 12.3 0 14.7 0 17.1 1.9 19 4.3 19h13.2Z"/></svg>;
         const IconX = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
@@ -88,6 +87,10 @@
         const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
         const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
+        const IconUser = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+        const IconBuilding = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
+        const IconHeartBeat = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>;
+        const IconTrophy = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>;
 
         const ManualBarChart = ({ data }) => {
             const maxVal = Math.max(...data.map(d => d.Total), 1);
@@ -115,48 +118,49 @@
             
             const [syncId] = useState('mestrekaio'); 
             const [status, setStatus] = useState('Local');
+            
             const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
             const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
             
+            const [patients, setPatients] = useState(() => JSON.parse(localStorage.getItem('tramal_app_patients') || '[]'));
+            const [pharmacies, setPharmacies] = useState(() => JSON.parse(localStorage.getItem('tramal_app_pharmacies') || '[]'));
+            const [doctors, setDoctors] = useState(() => JSON.parse(localStorage.getItem('tramal_app_doctors') || '[]'));
+
+            const [manageListType, setManageListType] = useState(null); 
+            const [manageItemInput, setManageItemInput] = useState('');
+            const [editingItemId, setEditingItemId] = useState(null);
+            
+            const [insightTab, setInsightTab] = useState('pharmacy');
+
+            const [quickAdd, setQuickAdd] = useState(null);
+            const [quickAddValue, setQuickAddValue] = useState('');
+
             const [savingId, setSavingId] = useState(null);
             
-            // ESTADOS DE TECLADO E PWA
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-            // Escutar prompt de instalação PWA (Chrome)
             useEffect(() => {
-                const handleBeforeInstallPrompt = (e) => {
-                    e.preventDefault(); // Impede o mini-info bar
-                    setDeferredPrompt(e); // Guarda o evento para o nosso botão
-                };
+                const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
                 window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
                 return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             }, []);
 
-            // Escutar redimensionamento de tela para esconder/mostrar o Menu (Inteligência 2 Segundos)
             useEffect(() => {
                 const handleResize = () => {
                     if (window.visualViewport) {
-                        // Se a tela visível for muito menor que a tela real, o teclado está aberto
                         if (window.visualViewport.height < window.screen.height * 0.7) {
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
                             setIsKeyboardVisible(true);
                         } else {
-                            // Se a tela voltou ao normal (teclado desceu)
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                            keyboardTimeoutRef.current = setTimeout(() => {
-                                setIsKeyboardVisible(false);
-                            }, 2000); // 2 segundos de atraso
+                            keyboardTimeoutRef.current = setTimeout(() => setIsKeyboardVisible(false), 2000); 
                         }
                     }
                 };
-
-                if (window.visualViewport) {
-                    window.visualViewport.addEventListener('resize', handleResize);
-                }
+                if (window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
                 return () => {
                     if (window.visualViewport) window.visualViewport.removeEventListener('resize', handleResize);
                     if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
@@ -165,76 +169,116 @@
 
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [selectedPurchase, setSelectedPurchase] = useState(null);
-            
             const [selectedLog, setSelectedLog] = useState(null);
             const [isEditingLog, setIsEditingLog] = useState(false);
             const [editLogData, setEditLogData] = useState({ d1: '', d2: '', d3: '' });
             
             const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-            const [supplyData, setSupplyData] = useState({ 
-                id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' 
-            });
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' });
 
             const estoqueInicialBase = 54;
 
-            // Mantido o onFocus nativo por redundância imediata, mas o onBlur é coberto pelo Resize Observer
             const onInputFocus = () => {
                 if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
                 setIsKeyboardVisible(true);
+            };
+
+            const onInputBlur = () => {
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                keyboardTimeoutRef.current = setTimeout(() => setIsKeyboardVisible(false), 2000);
             };
 
             useEffect(() => { 
                 if (!isAuthenticated) return;
                 localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs)); 
                 localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
-            }, [logs, replenishments, isAuthenticated]);
+                localStorage.setItem('tramal_app_patients', JSON.stringify(patients)); 
+                localStorage.setItem('tramal_app_pharmacies', JSON.stringify(pharmacies)); 
+                localStorage.setItem('tramal_app_doctors', JSON.stringify(doctors)); 
+            }, [logs, replenishments, patients, pharmacies, doctors, isAuthenticated]);
 
             useEffect(() => {
                 if (!isAuthenticated || !db || !syncId) {
                     if (!isAuthenticated) setStatus('Bloqueado');
                     return;
                 }
-                
                 setStatus('A sincronizar...');
                 const unsub = db.collection('medicacao_users').doc(syncId).onSnapshot(doc => {
                     if (doc.exists) {
                         const data = doc.data();
                         if (data.logs) setLogs(data.logs);
                         if (data.replenishments) setReplenishments(data.replenishments);
+                        if (data.patients) setPatients(data.patients);
+                        if (data.pharmacies) setPharmacies(data.pharmacies);
+                        if (data.doctors) setDoctors(data.doctors);
                         setStatus('Nuvem Ativa');
                     } else {
                         setStatus('A criar Nuvem...');
-                        db.collection('medicacao_users').doc(syncId).set({ logs, replenishments });
+                        db.collection('medicacao_users').doc(syncId).set({ logs, replenishments, patients, pharmacies, doctors });
                     }
                 }, (error) => {
                     console.error("Erro Firebase:", error);
                     setStatus('Erro Cloud');
                 });
-
                 return () => unsub();
             }, [syncId, isAuthenticated]);
 
-            const updateCloud = (newLogs, newSupply) => {
+            const updateCloud = (newLogs, newSupply, newPatients, newPharmacies, newDoctors) => {
                 if (!isAuthenticated || !db || !syncId) return;
                 db.collection('medicacao_users').doc(syncId).update({ 
                     logs: newLogs || logs, 
-                    replenishments: newSupply || replenishments 
-                }).catch(() => {
-                    setStatus('Erro Cloud');
-                });
+                    replenishments: newSupply || replenishments,
+                    patients: newPatients || patients,
+                    pharmacies: newPharmacies || pharmacies,
+                    doctors: newDoctors || doctors
+                }).catch(() => { setStatus('Erro Cloud'); });
             };
+
+            const calculateDaysAgo = (dateStr) => {
+                if (!dateStr) return null;
+                const today = new Date(getTodayDateStr() + 'T12:00:00');
+                const pastDate = new Date(dateStr + 'T12:00:00');
+                const diffTime = today - pastDate;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays;
+            };
+
+            const getEntityStats = (type, name) => {
+                const relatedPurchases = replenishments.filter(r => r[type] === name);
+                if (relatedPurchases.length === 0) return { daysAgo: null, count: 0 };
+                const latestPurchase = relatedPurchases.reduce((latest, current) => {
+                    return (new Date(current.date) > new Date(latest.date)) ? current : latest;
+                }, relatedPurchases[0]);
+                return { daysAgo: calculateDaysAgo(latestPurchase.date), count: relatedPurchases.length };
+            };
+
+            const top3Data = useMemo(() => {
+                const stats = {};
+                replenishments.forEach(r => {
+                    const name = r[insightTab];
+                    if (name) {
+                        if (!stats[name]) stats[name] = { count: 0, latestDate: r.date };
+                        stats[name].count += 1;
+                        if (new Date(r.date) > new Date(stats[name].latestDate)) {
+                            stats[name].latestDate = r.date;
+                        }
+                    }
+                });
+                return Object.entries(stats)
+                    .map(([name, data]) => ({ name, count: data.count, daysAgo: calculateDaysAgo(data.latestDate) }))
+                    .sort((a, b) => b.count - a.count || a.daysAgo - b.daysAgo)
+                    .slice(0, 3);
+            }, [replenishments, insightTab]);
 
             const stats = useMemo(() => {
                 const allEntries = Object.values(logs);
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
                 const todayStr = getTodayDateStr();
-                
                 const totalSaidaAteHoje = allEntries.reduce((acc, curr) => {
                     if (curr.data <= todayStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                     return acc;
                 }, 0);
-
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
                 const today = new Date(); today.setHours(0,0,0,0);
                 const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
@@ -242,13 +286,7 @@
                     const dateObj = new Date(curr.data + 'T12:00:00');
                     return (dateObj >= sevenDaysAgo && dateObj <= today) ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc;
                 }, 0);
-                
-                return { 
-                    previsao: estoqueInicialBase + totalEntrada - totalSaidaGeral, 
-                    estoque: estoqueInicialBase + totalEntrada - totalSaidaAteHoje, 
-                    total7Dias: total7,
-                    totalEntrada
-                };
+                return { previsao: estoqueInicialBase + totalEntrada - totalSaidaGeral, estoque: estoqueInicialBase + totalEntrada - totalSaidaAteHoje, total7Dias: total7, totalEntrada };
             }, [logs, replenishments]);
 
             const chartData = useMemo(() => {
@@ -268,12 +306,7 @@
                     const d = new Date(); d.setDate(d.getDate() + i);
                     const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                     const weekday = new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
-                    days.push({ 
-                        dateStr, 
-                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
-                        weekday,
-                        isToday: i === 0 
-                    });
+                    days.push({ dateStr, label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), weekday, isToday: i === 0 });
                 }
                 return days;
             }, []);
@@ -283,223 +316,161 @@
             const historyLogsList = useMemo(() => {
                 const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
                 const todayStr = getTodayDateStr(); 
-                return Object.values(logs)
-                    .filter(l => new Date(l.data + 'T12:00:00') >= thirty && l.data < todayStr)
-                    .sort((a,b) => b.data.localeCompare(a.data));
+                return Object.values(logs).filter(l => new Date(l.data + 'T12:00:00') >= thirty && l.data < todayStr).sort((a,b) => b.data.localeCompare(a.data));
             }, [logs]);
+
+            const getTargetList = () => {
+                if (manageListType === 'patients') return patients;
+                if (manageListType === 'pharmacies') return pharmacies;
+                return doctors;
+            };
+            const translateType = (type) => {
+                if (type === 'patients') return 'Pacientes';
+                if (type === 'pharmacies') return 'Farmácias';
+                return 'Médicos';
+            };
+            const handleSaveListItem = () => {
+                if(!manageItemInput.trim()) return;
+                const targetList = getTargetList();
+                let updatedList;
+                if(editingItemId) updatedList = targetList.map(item => item.id === editingItemId ? {...item, name: manageItemInput} : item);
+                else updatedList = [...targetList, { id: Date.now(), name: manageItemInput }];
+
+                let newP = patients; let newF = pharmacies; let newD = doctors;
+                if (manageListType === 'patients') { newP = updatedList; setPatients(updatedList); }
+                else if (manageListType === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); }
+                else { newD = updatedList; setDoctors(updatedList); }
+
+                updateCloud(null, null, newP, newF, newD);
+                setManageItemInput(''); setEditingItemId(null);
+            };
+            const handleDeleteListItem = (id) => {
+                const targetList = getTargetList();
+                const updatedList = targetList.filter(item => item.id !== id);
+                let newP = patients; let newF = pharmacies; let newD = doctors;
+                if (manageListType === 'patients') { newP = updatedList; setPatients(updatedList); }
+                else if (manageListType === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); }
+                else { newD = updatedList; setDoctors(updatedList); }
+                updateCloud(null, null, newP, newF, newD);
+            };
+
+            const handleQuickAddSave = () => {
+                if (!quickAddValue.trim()) return;
+                const targetList = quickAdd.listName === 'patients' ? patients : quickAdd.listName === 'pharmacies' ? pharmacies : doctors;
+                const newItem = { id: Date.now(), name: quickAddValue };
+                const updatedList = [...targetList, newItem];
+                
+                let newP = patients; let newF = pharmacies; let newD = doctors;
+                if (quickAdd.listName === 'patients') { newP = updatedList; setPatients(updatedList); setSupplyData({...supplyData, patient: newItem.name}); }
+                else if (quickAdd.listName === 'pharmacies') { newF = updatedList; setPharmacies(updatedList); setSupplyData({...supplyData, pharmacy: newItem.name}); }
+                else { newD = updatedList; setDoctors(updatedList); setSupplyData({...supplyData, doctor: newItem.name}); }
+
+                updateCloud(null, null, newP, newF, newD);
+                setQuickAdd(null); setQuickAddValue('');
+            };
 
             const handleInputChange = (dateStr, field, value) => {
                 const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
                 const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
-                setLogs(updatedLogs);
-                updateCloud(updatedLogs, null);
+                setLogs(updatedLogs); updateCloud(updatedLogs, null);
             };
-
             const handleKeyDown = (e, dayIdx, doseIdx) => {
-                let nextDay = dayIdx;
-                let nextDose = doseIdx;
-                switch (e.key) {
-                    case 'ArrowUp': nextDay--; break;
-                    case 'ArrowDown': nextDay++; break;
-                    case 'ArrowLeft': nextDose--; break;
-                    case 'ArrowRight': nextDose++; break;
-                    default: return;
-                }
+                let nextDay = dayIdx; let nextDose = doseIdx;
+                switch (e.key) { case 'ArrowUp': nextDay--; break; case 'ArrowDown': nextDay++; break; case 'ArrowLeft': nextDose--; break; case 'ArrowRight': nextDose++; break; default: return; }
                 const nextEl = document.getElementById(`cell-${nextDay}-${nextDose}`);
                 if (nextEl) { e.preventDefault(); nextEl.focus(); }
             };
-
             const handleClearRow = (dateStr) => {
-                const updatedLogs = { ...logs };
-                delete updatedLogs[dateStr]; 
-                setLogs(updatedLogs);
-                updateCloud(updatedLogs, null);
+                const updatedLogs = { ...logs }; delete updatedLogs[dateStr]; 
+                setLogs(updatedLogs); updateCloud(updatedLogs, null);
             };
-
             const handleInsertRow = (targetDate) => {
-                const idx = daysArr.indexOf(targetDate);
-                if (idx === -1) return;
+                const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = daysArr.length - 1; i > idx; i--) {
-                    const prevDate = daysArr[i-1];
-                    const currDate = daysArr[i];
-                    if (newLogs[prevDate]) {
-                        newLogs[currDate] = { ...newLogs[prevDate], data: currDate };
-                    } else {
-                        delete newLogs[currDate];
-                    }
+                    const prevDate = daysArr[i-1]; const currDate = daysArr[i];
+                    if (newLogs[prevDate]) newLogs[currDate] = { ...newLogs[prevDate], data: currDate };
+                    else delete newLogs[currDate];
                 }
-                delete newLogs[targetDate];
-                setLogs(newLogs);
-                updateCloud(newLogs, null);
+                delete newLogs[targetDate]; setLogs(newLogs); updateCloud(newLogs, null);
             };
-
             const handleDeleteRow = (targetDate) => {
-                const idx = daysArr.indexOf(targetDate);
-                if (idx === -1) return;
+                const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = idx; i < daysArr.length - 1; i++) {
-                    const currDate = daysArr[i];
-                    const nextDate = daysArr[i+1];
-                    if (newLogs[nextDate]) {
-                        newLogs[currDate] = { ...newLogs[nextDate], data: currDate };
-                    } else {
-                        delete newLogs[currDate];
-                    }
+                    const currDate = daysArr[i]; const nextDate = daysArr[i+1];
+                    if (newLogs[nextDate]) newLogs[currDate] = { ...newLogs[nextDate], data: currDate };
+                    else delete newLogs[currDate];
                 }
-                delete newLogs[daysArr[daysArr.length - 1]];
-                setLogs(newLogs);
-                updateCloud(newLogs, null);
+                delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud(newLogs, null);
             };
+            const handleClearAll = () => { setLogs({}); updateCloud({}, null); };
 
-            const handleClearAll = () => {
-                setLogs({});
-                updateCloud({}, null);
-            };
-
-            const openNewSupplyModal = () => {
-                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' });
-                setShowSupplyModal(true);
-            };
-
-            const handleEditPurchase = (compra) => {
-                setSupplyData(compra);
-                setSelectedPurchase(null);
-                setShowSupplyModal(true);
-            };
-
+            const openNewSupplyModal = () => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' }); setShowSupplyModal(true); };
+            const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, patient: compra.patient || '', pharmacy: compra.pharmacy || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
             const handleSupply = () => {
-                if (!supplyData.amount) {
-                    alert("Por favor, preencha a quantidade.");
-                    return;
-                }
+                if (!supplyData.amount) { alert("Por favor, preencha a quantidade."); return; }
                 let updatedReplenishments;
                 if (supplyData.id) {
-                    updatedReplenishments = replenishments.map(r => 
-                        r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy } : r
-                    );
+                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy, doctor: supplyData.doctor } : r);
                 } else {
-                    const newReplenishment = { 
-                        amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient || '', pharmacy: supplyData.pharmacy || '', id: Date.now() 
-                    };
+                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient, pharmacy: supplyData.pharmacy, doctor: supplyData.doctor, id: Date.now() };
                     updatedReplenishments = [...replenishments, newReplenishment];
                 }
-                setReplenishments(updatedReplenishments);
-                updateCloud(null, updatedReplenishments);
-                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '' }); 
-                setShowSupplyModal(false);
+                setReplenishments(updatedReplenishments); updateCloud(null, updatedReplenishments);
+                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', doctor: '' }); setShowSupplyModal(false);
             };
-
             const deletePurchase = (id) => {
                 const updated = replenishments.filter(r => r.id !== id);
-                setReplenishments(updated);
-                updateCloud(null, updated);
-                setSelectedPurchase(null);
+                setReplenishments(updated); updateCloud(null, updated); setSelectedPurchase(null);
             };
 
-            const openLogDetails = (log) => {
-                setSelectedLog(log);
-                setIsEditingLog(false);
-            };
-
-            const startEditingLog = (log) => {
-                setEditLogData({ d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '' });
-                setIsEditingLog(true);
-            };
-
+            const openLogDetails = (log) => { setSelectedLog(log); setIsEditingLog(false); };
+            const startEditingLog = (log) => { setEditLogData({ d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '' }); setIsEditingLog(true); };
             const saveLogEdit = () => {
-                const dateStr = selectedLog.data;
-                const curr = logs[dateStr] || { data: dateStr };
-                const updatedLogs = {...logs, [dateStr]: { 
-                    ...curr, 
-                    d1: editLogData.d1 === '' ? '' : Number(editLogData.d1), 
-                    d2: editLogData.d2 === '' ? '' : Number(editLogData.d2), 
-                    d3: editLogData.d3 === '' ? '' : Number(editLogData.d3) 
-                }};
-                setLogs(updatedLogs);
-                updateCloud(updatedLogs, null);
-                setSelectedLog(updatedLogs[dateStr]);
-                setIsEditingLog(false);
+                const dateStr = selectedLog.data; const curr = logs[dateStr] || { data: dateStr };
+                const updatedLogs = {...logs, [dateStr]: { ...curr, d1: editLogData.d1 === '' ? '' : Number(editLogData.d1), d2: editLogData.d2 === '' ? '' : Number(editLogData.d2), d3: editLogData.d3 === '' ? '' : Number(editLogData.d3) }};
+                setLogs(updatedLogs); updateCloud(updatedLogs, null); setSelectedLog(updatedLogs[dateStr]); setIsEditingLog(false);
             };
-
-            const deleteLogRecord = (dateStr) => {
-                handleClearRow(dateStr);
-                setSelectedLog(null);
-            };
+            const deleteLogRecord = (dateStr) => { handleClearRow(dateStr); setSelectedLog(null); };
 
             const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments });
-                const blob = new Blob([data], { type: 'application/json' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `backup_medicacao_${getTodayDateStr()}.json`;
-                a.click();
+                const data = JSON.stringify({ logs, replenishments, patients, pharmacies, doctors });
+                const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_medicacao_${getTodayDateStr()}.json`; a.click();
             };
-
             const handleRestore = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+                const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        if (data.logs) { setLogs(data.logs); updateCloud(data.logs, null); }
-                        if (data.replenishments) { setReplenishments(data.replenishments); updateCloud(null, data.replenishments); }
+                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments); if (data.patients) setPatients(data.patients); if (data.pharmacies) setPharmacies(data.pharmacies); if (data.doctors) setDoctors(data.doctors);
+                        updateCloud(data.logs, data.replenishments, data.patients, data.pharmacies, data.doctors);
                         alert("Backup restaurado com sucesso! Dados sincronizados localmente e na nuvem.");
-                    } catch (err) {
-                        alert("Erro ao ler o arquivo.");
-                    }
+                    } catch (err) { alert("Erro ao ler o arquivo."); }
                 };
-                reader.readAsText(file);
-                e.target.value = ''; 
+                reader.readAsText(file); e.target.value = ''; 
             };
-
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (passwordInput === '2280') {
-                    setIsAuthenticated(true);
-                    localStorage.setItem('tramal_app_auth_2280', 'true');
-                    setLoginError(false);
-                } else {
-                    setLoginError(true);
-                    setPasswordInput('');
-                }
+                if (passwordInput === '2280') { setIsAuthenticated(true); localStorage.setItem('tramal_app_auth_2280', 'true'); setLoginError(false); } 
+                else { setLoginError(true); setPasswordInput(''); }
             };
-
-            const handleLogout = () => {
-                setIsAuthenticated(false);
-                localStorage.removeItem('tramal_app_auth_2280');
-                setPasswordInput('');
-            };
-
-            const handleInstallApp = async () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        setDeferredPrompt(null);
-                    }
-                }
-            };
+            const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('tramal_app_auth_2280'); setPasswordInput(''); };
+            const handleInstallApp = async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { setDeferredPrompt(null); } } };
 
             if (!isAuthenticated) {
                 return (
                     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 animate-fade">
                         <div className="w-full max-w-xs space-y-8">
                             <div className="text-center">
-                                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                                    <IconLock />
-                                </div>
+                                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_15px_rgba(16,185,129,0.2)]"><IconLock /></div>
                                 <h1 className="text-3xl font-black italic tracking-tighter text-white mb-1">MEDICAÇÃO</h1>
                                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Acesso Restrito</p>
                             </div>
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div>
-                                    <input 
-                                        type="password" inputMode="numeric" pattern="[0-9]*" autoFocus
-                                        className={`w-full bg-slate-800 border-2 ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-2xl p-4 text-center text-4xl font-black text-white tracking-[0.5em] outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600`}
-                                        value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }} placeholder="••••"
-                                    />
+                                    <input type="password" inputMode="numeric" pattern="[0-9]*" autoFocus className={`w-full bg-slate-800 border-2 ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-2xl p-4 text-center text-4xl font-black text-white tracking-[0.5em] outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600`} value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }} placeholder="••••" />
                                     {loginError && <p className="text-rose-500 text-[10px] font-bold text-center mt-3 uppercase tracking-widest">Senha Incorreta</p>}
                                 </div>
                                 <button type="submit" className="w-full py-5 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all mt-4">Entrar</button>
@@ -529,9 +500,26 @@
                     </header>
 
                     <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
-                        {/* INÍCIO */}
+                        {/* DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="space-y-4 pt-2 animate-fade">
+                                
+                                {/* ERP TOP */}
+                                <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 mb-4">
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Cadastros ERP</h3>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button onClick={() => setManageListType('patients')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">
+                                            <span className="mb-1"><IconUser /></span> Pacientes
+                                        </button>
+                                        <button onClick={() => setManageListType('pharmacies')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600 transition-colors">
+                                            <span className="mb-1"><IconBuilding /></span> Farmácias
+                                        </button>
+                                        <button onClick={() => setManageListType('doctors')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex flex-col items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-colors">
+                                            <span className="mb-1"><IconHeartBeat /></span> Médicos
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
                                         <p className="text-slate-400 text-[10px] font-black uppercase">Últimos 7 Dias</p>
@@ -539,26 +527,67 @@
                                         <div className="bg-indigo-50 text-indigo-700 py-2 rounded-xl text-center text-[9px] font-black uppercase tracking-tighter">Cápsulas</div>
                                     </div>
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square text-center">
-                                        <p className="text-slate-400 text-[10px] font-black uppercase">Estoque</p>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase">Estoque Real</p>
                                         <p className={`text-4xl font-black leading-none ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
-                                        <button onClick={openNewSupplyModal} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all"><span className="mr-1 text-emerald-400"><IconPlus /></span> ABASTECER</button>
+                                        <button onClick={openNewSupplyModal} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                                            <span className="mr-1 text-emerald-400"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span> ABASTECER
+                                        </button>
                                     </div>
                                 </div>
+
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Histórico Semanal</h3>
                                     <div className="h-48 w-full"><ManualBarChart data={chartData} /></div>
                                 </div>
-                                
-                                {/* BOTÃO INSTALAR PWA (Aparece se suportado pelo Chrome) */}
+
+                                {/* DASHBOARD DE INSIGHTS (TABELA DINÂMICA EXCEL) */}
+                                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-[2.5rem] shadow-lg text-white mb-4 relative overflow-hidden">
+                                    <div className="flex justify-between items-center mb-5 relative z-10">
+                                        <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center">
+                                            <IconTrophy /><span className="ml-2">Top 3 Ranking</span>
+                                        </h3>
+                                    </div>
+                                    
+                                    <div className="flex space-x-1 bg-white/10 p-1 rounded-xl mb-4 relative z-10">
+                                        <button onClick={() => setInsightTab('pharmacy')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'pharmacy' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Farmácias</button>
+                                        <button onClick={() => setInsightTab('patient')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'patient' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Pacientes</button>
+                                        <button onClick={() => setInsightTab('doctor')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-lg transition-all ${insightTab === 'doctor' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>Médicos</button>
+                                    </div>
+
+                                    <div className="space-y-2 relative z-10">
+                                        {top3Data.length > 0 ? top3Data.map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+                                                <div className="flex items-center min-w-0 flex-1 pr-2">
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-black text-xs shrink-0 ${idx === 0 ? 'bg-yellow-400/20 text-yellow-400' : idx === 1 ? 'bg-slate-300/20 text-slate-300' : 'bg-amber-600/20 text-amber-500'}`}>
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-sm truncate text-white leading-tight">{item.name}</p>
+                                                        <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">
+                                                            {item.daysAgo === 0 ? 'Última: Hoje' : `Última: Há ${item.daysAgo} dia(s)`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <span className="text-lg font-black text-white leading-none">{item.count}</span>
+                                                    <span className="text-[7px] text-slate-400 uppercase block mt-1">Vezes</span>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="text-center py-4 text-slate-400 text-xs font-bold">Nenhum dado registrado para esta aba.</div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {deferredPrompt && (
-                                    <div className="pb-2">
+                                    <div className="pb-2 mt-2">
                                         <button onClick={handleInstallApp} className="w-full py-4 bg-indigo-600 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">
                                             <span className="mr-2"><IconDevice /></span> Instalar Aplicativo
                                         </button>
                                     </div>
                                 )}
 
-                                <div className="flex space-x-3 pb-2">
+                                <div className="flex space-x-3 pb-2 mt-2">
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm active:scale-95 transition-all">
                                         <span className="mr-2 text-indigo-500"><IconDownload /></span> Backup
                                     </button>
@@ -570,7 +599,7 @@
                             </div>
                         )}
 
-                        {/* GRADE DE LANÇAMENTO PREMIUM */}
+                        {/* GRADE DE LANÇAMENTO */}
                         {activeTab === 'agenda' && (
                             <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden mt-4 animate-fade">
                                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
@@ -629,7 +658,7 @@
                                                         <input 
                                                             key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
                                                             className="w-full max-w-[40px] h-10 text-center bg-yellow-50 border border-yellow-200 rounded-[0.8rem] text-[14px] font-black focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none transition-all placeholder:text-yellow-300" 
-                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{ setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
+                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
                                                         />
                                                     ))}
                                                 </div>
@@ -695,23 +724,37 @@
                                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black">{replenishments.length} Registros</div>
                                 </div>
                                 <div className="space-y-3 pb-10">
-                                    {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date)).map(compra => (
+                                    {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date)).map(compra => {
+                                        const daysAgo = calculateDaysAgo(compra.date);
+                                        return (
                                         <div key={compra.id} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
-                                            <div className="flex items-center flex-1">
+                                            <div className="flex items-center flex-1 min-w-0">
                                                 <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-emerald-100">
                                                     <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
                                                     <span className="text-lg leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">{compra.amount} Cápsulas</p>
-                                                    <span className="text-[11px] font-bold text-slate-500 block truncate max-w-[160px]">
-                                                        {compra.patient ? `${compra.patient.split(' ')[0]} - ` : ''}{compra.pharmacy || 'Farmácia não informada'}
-                                                    </span>
+                                                
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <p className="text-lg font-black text-emerald-600 leading-none mb-1">
+                                                        {compra.amount} <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Cápsulas</span>
+                                                    </p>
+                                                    <p 
+                                                        className="text-[11px] font-bold text-slate-700 leading-snug break-words whitespace-normal"
+                                                        style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                                                    >
+                                                        {compra.pharmacy || 'Farmácia não informada'}
+                                                    </p>
+                                                    <div className="mt-1.5">
+                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                            {daysAgo === 0 ? 'Comprado Hoje' : daysAgo === 1 ? 'Comprado Ontem' : `Há ${daysAgo} dias`}
+                                                        </span>
+                                                    </div>
                                                 </div>
+                                                
                                             </div>
-                                            <button onClick={() => setSelectedPurchase(compra)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
+                                            <button onClick={() => setSelectedPurchase(compra)} className="h-10 w-10 shrink-0 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
                                         </div>
-                                    ))}
+                                    )})}
                                     {replenishments.length === 0 && (
                                         <div className="text-center py-10 opacity-50">
                                             <div className="flex justify-center mb-2 text-slate-400"><IconBag /></div>
@@ -723,8 +766,61 @@
                         )}
                     </main>
 
-                    {/* MODAIS (Abastecer, Compras e Logs) mantidos exatamente como a sua versão limpa sem confirmações */}
-                    
+                    {/* MODAL: GERENCIAR LISTAS (PACIENTE, FARMÁCIA, MÉDICO) COM BOTÃO + */}
+                    {manageListType && (
+                        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
+                            <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 max-h-[90vh] flex flex-col animate-fade">
+                                <div className="flex justify-between items-start mb-6 shrink-0">
+                                    <h2 className="text-xl font-black italic uppercase text-slate-800">Gerenciar {translateType(manageListType)}</h2>
+                                    <button onClick={() => { setManageListType(null); setManageItemInput(''); setEditingItemId(null); }} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
+                                </div>
+                                
+                                <div className="flex space-x-2 mb-6 shrink-0 items-center">
+                                    <input 
+                                        type="text" placeholder={`Adicionar novo...`} 
+                                        className="flex-1 font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 h-14"
+                                        value={manageItemInput} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setManageItemInput(e.target.value)}
+                                    />
+                                    <button onClick={handleSaveListItem} className="bg-indigo-600 text-white rounded-2xl w-14 h-14 flex items-center justify-center font-black shadow-lg active:scale-95 transition-all shrink-0">
+                                        {editingItemId ? <IconCheck /> : <IconPlus />}
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3 overflow-y-auto flex-1 pr-2 scrollbar-hide pb-4 min-h-[30vh]">
+                                    {getTargetList().map(item => {
+                                        const dbType = manageListType === 'patients' ? 'patient' : manageListType === 'pharmacies' ? 'pharmacy' : 'doctor';
+                                        const stat = getEntityStats(dbType, item.name);
+                                        
+                                        return (
+                                            <div key={item.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <div className="flex-1 min-w-0 mr-2">
+                                                    <span className="font-bold text-sm text-slate-800 truncate block">{item.name}</span>
+                                                    <div className="mt-1">
+                                                        {stat.daysAgo !== null ? (
+                                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${stat.daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                                {stat.daysAgo === 0 ? 'Hoje' : `Há ${stat.daysAgo} dias`}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">Nunca</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex space-x-1 shrink-0">
+                                                    <button onClick={() => { setEditingItemId(item.id); setManageItemInput(item.name); }} className="p-2 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-xl transition-colors"><IconPencil /></button>
+                                                    <button onClick={() => handleDeleteListItem(item.id)} className="p-2 text-rose-400 hover:text-rose-600 bg-rose-50 rounded-xl transition-colors"><IconTrash /></button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    {getTargetList().length === 0 && (
+                                        <div className="text-center text-slate-400 font-bold text-xs py-6">Lista vazia. Adicione o primeiro registro acima!</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: ABASTECER (COM BOTÃO +) */}
                     {showSupplyModal && (
                         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 max-h-[90vh] overflow-y-auto animate-fade">
@@ -732,19 +828,41 @@
                                 <div className="space-y-4 mb-8">
                                     <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100">
                                         <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-2 block mb-2">Quantidade (Cápsulas)*</label>
-                                        <input type="number" placeholder="0" className="w-full text-4xl font-black text-center bg-transparent border-none text-emerald-600 outline-none placeholder:text-emerald-200" value={supplyData.amount} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} />
+                                        <input type="number" placeholder="0" className="w-full text-4xl font-black text-center bg-transparent border-none text-emerald-600 outline-none placeholder:text-emerald-200" value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Data da Compra</label>
-                                        <input type="date" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.date} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
+                                        <input type="date" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Paciente (Opcional)</label>
-                                        <input type="text" placeholder="Nome do paciente" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.patient} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, patient: e.target.value})} />
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block">Paciente</label>
+                                            <button onClick={() => setQuickAdd({ label: 'Paciente', listName: 'patients' })} className="text-emerald-600 bg-emerald-50 p-1 rounded-md text-[10px] font-black flex items-center hover:bg-emerald-100 transition-colors"><IconPlus /><span className="ml-1">Novo</span></button>
+                                        </div>
+                                        <select className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.patient} onChange={e=>setSupplyData({...supplyData, patient: e.target.value})}>
+                                            <option value="">Selecione ou adicione novo...</option>
+                                            {patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                        </select>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Farmácia (Opcional)</label>
-                                        <input type="text" placeholder="Nome da farmácia" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.pharmacy} onFocus={onInputFocus} onChange={e=>setSupplyData({...supplyData, pharmacy: e.target.value})} />
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block">Farmácia</label>
+                                            <button onClick={() => setQuickAdd({ label: 'Farmácia', listName: 'pharmacies' })} className="text-emerald-600 bg-emerald-50 p-1 rounded-md text-[10px] font-black flex items-center hover:bg-emerald-100 transition-colors"><IconPlus /><span className="ml-1">Nova</span></button>
+                                        </div>
+                                        <select className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.pharmacy} onChange={e=>setSupplyData({...supplyData, pharmacy: e.target.value})}>
+                                            <option value="">Selecione ou adicione nova...</option>
+                                            {pharmacies.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block">Médico</label>
+                                            <button onClick={() => setQuickAdd({ label: 'Médico', listName: 'doctors' })} className="text-emerald-600 bg-emerald-50 p-1 rounded-md text-[10px] font-black flex items-center hover:bg-emerald-100 transition-colors"><IconPlus /><span className="ml-1">Novo</span></button>
+                                        </div>
+                                        <select className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.doctor} onChange={e=>setSupplyData({...supplyData, doctor: e.target.value})}>
+                                            <option value="">Selecione ou adicione novo...</option>
+                                            {doctors.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                        </select>
                                     </div>
                                 </div>
                                 <div className="flex space-x-3">
@@ -755,6 +873,26 @@
                         </div>
                     )}
 
+                    {/* MODAL: QUICK ADD */}
+                    {quickAdd && (
+                        <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-slate-900/50 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-xs rounded-[2rem] p-6 shadow-2xl border-t-4 border-emerald-500">
+                                <h3 className="font-black italic text-slate-800 uppercase mb-4 text-center">Cadastrar {quickAdd.label}</h3>
+                                <input 
+                                    autoFocus type="text" 
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400 mb-4" 
+                                    value={quickAddValue} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setQuickAddValue(e.target.value)} 
+                                    placeholder={`Nome completo`} 
+                                />
+                                <div className="flex space-x-2">
+                                    <button onClick={()=>{setQuickAdd(null); setQuickAddValue('');}} className="flex-1 py-3 text-[10px] font-black text-slate-400 uppercase bg-slate-100 rounded-xl">Cancelar</button>
+                                    <button onClick={handleQuickAddSave} className="flex-1 py-3 bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl shadow-md">Adicionar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: DETALHES COMPRA */}
                     {selectedPurchase && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 animate-fade">
@@ -779,6 +917,10 @@
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Farmácia</p>
                                         <p className="text-sm font-bold text-slate-800">{selectedPurchase.pharmacy || 'Não informada'}</p>
                                     </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Médico</p>
+                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.doctor || 'Não informado'}</p>
+                                    </div>
                                 </div>
                                 <div className="flex space-x-3">
                                     <button onClick={() => deletePurchase(selectedPurchase.id)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
@@ -788,6 +930,7 @@
                         </div>
                     )}
 
+                    {/* MODAL: DETALHES PASSADAS */}
                     {selectedLog && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 animate-fade">
@@ -800,15 +943,15 @@
                                         <div className="bg-indigo-50 p-4 rounded-3xl border border-indigo-100 flex space-x-2">
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 1</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d1} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d1: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d1} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d1: e.target.value})} />
                                             </div>
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 2</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d2} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d2: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d2} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d2: e.target.value})} />
                                             </div>
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 3</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d3} onFocus={onInputFocus} onChange={e=>setEditLogData({...editLogData, d3: e.target.value})} />
+                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d3} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d3: e.target.value})} />
                                             </div>
                                         </div>
                                     </div>
