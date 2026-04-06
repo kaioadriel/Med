@@ -141,6 +141,7 @@
             const [editingItemId, setEditingItemId] = useState(null);
             
             const [insightTab, setInsightTab] = useState('pharmacy');
+            const [insightMode, setInsightMode] = useState('top'); // 'top' ou 'recent'
 
             const [quickAdd, setQuickAdd] = useState(null);
             const [quickAddValue, setQuickAddValue] = useState('');
@@ -170,7 +171,6 @@
             // Auto-scroll ao abrir a aba Lançar
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
-                    // Timeout garante que o DOM já renderizou a lista
                     setTimeout(() => {
                         todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }, 50);
@@ -209,9 +209,6 @@
 
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [selectedPurchase, setSelectedPurchase] = useState(null);
-            const [selectedLog, setSelectedLog] = useState(null);
-            const [isEditingLog, setIsEditingLog] = useState(false);
-            const [editLogData, setEditLogData] = useState({ d1: '', d2: '', d3: '' });
             
             const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' });
 
@@ -295,7 +292,7 @@
                 return { daysAgo: calculateDaysAgo(latestPurchase.date), count: relatedPurchases.length };
             };
 
-            const top3Data = useMemo(() => {
+            const insightData = useMemo(() => {
                 const stats = {};
                 replenishments.forEach(r => {
                     const name = r[insightTab];
@@ -307,20 +304,34 @@
                         }
                     }
                 });
-                return Object.entries(stats)
-                    .map(([name, data]) => ({ name, count: data.count, daysAgo: calculateDaysAgo(data.latestDate) }))
-                    .sort((a, b) => b.count - a.count || a.daysAgo - b.daysAgo)
-                    .slice(0, 3);
-            }, [replenishments, insightTab]);
+                
+                const dataArray = Object.entries(stats).map(([name, data]) => ({ 
+                    name, 
+                    count: data.count, 
+                    daysAgo: calculateDaysAgo(data.latestDate),
+                    latestDate: data.latestDate
+                }));
+
+                if (insightMode === 'top') {
+                    // Ordena por maior contagem. Desempate: mais recente
+                    return dataArray.sort((a, b) => b.count - a.count || a.daysAgo - b.daysAgo).slice(0, 5);
+                } else {
+                    // Ordena por data mais recente (menor daysAgo / data maior)
+                    return dataArray.sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate)).slice(0, 5);
+                }
+            }, [replenishments, insightTab, insightMode]);
 
             const stats = useMemo(() => {
                 const allEntries = Object.values(logs);
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
                 const todayStr = getTodayDateStr();
+                
+                // ESTOQUE ATUAL: Subtrai as saídas até o dia de HOJE inclusive (<= todayStr)
                 const totalSaidaAteHoje = allEntries.reduce((acc, curr) => {
                     if (curr.data <= todayStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                     return acc;
                 }, 0);
+                
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
                 const today = new Date(); today.setHours(0,0,0,0);
                 const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 6);
@@ -342,7 +353,7 @@
                 return data;
             }, [logs]);
 
-            // Grade: 3 dias antes + hoje + 30 dias depois
+            // Grade Aba Lançar: 3 dias antes + hoje + 30 dias depois
             const calendarDays = useMemo(() => {
                 const days = [];
                 for (let i = -3; i <= 30; i++) {
@@ -362,10 +373,71 @@
 
             const daysArr = useMemo(() => calendarDays.map(d => d.dateStr), [calendarDays]);
 
-            const historyLogsList = useMemo(() => {
-                const thirty = new Date(); thirty.setDate(thirty.getDate() - 30);
-                const todayStr = getTodayDateStr(); 
-                return Object.values(logs).filter(l => new Date(l.data + 'T12:00:00') >= thirty && l.data < todayStr).sort((a,b) => b.data.localeCompare(a.data));
+            // Grade Aba Passadas: Histórico infinito com agrupamento de dias vazios
+            const historyItems = useMemo(() => {
+                const todayStr = getTodayDateStr();
+                
+                // Pegar todos os logs passados que têm algum valor para encontrar o mais antigo
+                const pastLogsWithValue = Object.values(logs).filter(l => 
+                    l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0
+                );
+
+                if (pastLogsWithValue.length === 0) return [];
+
+                // Data mais antiga do sistema com uso > 0
+                const oldestLog = pastLogsWithValue.reduce((oldest, current) => current.data < oldest.data ? current : oldest);
+                const oldestDateStr = oldestLog.data;
+
+                const items = [];
+                let emptyStreak = [];
+
+                let currDate = new Date(todayStr + 'T12:00:00');
+                currDate.setDate(currDate.getDate() - 1); // Começa de ontem e vai descendo
+                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00');
+
+                while (currDate >= oldestDateObj) {
+                    const dStr = currDate.toISOString().split('T')[0];
+                    const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr };
+                    const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+
+                    if (total > 0) {
+                        // Finaliza agrupamento vazio se houver
+                        if (emptyStreak.length > 5) {
+                            items.push({
+                                type: 'empty_group',
+                                startDate: emptyStreak[emptyStreak.length - 1].data, // Data mais antiga do grupo
+                                endDate: emptyStreak[0].data, // Data mais nova do grupo
+                                count: emptyStreak.length
+                            });
+                        } else if (emptyStreak.length > 0) {
+                            // Se for <= 5 dias vazios seguidos, exibe as linhas normais (sem agrupar)
+                            emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog }));
+                        }
+                        emptyStreak = [];
+                        
+                        // Insere o dia atual (com valor)
+                        items.push({ type: 'log', log: log });
+                    } else {
+                        // Mais um dia vazio para a conta
+                        emptyStreak.push(log);
+                    }
+                    
+                    currDate.setDate(currDate.getDate() - 1);
+                }
+
+                // Descarregar qualquer resto de grupo (geralmente não acontece pois a oldestDateObj tem total > 0)
+                if (emptyStreak.length > 5) {
+                    items.push({
+                        type: 'empty_group',
+                        startDate: emptyStreak[emptyStreak.length - 1].data,
+                        endDate: emptyStreak[0].data,
+                        count: emptyStreak.length
+                    });
+                } else if (emptyStreak.length > 0) {
+                    emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog }));
+                }
+
+                return items;
             }, [logs]);
 
             const getTargetList = () => {
@@ -462,7 +534,20 @@
                 }
                 delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud({ logs: newLogs });
             };
-            const handleClearAll = () => { setLogs({}); updateCloud({ logs: {} }); showToast("Grade limpa com sucesso.", "error"); };
+
+            // LIMPAR TUDO: Agora poupa as datas passadas
+            const handleClearAll = () => { 
+                const todayStr = getTodayDateStr();
+                const newLogs = {};
+                Object.keys(logs).forEach(date => {
+                    if (date < todayStr) {
+                        newLogs[date] = logs[date];
+                    }
+                });
+                setLogs(newLogs); 
+                updateCloud({ logs: newLogs }); 
+                showToast("Grade de hoje em diante limpa.", "success"); 
+            };
 
             const openNewSupplyModal = () => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(true); };
             const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, patient: compra.patient || '', pharmacy: compra.pharmacy || '', clinic: compra.clinic || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
@@ -484,16 +569,6 @@
                 setReplenishments(updated); updateCloud({ replenishments: updated }); setSelectedPurchase(null);
                 showToast("Compra excluída.", "error");
             };
-
-            const openLogDetails = (log) => { setSelectedLog(log); setIsEditingLog(false); };
-            const startEditingLog = (log) => { setEditLogData({ d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '' }); setIsEditingLog(true); };
-            const saveLogEdit = () => {
-                const dateStr = selectedLog.data; const curr = logs[dateStr] || { data: dateStr };
-                const updatedLogs = {...logs, [dateStr]: { ...curr, d1: editLogData.d1 === '' ? '' : Number(editLogData.d1), d2: editLogData.d2 === '' ? '' : Number(editLogData.d2), d3: editLogData.d3 === '' ? '' : Number(editLogData.d3) }};
-                setLogs(updatedLogs); updateCloud({ logs: updatedLogs }); setSelectedLog(updatedLogs[dateStr]); setIsEditingLog(false);
-                showToast("Alterações salvas!");
-            };
-            const deleteLogRecord = (dateStr) => { handleClearRow(dateStr); setSelectedLog(null); showToast("Registro excluído.", "error"); };
 
             const handleBackup = () => {
                 const data = JSON.stringify({ logs, replenishments, patients, pharmacies, clinics, doctors });
@@ -644,8 +719,12 @@
                                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-[2.5rem] shadow-lg text-white mb-4 relative overflow-hidden">
                                     <div className="flex justify-between items-center mb-5 relative z-10">
                                         <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center">
-                                            <IconTrophy /><span className="ml-2">Top 3 Ranking</span>
+                                            <IconTrophy /><span className="ml-2">{insightMode === 'top' ? 'Top 5 Usados' : 'Últimos 5'}</span>
                                         </h3>
+                                        <div className="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                                            <button onClick={() => setInsightMode('top')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all ${insightMode === 'top' ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}>Top</button>
+                                            <button onClick={() => setInsightMode('recent')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all ${insightMode === 'recent' ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}>Recentes</button>
+                                        </div>
                                     </div>
                                     
                                     <div className="flex flex-wrap gap-1 bg-white/10 p-1 rounded-xl mb-4 relative z-10">
@@ -656,25 +735,45 @@
                                     </div>
 
                                     <div className="space-y-2 relative z-10">
-                                        {top3Data.length > 0 ? top3Data.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
-                                                <div className="flex items-center min-w-0 flex-1 pr-2">
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-black text-xs shrink-0 ${idx === 0 ? 'bg-yellow-400/20 text-yellow-400' : idx === 1 ? 'bg-slate-300/20 text-slate-300' : 'bg-amber-600/20 text-amber-500'}`}>
-                                                        {idx + 1}
+                                        {insightData.length > 0 ? insightData.map((item, idx) => {
+                                            
+                                            let rankClass = 'bg-slate-700/50 text-slate-400';
+                                            if (insightMode === 'top') {
+                                                if (idx === 0) rankClass = 'bg-yellow-400/20 text-yellow-400';
+                                                else if (idx === 1) rankClass = 'bg-slate-300/20 text-slate-300';
+                                                else if (idx === 2) rankClass = 'bg-amber-600/20 text-amber-500';
+                                            } else {
+                                                rankClass = 'bg-emerald-500/20 text-emerald-400';
+                                            }
+
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+                                                    <div className="flex items-center min-w-0 flex-1 pr-2">
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-black text-xs shrink-0 ${rankClass}`}>
+                                                            {idx + 1}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-black text-sm truncate text-white leading-tight">{item.name}</p>
+                                                            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">
+                                                                {insightMode === 'top' 
+                                                                    ? (item.daysAgo === 0 ? 'Última: Hoje' : `Última: Há ${item.daysAgo} dia(s)`)
+                                                                    : `Usado ${item.count} vez(es)`}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <p className="font-black text-sm truncate text-white leading-tight">{item.name}</p>
-                                                        <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">
-                                                            {item.daysAgo === 0 ? 'Última: Hoje' : `Última: Há ${item.daysAgo} dia(s)`}
-                                                        </p>
+                                                    <div className="text-right shrink-0 flex flex-col items-end justify-center">
+                                                        <span className="text-lg font-black text-white leading-none">
+                                                            {insightMode === 'top' ? item.count : (item.daysAgo === 0 ? 'HOJE' : item.daysAgo)}
+                                                        </span>
+                                                        {!(insightMode === 'recent' && item.daysAgo === 0) && (
+                                                            <span className="text-[7px] text-slate-400 uppercase block mt-1">
+                                                                {insightMode === 'top' ? 'Vezes' : 'Dias atrás'}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="text-right shrink-0">
-                                                    <span className="text-lg font-black text-white leading-none">{item.count}</span>
-                                                    <span className="text-[7px] text-slate-400 uppercase block mt-1">Vezes</span>
-                                                </div>
-                                            </div>
-                                        )) : (
+                                            );
+                                        }) : (
                                             <div className="text-center py-4 text-slate-400 text-xs font-bold">Nenhum dado registrado para esta aba.</div>
                                         )}
                                     </div>
@@ -707,7 +806,7 @@
                                     <h2 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Grade de Lançamento</h2>
                                     <div className="flex items-center space-x-3">
                                         {savingId && <div className="animate-pulse text-[8px] font-black uppercase text-emerald-400 flex items-center"><IconCheck /><span className="ml-1">Gravado</span></div>}
-                                        <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-400 border border-rose-500/50 bg-rose-500/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Tudo</button>
+                                        <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-400 border border-rose-500/50 bg-rose-500/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Grade</button>
                                     </div>
                                 </div>
                                 
@@ -728,6 +827,7 @@
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
                                         
+                                        // Saídas acumuladas até o dia em questão inclusive
                                         const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => {
                                             if (curr.data <= day.dateStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                                             return acc;
@@ -758,7 +858,7 @@
                                         let closeIconClass = day.isPast ? 'text-orange-400 hover:text-orange-600' : 'text-rose-300 hover:text-rose-500';
 
                                         let badgeClass = total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300';
-                                        if (runningStock <= 0) badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
+                                        if (runningStock <= 0 && !day.isPast) badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
                                         
                                         if (day.isPast) {
                                             badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
@@ -812,32 +912,78 @@
                         {activeTab === 'history' && (
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
-                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico 30 Dias</h2>
-                                    <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">{historyLogsList.length} Registros</div>
+                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico Completo</h2>
+                                    <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">Infinito</div>
                                 </div>
-                                <div className="space-y-3 pb-10">
-                                    {historyLogsList.map(log => {
-                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        return (
-                                            <div key={log.data} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
-                                                <div className="flex items-center flex-1">
-                                                    <div className="h-12 w-12 rounded-2xl bg-slate-900 text-emerald-400 flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border border-slate-800">
-                                                        <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
-                                                        <span className="text-lg leading-none">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-black text-slate-800 leading-none mb-1 uppercase tracking-tighter">{total} Cápsulas</p>
-                                                        <span className="text-[9px] font-bold text-slate-400 block truncate max-w-[150px]">{new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
-                                                    </div>
+
+                                <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] font-black text-slate-400 uppercase text-center mb-2 px-3">
+                                    <div className="w-6 shrink-0"></div>
+                                    <div className="w-10 sm:w-11 shrink-0 text-center">Data</div>
+                                    <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
+                                        <div className="flex-1 max-w-[40px]">D1</div>
+                                        <div className="flex-1 max-w-[40px]">D2</div>
+                                        <div className="flex-1 max-w-[40px]">D3</div>
+                                    </div>
+                                    <div className="w-8 shrink-0 text-center">Tot</div>
+                                    <div className="w-6 shrink-0"></div>
+                                </div>
+
+                                <div className="space-y-2 pb-10">
+                                    {historyItems.map((item, dIdx) => {
+                                        if (item.type === 'empty_group') {
+                                            return (
+                                                <div key={`empty-${item.startDate}`} className="flex items-center justify-center p-4 rounded-[1.25rem] border bg-slate-50 border-slate-200 shadow-sm text-slate-400 text-[9px] font-black uppercase tracking-widest text-center my-3">
+                                                    Sem registros de {new Date(item.startDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}<br/> 
+                                                    até {new Date(item.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                 </div>
-                                                <button onClick={() => openLogDetails(log)} className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
+                                            );
+                                        }
+
+                                        const log = item.log;
+                                        const dateStr = log.data;
+                                        const dateObj = new Date(dateStr + 'T12:00:00');
+                                        const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
+                                        const label = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                        
+                                        let badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
+
+                                        return (
+                                            <div key={dateStr} className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border bg-orange-50 border-orange-200 shadow-sm">
+                                                <div className="w-6 shrink-0"></div> {/* Espaço vazio onde ficavam os botões + e - */}
+
+                                                <div className="h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border bg-orange-200 text-orange-800 border-orange-300">
+                                                    <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{weekday}</span>
+                                                    <span className="text-[16px] leading-none">{label.split('/')[0]}</span>
+                                                </div>
+
+                                                <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
+                                                    {[1,2,3].map((num, doseIdx) => (
+                                                        <input 
+                                                            key={num} id={`hist-cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
+                                                            className="w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400" 
+                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(dateStr, `d${num}`, e.target.value)} 
+                                                        />
+                                                    ))}
+                                                </div>
+
+                                                <div className="w-8 flex justify-center shrink-0 relative">
+                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
+                                                    {savingId === dateStr && <div className="absolute -top-1 -right-1 text-orange-500"><IconCheck /></div>}
+                                                </div>
+
+                                                <div className="w-6 flex justify-center shrink-0">
+                                                    <button onClick={() => handleClearRow(dateStr)} className="flex items-center justify-center active:scale-90 transition-all p-1 text-orange-400 hover:text-orange-600" title="Limpar Dia">
+                                                        <IconX />
+                                                    </button>
+                                                </div>
                                             </div>
                                         );
                                     })}
-                                    {historyLogsList.length === 0 && (
+                                    {historyItems.length === 0 && (
                                         <div className="text-center py-10 opacity-50">
                                             <div className="flex justify-center mb-2 text-slate-400"><IconHistory /></div>
-                                            <p className="text-xs font-bold text-slate-500">Nenhum registro nos últimos 30 dias.</p>
+                                            <p className="text-xs font-bold text-slate-500">Nenhum registro encontrado no histórico.</p>
                                         </div>
                                     )}
                                 </div>
@@ -1103,72 +1249,6 @@
                                     <button onClick={() => deletePurchase(selectedPurchase.id)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
                                     <button onClick={() => handleEditPurchase(selectedPurchase)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconPencil /></span> Editar</button>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL: DETALHES PASSADAS */}
-                    {selectedLog && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
-                            <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 animate-fade">
-                                <div className="flex justify-between items-start mb-6">
-                                    <h2 className="text-xl font-black italic uppercase text-slate-800">Detalhes do Dia</h2>
-                                    <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
-                                </div>
-                                {isEditingLog ? (
-                                    <div className="space-y-4 mb-8">
-                                        <div className="bg-indigo-50 p-4 rounded-3xl border border-indigo-100 flex space-x-2">
-                                            <div className="flex-1">
-                                                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 1</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d1} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d1: e.target.value})} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 2</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d2} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d2: e.target.value})} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 text-center">Dose 3</label>
-                                                <input type="number" placeholder="-" className="w-full text-2xl font-black text-center bg-white border border-indigo-100 rounded-xl py-3 text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-300" value={editLogData.d3} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setEditLogData({...editLogData, d3: e.target.value})} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data do Lançamento</p>
-                                            <p className="text-sm font-bold text-slate-800 capitalize">{new Date(selectedLog.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 pt-4">
-                                            <div className="bg-white border border-slate-200 rounded-xl p-2 text-center">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase">D1</span>
-                                                <p className="font-black text-slate-800">{selectedLog.d1 || '-'}</p>
-                                            </div>
-                                            <div className="bg-white border border-slate-200 rounded-xl p-2 text-center">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase">D2</span>
-                                                <p className="font-black text-slate-800">{selectedLog.d2 || '-'}</p>
-                                            </div>
-                                            <div className="bg-white border border-slate-200 rounded-xl p-2 text-center">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase">D3</span>
-                                                <p className="font-black text-slate-800">{selectedLog.d3 || '-'}</p>
-                                            </div>
-                                        </div>
-                                        <div className="pt-4 border-t border-slate-200 border-dashed text-center">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total do Dia</p>
-                                            <p className="text-3xl font-black text-indigo-600">{(Number(selectedLog.d1)||0) + (Number(selectedLog.d2)||0) + (Number(selectedLog.d3)||0)}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {isEditingLog ? (
-                                    <div className="flex space-x-3">
-                                        <button onClick={() => setIsEditingLog(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase bg-slate-100 rounded-2xl active:scale-95 transition-all">Cancelar</button>
-                                        <button onClick={saveLogEdit} className="flex-[2] py-4 bg-indigo-600 text-white text-xs font-black rounded-2xl uppercase shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">Salvar</button>
-                                    </div>
-                                ) : (
-                                    <div className="flex space-x-3">
-                                        <button onClick={() => deleteLogRecord(selectedLog.data)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
-                                        <button onClick={() => startEditingLog(selectedLog)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconPencil /></span> Editar</button>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
