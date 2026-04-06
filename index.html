@@ -280,6 +280,7 @@
             };
 
             const getLogsValue = (dateStr) => {
+                if (dateStr > getTodayDateStr()) return 0; // Trava de segurança: bloqueia a soma de doses futuras nos gráficos
                 const log = logs[dateStr];
                 if (!log) return 0;
                 return (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0);
@@ -959,5 +960,3 @@
     </script>
 </body>
 </html>
-
-
