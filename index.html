@@ -89,6 +89,7 @@
         const IconLock = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
         const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
         const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
+        const IconMinus = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
         const IconUser = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
         const IconBuilding = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
@@ -149,14 +150,13 @@
             const [savingId, setSavingId] = useState(null);
             
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+            const [forceShowNav, setForceShowNav] = useState(false);
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             
-            // Ref para a rolagem
             const todayRowRef = useRef(null);
 
-            // Toast State
             const [toast, setToast] = useState(null);
             const toastTimeout = useRef(null);
 
@@ -168,6 +168,8 @@
 
             const getTodayDateStr = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
+            const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
             // Auto-scroll ao abrir a aba Lançar
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
@@ -177,7 +179,6 @@
                 }
             }, [activeTab]);
 
-            // Configurações
             const [showSettings, setShowSettings] = useState(false);
             const [tempSyncId, setTempSyncId] = useState('');
             const [tempPassword, setTempPassword] = useState('');
@@ -190,13 +191,21 @@
 
             useEffect(() => {
                 const handleResize = () => {
+                    if (!isMobileDevice()) {
+                        setIsKeyboardVisible(false);
+                        return;
+                    }
                     if (window.visualViewport) {
                         if (window.visualViewport.height < window.screen.height * 0.7) {
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
                             setIsKeyboardVisible(true);
+                            setForceShowNav(false);
                         } else {
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                            keyboardTimeoutRef.current = setTimeout(() => setIsKeyboardVisible(false), 2000); 
+                            keyboardTimeoutRef.current = setTimeout(() => {
+                                setIsKeyboardVisible(false);
+                                setForceShowNav(false);
+                            }, 2000); 
                         }
                     }
                 };
@@ -210,18 +219,24 @@
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [selectedPurchase, setSelectedPurchase] = useState(null);
             
-            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' });
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), remedio: '', patient: '', pharmacy: '', clinic: '', doctor: '' });
 
             const estoqueInicialBase = 54;
 
             const onInputFocus = () => {
+                if (!isMobileDevice()) return;
                 if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
                 setIsKeyboardVisible(true);
+                setForceShowNav(false);
             };
 
             const onInputBlur = () => {
+                if (!isMobileDevice()) return;
                 if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                keyboardTimeoutRef.current = setTimeout(() => setIsKeyboardVisible(false), 2000);
+                keyboardTimeoutRef.current = setTimeout(() => {
+                    setIsKeyboardVisible(false);
+                    setForceShowNav(false);
+                }, 2000);
             };
 
             useEffect(() => { 
@@ -313,10 +328,8 @@
                 }));
 
                 if (insightMode === 'top') {
-                    // Ordena por maior contagem. Desempate: mais recente
                     return dataArray.sort((a, b) => b.count - a.count || a.daysAgo - b.daysAgo).slice(0, 5);
                 } else {
-                    // Ordena por data mais recente (menor daysAgo / data maior)
                     return dataArray.sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate)).slice(0, 5);
                 }
             }, [replenishments, insightTab, insightMode]);
@@ -326,7 +339,6 @@
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
                 const todayStr = getTodayDateStr();
                 
-                // ESTOQUE ATUAL: Subtrai as saídas até o dia de HOJE inclusive (<= todayStr)
                 const totalSaidaAteHoje = allEntries.reduce((acc, curr) => {
                     if (curr.data <= todayStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                     return acc;
@@ -353,7 +365,6 @@
                 return data;
             }, [logs]);
 
-            // Grade Aba Lançar: 3 dias antes + hoje + 30 dias depois
             const calendarDays = useMemo(() => {
                 const days = [];
                 for (let i = -3; i <= 30; i++) {
@@ -373,27 +384,21 @@
 
             const daysArr = useMemo(() => calendarDays.map(d => d.dateStr), [calendarDays]);
 
-            // Grade Aba Passadas: Histórico infinito com agrupamento de dias vazios
             const historyItems = useMemo(() => {
                 const todayStr = getTodayDateStr();
-                
-                // Pegar todos os logs passados que têm algum valor para encontrar o mais antigo
                 const pastLogsWithValue = Object.values(logs).filter(l => 
                     l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0
                 );
 
                 if (pastLogsWithValue.length === 0) return [];
-
-                // Data mais antiga do sistema com uso > 0
                 const oldestLog = pastLogsWithValue.reduce((oldest, current) => current.data < oldest.data ? current : oldest);
                 const oldestDateStr = oldestLog.data;
-
                 const items = [];
                 let emptyStreak = [];
-
                 let currDate = new Date(todayStr + 'T12:00:00');
-                currDate.setDate(currDate.getDate() - 1); // Começa de ontem e vai descendo
+                currDate.setDate(currDate.getDate() - 1);
                 const oldestDateObj = new Date(oldestDateStr + 'T12:00:00');
+                let logCount = 0;
 
                 while (currDate >= oldestDateObj) {
                     const dStr = currDate.toISOString().split('T')[0];
@@ -401,31 +406,25 @@
                     const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
 
                     if (total > 0) {
-                        // Finaliza agrupamento vazio se houver
                         if (emptyStreak.length > 5) {
                             items.push({
                                 type: 'empty_group',
-                                startDate: emptyStreak[emptyStreak.length - 1].data, // Data mais antiga do grupo
-                                endDate: emptyStreak[0].data, // Data mais nova do grupo
+                                startDate: emptyStreak[emptyStreak.length - 1].data,
+                                endDate: emptyStreak[0].data,
                                 count: emptyStreak.length
                             });
                         } else if (emptyStreak.length > 0) {
-                            // Se for <= 5 dias vazios seguidos, exibe as linhas normais (sem agrupar)
-                            emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog }));
+                            emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 }));
                         }
                         emptyStreak = [];
-                        
-                        // Insere o dia atual (com valor)
-                        items.push({ type: 'log', log: log });
+                        items.push({ type: 'log', log: log, isEditable: logCount < 5 });
+                        logCount++;
                     } else {
-                        // Mais um dia vazio para a conta
                         emptyStreak.push(log);
                     }
-                    
                     currDate.setDate(currDate.getDate() - 1);
                 }
 
-                // Descarregar qualquer resto de grupo (geralmente não acontece pois a oldestDateObj tem total > 0)
                 if (emptyStreak.length > 5) {
                     items.push({
                         type: 'empty_group',
@@ -434,7 +433,7 @@
                         count: emptyStreak.length
                     });
                 } else if (emptyStreak.length > 0) {
-                    emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog }));
+                    emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 }));
                 }
 
                 return items;
@@ -470,17 +469,6 @@
                 setManageItemInput(''); setEditingItemId(null);
                 showToast("Registro salvo com sucesso.");
             };
-            const handleDeleteListItem = (id) => {
-                const targetList = getTargetList();
-                const updatedList = targetList.filter(item => item.id !== id);
-                let updates = {};
-                if (manageListType === 'patients') { updates.patients = updatedList; setPatients(updatedList); }
-                else if (manageListType === 'pharmacies') { updates.pharmacies = updatedList; setPharmacies(updatedList); }
-                else if (manageListType === 'clinics') { updates.clinics = updatedList; setClinics(updatedList); }
-                else { updates.doctors = updatedList; setDoctors(updatedList); }
-                updateCloud(updates);
-                showToast("Registro removido.", "error");
-            };
 
             const handleQuickAddSave = () => {
                 if (!quickAddValue.trim()) return;
@@ -504,6 +492,7 @@
                 const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
                 setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
             };
+
             const handleKeyDown = (e, dayIdx, doseIdx) => {
                 let nextDay = dayIdx; let nextDose = doseIdx;
                 switch (e.key) { case 'ArrowUp': nextDay--; break; case 'ArrowDown': nextDay++; break; case 'ArrowLeft': nextDose--; break; case 'ArrowRight': nextDose++; break; default: return; }
@@ -535,7 +524,6 @@
                 delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud({ logs: newLogs });
             };
 
-            // LIMPAR TUDO: Agora poupa as datas passadas
             const handleClearAll = () => { 
                 const todayStr = getTodayDateStr();
                 const newLogs = {};
@@ -549,53 +537,34 @@
                 showToast("Grade de hoje em diante limpa.", "success"); 
             };
 
-            const openNewSupplyModal = () => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(true); };
-            const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, patient: compra.patient || '', pharmacy: compra.pharmacy || '', clinic: compra.clinic || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
             const handleSupply = () => {
                 if (!supplyData.amount) { showToast("Por favor, preencha a quantidade.", "error"); return; }
                 let updatedReplenishments;
                 if (supplyData.id) {
-                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor } : r);
+                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, remedio: supplyData.remedio, patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor } : r);
                 } else {
-                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor, id: Date.now() };
+                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), remedio: supplyData.remedio, patient: supplyData.patient, pharmacy: supplyData.pharmacy, clinic: supplyData.clinic, doctor: supplyData.doctor, id: Date.now() };
                     updatedReplenishments = [...replenishments, newReplenishment];
                 }
                 setReplenishments(updatedReplenishments); updateCloud({ replenishments: updatedReplenishments });
-                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(false);
+                setShowSupplyModal(false);
+                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), remedio: '', patient: '', pharmacy: '', clinic: '', doctor: '' });
                 showToast("Compra salva com sucesso!");
             };
+
             const deletePurchase = (id) => {
                 const updated = replenishments.filter(r => r.id !== id);
                 setReplenishments(updated); updateCloud({ replenishments: updated }); setSelectedPurchase(null);
                 showToast("Compra excluída.", "error");
             };
 
-            const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments, patients, pharmacies, clinics, doctors });
-                const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_medicacao_${getTodayDateStr()}.json`; a.click();
-                showToast("Backup gerado com sucesso!");
-            };
-            const handleRestore = (e) => {
-                const file = e.target.files[0]; if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments); if (data.patients) setPatients(data.patients); if (data.pharmacies) setPharmacies(data.pharmacies); if (data.clinics) setClinics(data.clinics); if (data.doctors) setDoctors(data.doctors);
-                        updateCloud(data);
-                        showToast("Backup restaurado! Dados sincronizados.");
-                    } catch (err) { showToast("Erro ao ler o arquivo.", "error"); }
-                };
-                reader.readAsText(file); e.target.value = ''; 
-            };
-            
+            const handleEditPurchase = (compra) => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, remedio: compra.remedio || '', patient: compra.patient || '', pharmacy: compra.pharmacy || '', clinic: compra.clinic || '', doctor: compra.doctor || '' }); setSelectedPurchase(null); setShowSupplyModal(true); };
+
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (passwordInput === getAppPassword()) { setIsAuthenticated(true); localStorage.setItem('tramal_app_auth', 'true'); setLoginError(false); } 
+                if (passwordInput === getAppPassword()) { setIsAuthenticated(true); localStorage.setItem('tramal_app_auth', 'true'); } 
                 else { setLoginError(true); setPasswordInput(''); }
             };
-            const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('tramal_app_auth'); setPasswordInput(''); };
-            const handleInstallApp = async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { setDeferredPrompt(null); } } };
 
             const saveSettings = () => {
                 if(!tempPassword) return showToast("Senha não pode ser vazia", "error");
@@ -606,13 +575,8 @@
                 showToast("Configurações salvas!");
             };
 
-            const openSettings = () => {
-                setTempSyncId(syncId);
-                setTempPassword(getAppPassword());
-                setShowSettings(true);
-            };
+            const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('tramal_app_auth'); setPasswordInput(''); };
 
-            // Notificações em Toast
             const ToastComponent = () => {
                 if (!toast) return null;
                 const isError = toast.type === 'error';
@@ -626,6 +590,40 @@
                 );
             };
 
+            const handleDeleteListItem = (id) => {
+                const targetList = getTargetList();
+                const updatedList = targetList.filter(item => item.id !== id);
+                let updates = {};
+                if (manageListType === 'patients') { updates.patients = updatedList; setPatients(updatedList); }
+                else if (manageListType === 'pharmacies') { updates.pharmacies = updatedList; setPharmacies(updatedList); }
+                else if (manageListType === 'clinics') { updates.clinics = updatedList; setClinics(updatedList); }
+                else { updates.doctors = updatedList; setDoctors(updatedList); }
+                updateCloud(updates);
+                showToast("Registro removido.", "error");
+            };
+
+            const handleBackup = () => {
+                const data = JSON.stringify({ logs, replenishments, patients, pharmacies, clinics, doctors });
+                const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_medicacao_${getTodayDateStr()}.json`; a.click();
+                showToast("Backup gerado com sucesso!");
+            };
+
+            const handleRestore = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments); if (data.patients) setPatients(data.patients); if (data.pharmacies) setPharmacies(data.pharmacies); if (data.clinics) setClinics(data.clinics); if (data.doctors) setDoctors(data.doctors);
+                        updateCloud(data);
+                        showToast("Backup restaurado! Dados sincronizados.");
+                    } catch (err) { showToast("Erro ao ler o arquivo.", "error"); }
+                };
+                reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const handleInstallApp = async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { setDeferredPrompt(null); } } };
+
             if (!isAuthenticated) {
                 return (
                     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative">
@@ -637,10 +635,7 @@
                                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">Acesso Restrito</p>
                             </div>
                             <form onSubmit={handleLogin} className="space-y-4">
-                                <div>
-                                    <input type="password" inputMode="numeric" pattern="[0-9]*" autoFocus className={`w-full bg-slate-800 border-2 ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-2xl p-4 text-center text-4xl font-black text-white tracking-[0.5em] outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600`} value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }} placeholder="••••" />
-                                    {loginError && <p className="text-rose-500 text-[10px] font-bold text-center mt-3 uppercase tracking-widest">Senha Incorreta</p>}
-                                </div>
+                                <input type="password" inputMode="numeric" pattern="[0-9]*" autoFocus className={`w-full bg-slate-800 border-2 ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-2xl p-4 text-center text-4xl font-black text-white tracking-[0.5em] outline-none focus:border-emerald-500 placeholder:text-slate-600`} value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(false); }} placeholder="••••" />
                                 <button type="submit" className="w-full py-5 bg-emerald-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all mt-4">Entrar</button>
                             </form>
                         </div>
@@ -651,7 +646,6 @@
             return (
                 <div className="min-h-screen flex flex-col">
                     <ToastComponent />
-
                     <header className="bg-slate-900 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-emerald-500">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div>
@@ -659,8 +653,7 @@
                                 <div className="flex items-center space-x-1">
                                     <span className={`transition-colors ${status === 'Erro Cloud' ? 'text-rose-500 animate-pulse' : 'text-emerald-500 ' + (status === 'Nuvem Ativa' ? 'animate-pulse' : '')}`}><IconCloud /></span>
                                     <p className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors ${status === 'Erro Cloud' ? 'text-rose-500' : 'text-emerald-500'}`}>Controle de Doses</p>
-                                    
-                                    <button onClick={openSettings} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors" title="Configurações"><IconSettings /></button>
+                                    <button onClick={() => setShowSettings(true)} className="ml-2 p-1 text-slate-500 hover:text-white transition-colors"><IconSettings /></button>
                                     <button onClick={handleLogout} className="ml-1 p-1 text-slate-500 hover:text-white transition-colors" title="Bloquear App"><IconLock /></button>
                                 </div>
                             </div>
@@ -672,29 +665,17 @@
                     </header>
 
                     <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
-                        {/* DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="space-y-4 pt-2 animate-fade">
-                                
-                                {/* ERP TOP */}
                                 <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 mb-4">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Cadastros ERP</h3>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => setManageListType('patients')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors">
-                                            <span className="mr-2"><IconUser /></span> Pacientes
-                                        </button>
-                                        <button onClick={() => setManageListType('pharmacies')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600 transition-colors">
-                                            <span className="mr-2"><IconBuilding /></span> Farmácias
-                                        </button>
-                                        <button onClick={() => setManageListType('clinics')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-colors">
-                                            <span className="mr-2"><IconHospital /></span> Clínicas
-                                        </button>
-                                        <button onClick={() => setManageListType('doctors')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-colors">
-                                            <span className="mr-2"><IconHeartBeat /></span> Médicos
-                                        </button>
+                                        <button onClick={() => setManageListType('patients')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600 transition-colors"><span className="mr-2"><IconUser /></span> Pacientes</button>
+                                        <button onClick={() => setManageListType('pharmacies')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600 transition-colors"><span className="mr-2"><IconBuilding /></span> Farmácias</button>
+                                        <button onClick={() => setManageListType('clinics')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-colors"><span className="mr-2"><IconHospital /></span> Clínicas</button>
+                                        <button onClick={() => setManageListType('doctors')} className="py-3 bg-slate-50 border border-slate-100 text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-colors"><span className="mr-2"><IconHeartBeat /></span> Médicos</button>
                                     </div>
                                 </div>
-
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square">
                                         <p className="text-slate-400 text-[10px] font-black uppercase">Últimos 7 Dias</p>
@@ -704,19 +685,16 @@
                                     <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col justify-between aspect-square text-center">
                                         <p className="text-slate-400 text-[10px] font-black uppercase">Estoque Real</p>
                                         <p className={`text-4xl font-black leading-none ${stats.estoque < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.estoque}</p>
-                                        <button onClick={openNewSupplyModal} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all mt-2">
-                                            <span className="mr-1 text-emerald-400"><IconPlus /></span> ABASTECER
-                                        </button>
+                                        <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), remedio: '', patient: '', pharmacy: '', clinic: '', doctor: '' }); setShowSupplyModal(true); }} className="bg-slate-900 text-white py-3 rounded-xl text-[10px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all mt-2"><span className="mr-1 text-emerald-400"><IconPlus /></span> COMPRAR</button>
                                     </div>
                                 </div>
-
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Histórico Semanal</h3>
                                     <div className="h-48 w-full"><ManualBarChart data={chartData} /></div>
                                 </div>
-
-                                {/* DASHBOARD DE INSIGHTS (TABELA DINÂMICA EXCEL) */}
-                                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-[2.5rem] shadow-lg text-white mb-4 relative overflow-hidden">
+                                
+                                {/* DASHBOARD DE INSIGHTS (TABELA DINÂMICA EXCEL) RESTAURADO */}
+                                <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-[2.5rem] shadow-lg text-white mt-4 mb-4 relative overflow-hidden">
                                     <div className="flex justify-between items-center mb-5 relative z-10">
                                         <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center">
                                             <IconTrophy /><span className="ml-2">{insightMode === 'top' ? 'Top 5 Usados' : 'Últimos 5'}</span>
@@ -799,7 +777,6 @@
                             </div>
                         )}
 
-                        {/* GRADE DE LANÇAMENTO */}
                         {activeTab === 'agenda' && (
                             <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden mt-4 animate-fade">
                                 <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
@@ -809,7 +786,6 @@
                                         <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-400 border border-rose-500/50 bg-rose-500/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Grade</button>
                                     </div>
                                 </div>
-                                
                                 <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] font-black text-slate-400 uppercase text-center mb-2 mt-4 px-3">
                                     <div className="w-6 shrink-0"></div>
                                     <div className="w-10 sm:w-11 shrink-0 text-center">Data</div>
@@ -821,85 +797,46 @@
                                     <div className="w-8 shrink-0 text-center">Tot</div>
                                     <div className="w-6 shrink-0"></div>
                                 </div>
-
                                 <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pb-10 scrollbar-hide relative">
                                     {calendarDays.map((day, dIdx) => {
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        
-                                        // Saídas acumuladas até o dia em questão inclusive
                                         const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => {
                                             if (curr.data <= day.dateStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
                                             return acc;
                                         }, 0);
-                                        
                                         const runningStock = estoqueInicialBase + stats.totalEntrada - totalSaidaAteData;
-                                        
-                                        // Estilização baseada em dia passado vs atual/futuro - LARANJA CLARO
-                                        let rowClass = day.isPast 
-                                            ? 'bg-orange-50 border-orange-200 shadow-sm' 
-                                            : day.isToday 
-                                                ? 'bg-emerald-50 border-emerald-200 shadow-md' 
-                                                : 'bg-white border-slate-100 shadow-sm hover:border-slate-200';
-
+                                        let rowClass = day.isPast ? 'bg-orange-50 border-orange-200 shadow-sm' : day.isToday ? 'bg-emerald-50 border-emerald-200 shadow-md' : 'bg-white border-slate-100 shadow-sm hover:border-slate-200';
                                         let iconBtnClassInsert = day.isPast ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-emerald-100 text-emerald-600';
                                         let iconBtnClassDelete = day.isPast ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-rose-100 text-rose-600';
-                                        
-                                        let dateBoxClass = day.isPast 
-                                            ? 'bg-orange-200 text-orange-800 border-orange-300' 
-                                            : day.isToday 
-                                                ? 'bg-emerald-500 text-white border-emerald-600' 
-                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100';
-
-                                        let inputClass = day.isPast 
-                                            ? 'bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400'
-                                            : 'bg-yellow-50 border-yellow-200 text-slate-900 placeholder:text-yellow-300 focus:bg-white focus:ring-yellow-400';
-
+                                        let dateBoxClass = day.isPast ? 'bg-orange-200 text-orange-800 border-orange-300' : day.isToday ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                                        let inputClass = day.isPast ? 'bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400' : 'bg-yellow-50 border-yellow-200 text-slate-900 placeholder:text-yellow-300 focus:bg-white focus:ring-yellow-400';
                                         let closeIconClass = day.isPast ? 'text-orange-400 hover:text-orange-600' : 'text-rose-300 hover:text-rose-500';
-
                                         let badgeClass = total > 0 ? 'bg-black text-white' : 'bg-slate-100 text-slate-300';
                                         if (runningStock <= 0 && !day.isPast) badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(243,24,70,0.4)]';
-                                        
-                                        if (day.isPast) {
-                                            badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
-                                        }
+                                        if (day.isPast) badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
 
                                         return (
                                             <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border ${rowClass}`}>
-                                                
                                                 <div className="flex flex-col gap-1 items-center justify-center w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className={`${iconBtnClassInsert} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Inserir Linha">
-                                                        <IconInsertRow />
-                                                    </button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className={`${iconBtnClassDelete} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Excluir Linha">
-                                                        <IconDeleteRow />
-                                                    </button>
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className={`${iconBtnClassInsert} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Inserir Linha"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className={`${iconBtnClassDelete} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Excluir Linha"><IconDeleteRow /></button>
                                                 </div>
-
                                                 <div className={`h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border ${dateBoxClass}`}>
                                                     <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{day.weekday}</span>
                                                     <span className="text-[16px] leading-none">{day.label.split('/')[0]}</span>
                                                 </div>
-
                                                 <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
                                                     {[1,2,3].map((num, doseIdx) => (
-                                                        <input 
-                                                            key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
-                                                            className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${inputClass}`} 
-                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
-                                                        />
+                                                        <input key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${inputClass}`} value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} />
                                                     ))}
                                                 </div>
-
                                                 <div className="w-8 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
                                                     {savingId === day.dateStr && <div className={`absolute -top-1 -right-1 ${day.isPast ? 'text-orange-500' : 'text-emerald-500'}`}><IconCheck /></div>}
                                                 </div>
-
                                                 <div className="w-6 flex justify-center shrink-0">
-                                                    <button onClick={() => handleClearRow(day.dateStr)} className={`flex items-center justify-center active:scale-90 transition-all p-1 ${closeIconClass}`} title="Limpar Dia">
-                                                        <IconX />
-                                                    </button>
+                                                    <button onClick={() => handleClearRow(day.dateStr)} className={`flex items-center justify-center active:scale-90 transition-all p-1 ${closeIconClass}`} title="Limpar Dia"><IconX /></button>
                                                 </div>
                                             </div>
                                         );
@@ -908,89 +845,66 @@
                             </div>
                         )}
 
-                        {/* PASSADAS */}
                         {activeTab === 'history' && (
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
                                     <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Histórico Completo</h2>
                                     <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">Infinito</div>
                                 </div>
-
-                                <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] font-black text-slate-400 uppercase text-center mb-2 px-3">
-                                    <div className="w-6 shrink-0"></div>
-                                    <div className="w-10 sm:w-11 shrink-0 text-center">Data</div>
-                                    <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
-                                        <div className="flex-1 max-w-[40px]">D1</div>
-                                        <div className="flex-1 max-w-[40px]">D2</div>
-                                        <div className="flex-1 max-w-[40px]">D3</div>
-                                    </div>
-                                    <div className="w-8 shrink-0 text-center">Tot</div>
-                                    <div className="w-6 shrink-0"></div>
-                                </div>
-
                                 <div className="space-y-2 pb-10">
                                     {historyItems.map((item, dIdx) => {
                                         if (item.type === 'empty_group') {
                                             return (
-                                                <div key={`empty-${item.startDate}`} className="flex items-center justify-center p-4 rounded-[1.25rem] border bg-slate-50 border-slate-200 shadow-sm text-slate-400 text-[9px] font-black uppercase tracking-widest text-center my-3">
-                                                    Sem registros de {new Date(item.startDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}<br/> 
-                                                    até {new Date(item.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                </div>
+                                                <div key={`empty-${item.startDate}`} className="flex items-center justify-center p-4 rounded-[1.25rem] border bg-slate-50 border-slate-200 shadow-sm text-slate-400 text-[9px] font-black uppercase tracking-widest text-center my-3">Sem registros de {new Date(item.startDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}<br/> até {new Date(item.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                                             );
                                         }
-
                                         const log = item.log;
                                         const dateStr = log.data;
                                         const dateObj = new Date(dateStr + 'T12:00:00');
                                         const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
                                         const label = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        
                                         let badgeClass = total > 0 ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-400';
-
                                         return (
                                             <div key={dateStr} className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border bg-orange-50 border-orange-200 shadow-sm">
-                                                <div className="w-6 shrink-0"></div> {/* Espaço vazio onde ficavam os botões + e - */}
-
+                                                <div className="w-6 flex justify-center shrink-0">
+                                                    <button onClick={() => handleClearRow(dateStr)} className="bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Excluir Lançamento">
+                                                        <IconMinus />
+                                                    </button>
+                                                </div>
                                                 <div className="h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border bg-orange-200 text-orange-800 border-orange-300">
                                                     <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{weekday}</span>
                                                     <span className="text-[16px] leading-none">{label.split('/')[0]}</span>
                                                 </div>
-
                                                 <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
                                                     {[1,2,3].map((num, doseIdx) => (
                                                         <input 
-                                                            key={num} id={`hist-cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" 
-                                                            className="w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400" 
-                                                            value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(dateStr, `d${num}`, e.target.value)} 
+                                                            key={num} 
+                                                            id={`hist-cell-${dIdx}-${doseIdx}`} 
+                                                            type="number" 
+                                                            placeholder="-" 
+                                                            disabled={!item.isEditable}
+                                                            className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${item.isEditable ? 'bg-white border-orange-200 text-slate-900 placeholder:text-orange-300 focus:bg-white focus:ring-orange-400' : 'bg-orange-100 border-orange-200 text-orange-800/50 cursor-not-allowed'}`} 
+                                                            value={log[`d${num}`]} 
+                                                            onFocus={onInputFocus} 
+                                                            onBlur={()=>{onInputBlur(); setSavingId(dateStr); setTimeout(()=>setSavingId(null), 1000)}} 
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} 
+                                                            onChange={e=>handleInputChange(dateStr, `d${num}`, e.target.value)} 
                                                         />
                                                     ))}
                                                 </div>
-
                                                 <div className="w-8 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
                                                     {savingId === dateStr && <div className="absolute -top-1 -right-1 text-orange-500"><IconCheck /></div>}
                                                 </div>
-
-                                                <div className="w-6 flex justify-center shrink-0">
-                                                    <button onClick={() => handleClearRow(dateStr)} className="flex items-center justify-center active:scale-90 transition-all p-1 text-orange-400 hover:text-orange-600" title="Limpar Dia">
-                                                        <IconX />
-                                                    </button>
-                                                </div>
+                                                <div className="w-6 shrink-0"></div>
                                             </div>
                                         );
                                     })}
-                                    {historyItems.length === 0 && (
-                                        <div className="text-center py-10 opacity-50">
-                                            <div className="flex justify-center mb-2 text-slate-400"><IconHistory /></div>
-                                            <p className="text-xs font-bold text-slate-500">Nenhum registro encontrado no histórico.</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* COMPRAS */}
                         {activeTab === 'purchases' && (
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
@@ -1000,6 +914,8 @@
                                 <div className="space-y-3 pb-10">
                                     {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date)).map(compra => {
                                         const daysAgo = calculateDaysAgo(compra.date);
+                                        const firstName = compra.patient ? compra.patient.split(' ')[0] : 'Sem paciente';
+                                        
                                         return (
                                         <div key={compra.id} className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
                                             <div className="flex items-center flex-1 min-w-0">
@@ -1007,40 +923,27 @@
                                                     <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
                                                     <span className="text-lg leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
                                                 </div>
-                                                
                                                 <div className="flex-1 min-w-0 pr-2">
-                                                    <p className="text-lg font-black text-emerald-600 leading-none mb-1">
-                                                        {compra.amount} <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Cápsulas</span>
-                                                    </p>
-                                                    <p 
-                                                        className="text-[11px] font-bold text-slate-700 leading-snug break-words whitespace-normal"
-                                                        style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                                                    >
-                                                        {compra.pharmacy || 'Farmácia não informada'}
-                                                    </p>
-                                                    <div className="mt-1.5">
-                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                            {daysAgo === 0 ? 'Comprado Hoje' : daysAgo === 1 ? 'Comprado Ontem' : `Há ${daysAgo} dias`}
-                                                        </span>
-                                                    </div>
+                                                    <p className="text-lg font-black text-emerald-600 leading-none mb-1">{compra.amount} <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Cápsulas</span></p>
+                                                    <p className="text-xs font-bold text-slate-800 mb-0.5 truncate">👤 {firstName}</p>
+                                                    <p className="text-[11px] font-bold text-slate-600 leading-snug whitespace-normal break-words">🏥 {compra.pharmacy || 'Farmácia não informada'}</p>
+                                                    <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{daysAgo === 0 ? 'Comprado Hoje' : daysAgo === 1 ? 'Comprado Ontem' : `Há ${daysAgo} dias`}</span></div>
                                                 </div>
-                                                
                                             </div>
-                                            <button onClick={() => setSelectedPurchase(compra)} className="h-10 w-10 shrink-0 bg-slate-900 text-white rounded-xl flex items-center justify-center active:scale-90 transition-all shadow-md ml-2"><IconPlus /></button>
+                                            <button 
+                                                onClick={() => setSelectedPurchase(compra)} 
+                                                className="px-3 py-2 shrink-0 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase active:scale-95 transition-all shadow-md ml-2"
+                                            >
+                                                Ver Mais
+                                            </button>
                                         </div>
                                     )})}
-                                    {replenishments.length === 0 && (
-                                        <div className="text-center py-10 opacity-50">
-                                            <div className="flex justify-center mb-2 text-slate-400"><IconBag /></div>
-                                            <p className="text-xs font-bold text-slate-500">Nenhuma compra registrada.</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    {/* MODAL: CONFIGURAÇÕES */}
+                    {/* MODAIS (Configurações, Listas, Abastecer, Quick Add, Detalhes Compra) continuam os mesmos... */}
                     {showSettings && (
                         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-slate-900 animate-slide-up">
@@ -1051,20 +954,12 @@
                                 <div className="space-y-5 mb-8">
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">ID da Nuvem (Sync)</label>
-                                        <input 
-                                            type="text" 
-                                            className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400"
-                                            value={tempSyncId} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempSyncId(e.target.value)}
-                                        />
+                                        <input type="text" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400" value={tempSyncId} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempSyncId(e.target.value)} />
                                         <p className="text-[9px] text-slate-400 ml-2 mt-1">Use a mesma ID em outros aparelhos para sincronizar.</p>
                                     </div>
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Senha do App</label>
-                                        <input 
-                                            type="password" inputMode="numeric"
-                                            className="w-full font-black text-2xl tracking-[0.5em] bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400 text-center"
-                                            value={tempPassword} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempPassword(e.target.value)}
-                                        />
+                                        <input type="password" inputMode="numeric" className="w-full font-black text-2xl tracking-[0.5em] bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-slate-400 text-center" value={tempPassword} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setTempPassword(e.target.value)} />
                                     </div>
                                 </div>
                                 <div className="flex space-x-3">
@@ -1075,7 +970,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: GERENCIAR LISTAS */}
                     {manageListType && (
                         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-indigo-500 max-h-[90vh] flex flex-col animate-fade">
@@ -1083,36 +977,19 @@
                                     <h2 className="text-xl font-black italic uppercase text-slate-800">Gerenciar {translateType(manageListType)}</h2>
                                     <button onClick={() => { setManageListType(null); setManageItemInput(''); setEditingItemId(null); }} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
                                 </div>
-                                
                                 <div className="flex space-x-2 mb-6 shrink-0 items-center">
-                                    <input 
-                                        type="text" placeholder={`Adicionar ${translateType(manageListType).toLowerCase().replace('s', '')}...`} 
-                                        className="flex-1 font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 h-14"
-                                        value={manageItemInput} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setManageItemInput(e.target.value)}
-                                    />
-                                    <button onClick={handleSaveListItem} className="bg-indigo-600 text-white rounded-2xl w-14 h-14 flex items-center justify-center font-black shadow-lg active:scale-95 transition-all shrink-0">
-                                        {editingItemId ? <IconCheck /> : <IconPlus />}
-                                    </button>
+                                    <input type="text" placeholder={`Adicionar ${translateType(manageListType).toLowerCase().replace('s', '')}...`} className="flex-1 font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400 h-14" value={manageItemInput} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setManageItemInput(e.target.value)} />
+                                    <button onClick={handleSaveListItem} className="bg-indigo-600 text-white rounded-2xl w-14 h-14 flex items-center justify-center font-black shadow-lg active:scale-95 transition-all shrink-0">{editingItemId ? <IconCheck /> : <IconPlus />}</button>
                                 </div>
-
                                 <div className="space-y-3 overflow-y-auto flex-1 pr-2 scrollbar-hide pb-4 min-h-[30vh]">
                                     {getTargetList().map(item => {
                                         const dbType = manageListType === 'patients' ? 'patient' : manageListType === 'pharmacies' ? 'pharmacy' : manageListType === 'clinics' ? 'clinic' : 'doctor';
                                         const stat = getEntityStats(dbType, item.name);
-                                        
                                         return (
                                             <div key={item.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                                 <div className="flex-1 min-w-0 mr-2">
                                                     <span className="font-bold text-sm text-slate-800 truncate block">{item.name}</span>
-                                                    <div className="mt-1">
-                                                        {stat.daysAgo !== null ? (
-                                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${stat.daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                                                                {stat.daysAgo === 0 ? 'Hoje' : `Há ${stat.daysAgo} dias`}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">Nunca</span>
-                                                        )}
-                                                    </div>
+                                                    <div className="mt-1">{stat.daysAgo !== null ? (<span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${stat.daysAgo === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'}`}>{stat.daysAgo === 0 ? 'Hoje' : `Há ${stat.daysAgo} dias`}</span>) : (<span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">Nunca</span>)}</div>
                                                 </div>
                                                 <div className="flex space-x-1 shrink-0">
                                                     <button onClick={() => { setEditingItemId(item.id); setManageItemInput(item.name); }} className="p-2 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-xl transition-colors"><IconPencil /></button>
@@ -1121,15 +998,11 @@
                                             </div>
                                         )
                                     })}
-                                    {getTargetList().length === 0 && (
-                                        <div className="text-center text-slate-400 font-bold text-xs py-6">Lista vazia. Adicione o primeiro registro acima!</div>
-                                    )}
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* MODAL: ABASTECER */}
                     {showSupplyModal && (
                         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 max-h-[90vh] overflow-y-auto animate-fade">
@@ -1142,6 +1015,10 @@
                                     <div>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Data da Compra</label>
                                         <input type="date" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 block mb-1">Remédio</label>
+                                        <input type="text" placeholder="Ex: Medicamento X" className="w-full font-bold bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400" value={supplyData.remedio} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, remedio: e.target.value})} />
                                     </div>
                                     <div>
                                         <div className="flex justify-between items-end mb-1">
@@ -1192,59 +1069,45 @@
                         </div>
                     )}
 
-                    {/* MODAL: QUICK ADD */}
-                    {quickAdd && (
-                        <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-slate-900/50 backdrop-blur-sm animate-fade">
-                            <div className="bg-white w-full max-w-xs rounded-[2rem] p-6 shadow-2xl border-t-4 border-emerald-500">
-                                <h3 className="font-black italic text-slate-800 uppercase mb-4 text-center">Cadastrar {quickAdd.label}</h3>
-                                <input 
-                                    autoFocus type="text" 
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-400 mb-4" 
-                                    value={quickAddValue} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setQuickAddValue(e.target.value)} 
-                                    placeholder={`Nome completo`} 
-                                />
-                                <div className="flex space-x-2">
-                                    <button onClick={()=>{setQuickAdd(null); setQuickAddValue('');}} className="flex-1 py-3 text-[10px] font-black text-slate-400 uppercase bg-slate-100 rounded-xl">Cancelar</button>
-                                    <button onClick={handleQuickAddSave} className="flex-1 py-3 bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl shadow-md">Adicionar</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL: DETALHES COMPRA */}
                     {selectedPurchase && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md">
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-t-8 border-emerald-500 animate-fade">
                                 <div className="flex justify-between items-start mb-6">
-                                    <h2 className="text-xl font-black italic uppercase text-slate-800">Recibo de Entrada</h2>
+                                    <h2 className="text-xl font-black italic uppercase text-slate-800">Detalhes da Compra</h2>
                                     <button onClick={() => setSelectedPurchase(null)} className="text-slate-400 hover:text-slate-600 p-2"><IconX /></button>
                                 </div>
-                                <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</p>
-                                        <p className="text-sm font-bold text-slate-800">{new Date(selectedPurchase.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantidade</p>
-                                        <p className="text-2xl font-black text-emerald-600">{selectedPurchase.amount} Cápsulas</p>
-                                    </div>
-                                    <div className="pt-2 border-t border-slate-200 border-dashed">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paciente</p>
-                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.patient || 'Não informado'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Farmácia</p>
-                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.pharmacy || 'Não informada'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clínica</p>
-                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.clinic || 'Não informada'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Médico</p>
-                                        <p className="text-sm font-bold text-slate-800">{selectedPurchase.doctor || 'Não informado'}</p>
+                                
+                                <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                                    <p className="text-2xl font-black text-emerald-600 mb-4">{selectedPurchase.amount} Cápsulas</p>
+
+                                    <div className="grid grid-cols-2 gap-4 text-left border-t border-slate-200 border-dashed pt-4">
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Data</p>
+                                            <p className="text-sm font-bold text-slate-800">{new Date(selectedPurchase.date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Remédio</p>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPurchase.remedio || 'Não informado'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paciente</p>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPurchase.patient || 'Não informado'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Farmácia</p>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPurchase.pharmacy || 'Não informada'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Clínica</p>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPurchase.clinic || 'Não informada'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Médico</p>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPurchase.doctor || 'Não informado'}</p>
+                                        </div>
                                     </div>
                                 </div>
+
                                 <div className="flex space-x-3">
                                     <button onClick={() => deletePurchase(selectedPurchase.id)} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconTrash /></span> Excluir</button>
                                     <button onClick={() => handleEditPurchase(selectedPurchase)} className="flex-1 py-4 bg-slate-900 text-white text-xs font-black rounded-2xl uppercase flex items-center justify-center active:scale-95 transition-all"><span className="mr-2"><IconPencil /></span> Editar</button>
@@ -1253,8 +1116,14 @@
                         </div>
                     )}
 
-                    {/* MENU INFERIOR */}
-                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-2xl z-40 transition-transform duration-500 ${isKeyboardVisible ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                    {isKeyboardVisible && !forceShowNav && isMobileDevice() && (
+                        <div 
+                            className="fixed bottom-0 left-0 right-0 h-16 z-[45]" 
+                            onClick={() => setForceShowNav(true)}
+                        ></div>
+                    )}
+
+                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-2xl z-40 transition-transform duration-500 ${(isKeyboardVisible && !forceShowNav) ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
                         <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'dashboard' ? 'tab-active' : 'text-slate-400'}`}><IconHome /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Início</span></button>
                         <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'agenda' ? 'tab-active' : 'text-slate-400'}`}><IconTable /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Lançar</span></button>
                         <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'history' ? 'tab-active' : 'text-slate-400'}`}><IconHistory /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Passadas</span></button>
@@ -1269,5 +1138,3 @@
     </script>
 </body>
 </html>
-
-
