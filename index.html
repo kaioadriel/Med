@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27272a">
     
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22MEDICA%C3%87%C3%83O%22%2C%22short_name%22%3A%22Medica%C3%87%C3%83o%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22MEDICA%C3%87%C3%83O%22%2C%22short_name%22%3A%22Medica%C3%87%C3%83o%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22med.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <title>MEDICAÇÃO - Gestão Cloud</title>
     
@@ -28,7 +28,6 @@
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior: none;
-            /* Fundo Chic: Off-white com leve gradiente Menta/Lavanda nos cantos */
             background-color: #fafaf9; 
             background-image: 
                 radial-gradient(at 0% 0%, hsla(162, 60%, 92%, 1) 0px, transparent 50%),
@@ -47,23 +46,13 @@
         html { scroll-behavior: smooth; }
     </style>
 </head>
-<body class="text-zinc-800 selection:bg-teal-200">
+<body class="text-zinc-800">
     <div id="root"></div>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = "self.addEventListener('fetch', () => {});";
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-            });
-        }
-    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- INICIALIZAÇÃO DO FIREBASE ---
+        // --- Firebase Init ---
         const firebaseConfig = {
             apiKey: "AIzaSyCVuPb0tji1Xd3qgzGsAVW-X4GyRwQpSdo",
             authDomain: "medicacao-afb43.firebaseapp.com",
@@ -72,16 +61,11 @@
             messagingSenderId: "106132279676",
             appId: "1:106132279676:web:eb94017be76a71f67b14f9"
         };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        let db = null;
-        let auth = null;
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            auth = firebase.auth();
-        }
-
-        // Ícones em SVG
+        // --- Icons ---
         const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
         const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
         const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
@@ -96,28 +80,36 @@
         const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
         const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
         const IconMinus = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-        const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
-        const IconSettings = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+        const IconSettings = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
         const IconAlertCircle = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
         const IconGoogle = () => <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
         const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
+
+        // --- Notification Component ---
+        const ToastComponent = ({ toast }) => {
+            if (!toast) return null;
+            const isError = toast.type === 'error';
+            return (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-slide-up w-full max-w-xs px-4">
+                    <div className={`flex items-center p-4 rounded-2xl shadow-xl border ${isError ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>
+                        {isError ? <IconAlertCircle /> : <IconCheck />}
+                        <span className="ml-3 font-bold text-sm leading-tight">{toast.message}</span>
+                    </div>
+                </div>
+            );
+        };
 
         const ManualBarChart = ({ data }) => {
             const maxVal = Math.max(...data.map(d => d.Total), 1);
             const textClass = data.length > 8 ? "text-[8px]" : "text-[10px]";
-            
             return (
                 <div className="flex items-end justify-between h-full pt-2 pb-2 px-1 gap-1">
                     {data.map((d, i) => (
                         <div key={i} className="flex flex-col items-center justify-end h-full flex-1 min-w-0">
                             <span className={`${textClass} font-black text-zinc-700 mb-1 truncate w-full text-center`}>{d.Total > 0 ? d.Total : ''}</span>
                             <div className="w-full max-w-[28px] rounded-t-sm sm:rounded-t-md transition-all duration-500"
-                                style={{ 
-                                    height: `${(d.Total / maxVal) * 100}%`, 
-                                    // Cores pastéis do gráfico: Violeta suave para as setas <, Teal suave para as barras com dados.
-                                    backgroundColor: d.isSpecial ? '#a78bfa' : (d.Total > 0 ? '#14b8a6' : '#f5f5f4'), 
-                                    minHeight: d.Total > 0 ? '6px' : '3px' 
-                                }}>
+                                style={{ height: `${(d.Total / maxVal) * 100}%`, backgroundColor: d.isSpecial ? '#a78bfa' : (d.Total > 0 ? '#14b8a6' : '#f5f5f4'), minHeight: d.Total > 0 ? '6px' : '3px' }}>
                             </div>
                             <span className={`${textClass} font-bold ${d.isSpecial ? 'text-violet-400' : 'text-zinc-400'} mt-1 truncate w-full text-center leading-tight`}>{d.name}</span>
                         </div>
@@ -127,30 +119,119 @@
         };
 
         const App = () => {
+            // 1. Business Logic Constants
+            const estoqueInicialBase = 54;
+
+            // 2. State Management
             const [user, setUser] = useState(null);
             const [authLoading, setAuthLoading] = useState(true);
             const [emailInput, setEmailInput] = useState('');
             const [passwordInput, setPasswordInput] = useState('');
             const [isRegisterMode, setIsRegisterMode] = useState(false);
             const [authError, setAuthError] = useState('');
-
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [status, setStatus] = useState('Local');
             
+            const [status, setStatus] = useState('Local');
             const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
             const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
-            
-            const [chartType, setChartType] = useState('weekly'); // 'weekly', 'monthly', 'yearly'
-
+            const [chartType, setChartType] = useState('weekly');
             const [savingId, setSavingId] = useState(null);
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
             const [forceShowNav, setForceShowNav] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [showSupplyModal, setShowSupplyModal] = useState(false);
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: '', isScheduled: false });
+            const [toast, setToast] = useState(null);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+            // 3. Refs
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
-            const [deferredPrompt, setDeferredPrompt] = useState(null);
             const todayRowRef = useRef(null);
-            const [toast, setToast] = useState(null);
             const toastTimeout = useRef(null);
+
+            // 4. Derived State & Data
+            const getTodayDateStr = () => {
+                const d = new Date();
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            };
+
+            const calendarDays = useMemo(() => {
+                const days = [];
+                for (let i = -3; i <= 60; i++) {
+                    const d = new Date(); d.setDate(d.getDate() + i);
+                    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    days.push({ 
+                        dateStr, 
+                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3), 
+                        isToday: i === 0, 
+                        isPast: i < 0 
+                    });
+                }
+                return days;
+            }, []);
+
+            const daysArr = useMemo(() => calendarDays.map(d => d.dateStr), [calendarDays]);
+
+            const getLogsValue = (dateStr) => {
+                if (dateStr > getTodayDateStr()) return 0;
+                const log = logs[dateStr];
+                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+            };
+
+            const statsCalculated = useMemo(() => {
+                const allEntries = Object.values(logs);
+                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
+                const todayStr = getTodayDateStr();
+                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
+                return { previsao: estoqueInicialBase + totalEntrada - totalSaidaGeral, estoque: estoqueInicialBase + totalEntrada - totalSaidaAteHoje };
+            }, [logs, replenishments, estoqueInicialBase]);
+
+            const chartDataCalculated = useMemo(() => {
+                let data = []; let totalGeral = 0;
+                const today = new Date(); today.setHours(0,0,0,0);
+                const formatD = (d) => { const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
+
+                if (chartType === 'weekly') {
+                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); totalGeral += sumAnt;
+                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getLogsValue(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
+                } else if (chartType === 'monthly') {
+                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); totalGeral += sumAnt;
+                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getLogsValue(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
+                } else if (chartType === 'yearly') {
+                    let cYear = today.getFullYear(); let cMonth = today.getMonth(); let monthsData = [];
+                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getLogsValue(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
+                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getLogsValue(date); });
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); totalGeral += sumAnt; data = [...data, ...monthsData];
+                }
+                return { data, total: totalGeral };
+            }, [logs, chartType]);
+
+            const historyItemsCalculated = useMemo(() => {
+                const todayStr = getTodayDateStr();
+                const pastLogs = Object.values(logs).filter(l => l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0);
+                if (pastLogs.length === 0) return [];
+                const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                while (currDate >= oldestDateObj) {
+                    const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                    if (total > 0) {
+                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                        emptyStreak = []; items.push({ type: 'log', log, isEditable: logCount < 5 }); logCount++;
+                    } else { emptyStreak.push(log); }
+                    currDate.setDate(currDate.getDate() - 1);
+                }
+                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                return items;
+            }, [logs]);
+
+            // 5. Interaction Functions
 
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
@@ -158,24 +239,175 @@
                 toastTimeout.current = setTimeout(() => setToast(null), 3000);
             };
 
-            const getTodayDateStr = () => {
-                const d = new Date();
-                const offset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            const calculateDaysAgo = (dateStr) => {
+                if (!dateStr) return null;
+                const today = new Date(getTodayDateStr() + 'T12:00:00');
+                const pastDate = new Date(dateStr + 'T12:00:00');
+                return Math.floor((today - pastDate) / (1000 * 60 * 60 * 24));
             };
 
             const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-            // Auto-scroll ao abrir a aba Lançar
-            useEffect(() => {
-                if (activeTab === 'agenda' && todayRowRef.current) {
-                    setTimeout(() => {
-                        todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 50);
-                }
-            }, [activeTab]);
+            const updateCloud = (updates) => {
+                if (!user || !db) return;
+                db.collection('medicacao_users').doc(user.uid).update({ 
+                    logs: updates.logs || logs, 
+                    replenishments: updates.replenishments || replenishments 
+                }).catch(() => setStatus('Erro Cloud'));
+            };
 
-            const [showSettings, setShowSettings] = useState(false);
+            const handleBackup = () => {
+                const data = JSON.stringify({ logs, replenishments });
+                const blob = new Blob([data], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+                a.download = `backup_med_${getTodayDateStr()}.json`; a.click();
+                showToast("Backup guardado!");
+            };
+
+            const handleRestore = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments);
+                        updateCloud(data); showToast("Restauro concluído!", "success");
+                    } catch (err) { showToast("Erro no ficheiro.", "error"); }
+                };
+                reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const handleAuth = async (e) => {
+                e.preventDefault(); setAuthError('');
+                try {
+                    if (isRegisterMode) await auth.createUserWithEmailAndPassword(emailInput, passwordInput);
+                    else await auth.signInWithEmailAndPassword(emailInput, passwordInput);
+                    showToast("Sucesso!", "success");
+                } catch (err) { setAuthError('E-mail ou senha inválidos.'); }
+            };
+
+            const handleGoogleLogin = async () => {
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await auth.signInWithPopup(provider);
+                    showToast("Login Google!", "success");
+                } catch (err) { if (err.code !== 'auth/popup-closed-by-user') setAuthError('Erro Google Login.'); }
+            };
+
+            const handleLogout = () => auth.signOut();
+
+            const handleSupply = () => {
+                if (!supplyData.amount) { showToast("Insira a quantidade.", "error"); return; }
+                let updated;
+                if (supplyData.id) {
+                    updated = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, isScheduled: supplyData.isScheduled } : r);
+                } else {
+                    updated = [...replenishments, { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled, id: Date.now() }];
+                }
+                setReplenishments(updated); updateCloud({ replenishments: updated }); setShowSupplyModal(false);
+                setSupplyData({ id: null, amount: '', date: '', isScheduled: false });
+                showToast("Registo guardado!");
+            };
+
+            const confirmPurchase = (id) => {
+                const updated = replenishments.map(r => r.id === id ? { ...r, isScheduled: false, date: getTodayDateStr() } : r);
+                setReplenishments(updated); updateCloud({ replenishments: updated });
+                showToast("Compra confirmada!", "success");
+            };
+
+            const deletePurchase = (id) => {
+                const updated = replenishments.filter(r => r.id !== id);
+                setReplenishments(updated); updateCloud({ replenishments: updated });
+                showToast("Eliminado.", "error");
+            };
+
+            const handleInputChange = (dateStr, field, value) => {
+                const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
+                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
+                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
+            };
+
+            const handleInsertRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = calendarDays.length - 1; i > idx; i--) {
+                    const prev = calendarDays[i-1].dateStr; const curr = calendarDays[i].dateStr;
+                    if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[targetDate]; setLogs(newLogs); updateCloud({ logs: newLogs });
+            };
+
+            const handleDeleteRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = idx; i < calendarDays.length - 1; i++) {
+                    const curr = calendarDays[i].dateStr; const next = calendarDays[i+1].dateStr;
+                    if (newLogs[next]) newLogs[curr] = { ...newLogs[next], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[calendarDays[calendarDays.length - 1].dateStr]; setLogs(newLogs); updateCloud({ logs: newLogs });
+            };
+
+            const handleClearRow = (dateStr) => {
+                const updated = { ...logs }; delete updated[dateStr]; 
+                setLogs(updated); updateCloud({ logs: updated });
+            };
+
+            const handleClearAll = () => {
+                const today = getTodayDateStr(); const updated = {};
+                Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
+                setLogs(updated); updateCloud({ logs: updated }); showToast("Grade limpa!");
+            };
+
+            const handleInstallApp = async () => { 
+                if (deferredPrompt) { 
+                    deferredPrompt.prompt(); 
+                    const { outcome } = await deferredPrompt.userChoice; 
+                    if (outcome === 'accepted') setDeferredPrompt(null); 
+                } 
+            };
+
+            const onInputFocus = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(true); setForceShowNav(false);
+            };
+
+            const onInputBlur = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                keyboardTimeoutRef.current = setTimeout(() => { setIsKeyboardVisible(false); setForceShowNav(false); }, 2000);
+            };
+
+            // 6. Effects
+
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
+                return () => unsub();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs));
+                localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
+            }, [logs, replenishments, user]);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                setStatus('Sincronizando...');
+                const unsub = db.collection('medicacao_users').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.logs) setLogs(data.logs);
+                        if (data.replenishments) setReplenishments(data.replenishments);
+                        setStatus('Nuvem Ativa');
+                    } else {
+                        db.collection('medicacao_users').doc(user.uid).set({ logs, replenishments });
+                    }
+                }, () => setStatus('Erro Cloud'));
+                return () => unsub();
+            }, [user]);
 
             useEffect(() => {
                 const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -185,21 +417,14 @@
 
             useEffect(() => {
                 const handleResize = () => {
-                    if (!isMobileDevice()) {
-                        setIsKeyboardVisible(false);
-                        return;
-                    }
+                    if (!isMobileDevice()) { setIsKeyboardVisible(false); return; }
                     if (window.visualViewport) {
                         if (window.visualViewport.height < window.screen.height * 0.7) {
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                            setIsKeyboardVisible(true);
-                            setForceShowNav(false);
+                            setIsKeyboardVisible(true); setForceShowNav(false);
                         } else {
                             if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                            keyboardTimeoutRef.current = setTimeout(() => {
-                                setIsKeyboardVisible(false);
-                                setForceShowNav(false);
-                            }, 2000); 
+                            keyboardTimeoutRef.current = setTimeout(() => { setIsKeyboardVisible(false); setForceShowNav(false); }, 2000);
                         }
                     }
                 };
@@ -210,430 +435,33 @@
                 };
             }, []);
 
-            const [showSupplyModal, setShowSupplyModal] = useState(false);
-            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false });
-
-            const estoqueInicialBase = 54;
-
-            const onInputFocus = () => {
-                if (!isMobileDevice()) return;
-                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                setIsKeyboardVisible(true);
-                setForceShowNav(false);
-            };
-
-            const onInputBlur = () => {
-                if (!isMobileDevice()) return;
-                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                keyboardTimeoutRef.current = setTimeout(() => {
-                    setIsKeyboardVisible(false);
-                    setForceShowNav(false);
-                }, 2000);
-            };
-
             useEffect(() => {
-                const unsubscribe = auth.onAuthStateChanged(u => {
-                    setUser(u);
-                    setAuthLoading(false);
-                });
-                return () => unsubscribe();
-            }, []);
-
-            useEffect(() => { 
-                if (!user) return;
-                localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs)); 
-                localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
-            }, [logs, replenishments, user]);
-
-            useEffect(() => {
-                if (!user || !db) {
-                    if (!user) setStatus('Bloqueado');
-                    return;
+                if (activeTab === 'agenda' && todayRowRef.current) {
+                    setTimeout(() => { todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
                 }
-                setStatus('A sincronizar...');
-                const unsub = db.collection('medicacao_users').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (data.logs) setLogs(data.logs);
-                        if (data.replenishments) setReplenishments(data.replenishments);
-                        setStatus('Nuvem Ativa');
-                    } else {
-                        setStatus('A criar Nuvem...');
-                        db.collection('medicacao_users').doc(user.uid).set({ logs, replenishments });
-                    }
-                }, (error) => {
-                    console.error("Erro Firebase:", error);
-                    setStatus('Erro Cloud');
-                });
-                return () => unsub();
-            }, [user]);
+            }, [activeTab]);
 
-            const updateCloud = (updates) => {
-                if (!user || !db) return;
-                const cloudData = {
-                    logs: updates.logs || logs,
-                    replenishments: updates.replenishments || replenishments
-                };
-                db.collection('medicacao_users').doc(user.uid).update(cloudData).catch(() => { setStatus('Erro Cloud'); });
-            };
-
-            const calculateDaysAgo = (dateStr) => {
-                if (!dateStr) return null;
-                const today = new Date(getTodayDateStr() + 'T12:00:00');
-                const pastDate = new Date(dateStr + 'T12:00:00');
-                const diffTime = today - pastDate;
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays;
-            };
-
-            const getLogsValue = (dateStr) => {
-                if (dateStr > getTodayDateStr()) return 0; // Trava contra datas futuras
-                const log = logs[dateStr];
-                if (!log) return 0;
-                return (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0);
-            };
-
-            const stats = useMemo(() => {
-                const allEntries = Object.values(logs);
-                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
-                const todayStr = getTodayDateStr();
-                
-                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => {
-                    if (curr.data <= todayStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
-                    return acc;
-                }, 0);
-                
-                // Entradas NÃO contam itens agendados
-                const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
-                return { previsao: estoqueInicialBase + totalEntrada - totalSaidaGeral, estoque: estoqueInicialBase + totalEntrada - totalSaidaAteHoje, totalEntrada };
-            }, [logs, replenishments]);
-
-            const { chartData, chartTotal } = useMemo(() => {
-                let data = [];
-                let totalGeral = 0;
-                
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                
-                const formatD = (d) => {
-                    const offset = d.getTimezoneOffset() * 60000;
-                    return new Date(d.getTime() - offset).toISOString().split('T')[0];
-                };
-
-                if (chartType === 'weekly') {
-                    let sumAnt = 0;
-                    for (let i = 13; i >= 7; i--) {
-                        let d = new Date(today); d.setDate(d.getDate() - i);
-                        sumAnt += getLogsValue(formatD(d));
-                    }
-                    data.push({ name: '<', Total: sumAnt, isSpecial: true });
-                    totalGeral += sumAnt;
-
-                    for (let i = 6; i >= 0; i--) {
-                        let d = new Date(today); d.setDate(d.getDate() - i);
-                        let val = getLogsValue(formatD(d));
-                        data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val });
-                        totalGeral += val;
-                    }
-                } 
-                else if (chartType === 'monthly') {
-                    let sumAnt = 0;
-                    for(let i = 28; i < 56; i++) {
-                        let d = new Date(today); d.setDate(d.getDate() - i);
-                        sumAnt += getLogsValue(formatD(d));
-                    }
-                    data.push({ name: '<', Total: sumAnt, isSpecial: true });
-                    totalGeral += sumAnt;
-
-                    for(let w = 3; w >= 0; w--) {
-                        let sumW = 0;
-                        for(let dIdx = 0; dIdx < 7; dIdx++) {
-                            let daysAgo = (w * 7) + dIdx;
-                            let d = new Date(today); d.setDate(d.getDate() - daysAgo);
-                            sumW += getLogsValue(formatD(d));
-                        }
-                        data.push({ name: `Sem ${4 - w}`, Total: sumW });
-                        totalGeral += sumW;
-                    }
-                } 
-                else if (chartType === 'yearly') {
-                    let currentYear = today.getFullYear();
-                    let currentMonth = today.getMonth();
-                    
-                    let monthsData = [];
-                    for(let i = 11; i >= 0; i--) {
-                        let d = new Date(currentYear, currentMonth - i, 1);
-                        let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                        let shortMonth = d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3);
-                        
-                        let sumM = 0;
-                        Object.keys(logs).forEach(date => {
-                            if (date.startsWith(mStr)) sumM += getLogsValue(date);
-                        });
-                        monthsData.push({ name: shortMonth, Total: sumM, sortKey: mStr });
-                        totalGeral += sumM;
-                    }
-
-                    let oldestMonthStr = monthsData[0].sortKey;
-                    let sumAnt = 0;
-                    Object.keys(logs).forEach(date => {
-                        let mStr = date.slice(0, 7);
-                        if (mStr < oldestMonthStr) sumAnt += getLogsValue(date);
-                    });
-
-                    data.push({ name: '<', Total: sumAnt, isSpecial: true });
-                    totalGeral += sumAnt;
-                    data = [...data, ...monthsData];
-                }
-
-                return { chartData: data, chartTotal: totalGeral };
-            }, [logs, chartType]);
-
-            // Grade de Lançamento (60 dias no futuro + hoje + 3 no passado)
-            const calendarDays = useMemo(() => {
-                const days = [];
-                for (let i = -3; i <= 60; i++) {
-                    const d = new Date(); d.setDate(d.getDate() + i);
-                    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                    const weekday = new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
-                    days.push({ dateStr, label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), weekday, isToday: i === 0, isPast: i < 0 });
-                }
-                return days;
-            }, []);
-
-            const daysArr = useMemo(() => calendarDays.map(d => d.dateStr), [calendarDays]);
-
-            const historyItems = useMemo(() => {
-                const todayStr = getTodayDateStr();
-                const pastLogsWithValue = Object.values(logs).filter(l => l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0);
-
-                if (pastLogsWithValue.length === 0) return [];
-                const oldestLog = pastLogsWithValue.reduce((oldest, current) => current.data < oldest.data ? current : oldest);
-                const oldestDateStr = oldestLog.data;
-                const items = [];
-                let emptyStreak = [];
-                let currDate = new Date(todayStr + 'T12:00:00');
-                currDate.setDate(currDate.getDate() - 1);
-                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00');
-                let logCount = 0;
-
-                while (currDate >= oldestDateObj) {
-                    const dStr = currDate.toISOString().split('T')[0];
-                    const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr };
-                    const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-
-                    if (total > 0) {
-                        if (emptyStreak.length > 5) {
-                            items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length });
-                        } else if (emptyStreak.length > 0) {
-                            emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 }));
-                        }
-                        emptyStreak = [];
-                        items.push({ type: 'log', log: log, isEditable: logCount < 5 });
-                        logCount++;
-                    } else {
-                        emptyStreak.push(log);
-                    }
-                    currDate.setDate(currDate.getDate() - 1);
-                }
-
-                if (emptyStreak.length > 5) {
-                    items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length });
-                } else if (emptyStreak.length > 0) {
-                    emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 }));
-                }
-
-                return items;
-            }, [logs]);
-
-            const handleInputChange = (dateStr, field, value) => {
-                const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
-                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
-                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
-            };
-
-            const handleKeyDown = (e, dayIdx, doseIdx) => {
-                let nextDay = dayIdx; let nextDose = doseIdx;
-                switch (e.key) { case 'ArrowUp': nextDay--; break; case 'ArrowDown': nextDay++; break; case 'ArrowLeft': nextDose--; break; case 'ArrowRight': nextDose++; break; default: return; }
-                const nextEl = document.getElementById(`cell-${nextDay}-${nextDose}`);
-                if (nextEl) { e.preventDefault(); nextEl.focus(); }
-            };
-            const handleClearRow = (dateStr) => {
-                const updatedLogs = { ...logs }; delete updatedLogs[dateStr]; 
-                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
-            };
-            const handleInsertRow = (targetDate) => {
-                const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
-                const newLogs = { ...logs };
-                for (let i = daysArr.length - 1; i > idx; i--) {
-                    const prevDate = daysArr[i-1]; const currDate = daysArr[i];
-                    if (newLogs[prevDate]) newLogs[currDate] = { ...newLogs[prevDate], data: currDate };
-                    else delete newLogs[currDate];
-                }
-                delete newLogs[targetDate]; setLogs(newLogs); updateCloud({ logs: newLogs });
-            };
-            const handleDeleteRow = (targetDate) => {
-                const idx = daysArr.indexOf(targetDate); if (idx === -1) return;
-                const newLogs = { ...logs };
-                for (let i = idx; i < daysArr.length - 1; i++) {
-                    const currDate = daysArr[i]; const nextDate = daysArr[i+1];
-                    if (newLogs[nextDate]) newLogs[currDate] = { ...newLogs[nextDate], data: currDate };
-                    else delete newLogs[currDate];
-                }
-                delete newLogs[daysArr[daysArr.length - 1]]; setLogs(newLogs); updateCloud({ logs: newLogs });
-            };
-
-            const handleClearAll = () => { 
-                const todayStr = getTodayDateStr();
-                const newLogs = {};
-                Object.keys(logs).forEach(date => {
-                    if (date < todayStr) newLogs[date] = logs[date];
-                });
-                setLogs(newLogs); updateCloud({ logs: newLogs }); 
-                showToast("Grade de hoje em diante limpa.", "success"); 
-            };
-
-            const handleSupply = () => {
-                if (!supplyData.amount) { showToast("Por favor, preencha a quantidade.", "error"); return; }
-                let updatedReplenishments;
-                if (supplyData.id) {
-                    updatedReplenishments = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, isScheduled: supplyData.isScheduled } : r);
-                } else {
-                    const newReplenishment = { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled || false, id: Date.now() };
-                    updatedReplenishments = [...replenishments, newReplenishment];
-                }
-                setReplenishments(updatedReplenishments); updateCloud({ replenishments: updatedReplenishments });
-                setShowSupplyModal(false);
-                setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false });
-                showToast(supplyData.isScheduled ? "Agendamento salvo!" : "Compra salva com sucesso!");
-            };
-
-            const deletePurchase = (id) => {
-                const updated = replenishments.filter(r => r.id !== id);
-                setReplenishments(updated); updateCloud({ replenishments: updated });
-                showToast("Registro excluído.", "error");
-            };
-
-            const handleEditPurchase = (compra) => { 
-                setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, isScheduled: compra.isScheduled || false }); 
-                setShowSupplyModal(true); 
-            };
-
-            const confirmPurchase = (id) => {
-                const updated = replenishments.map(r => r.id === id ? { ...r, isScheduled: false, date: getTodayDateStr() } : r);
-                setReplenishments(updated);
-                updateCloud({ replenishments: updated });
-                showToast("Compra confirmada e adicionada ao estoque!", "success");
-            };
-
-            const handleAuth = async (e) => {
-                e.preventDefault();
-                setAuthError('');
-                try {
-                    if (isRegisterMode) {
-                        await auth.createUserWithEmailAndPassword(emailInput, passwordInput);
-                        showToast("Conta criada com sucesso!", "success");
-                    } else {
-                        await auth.signInWithEmailAndPassword(emailInput, passwordInput);
-                        showToast("Login realizado com sucesso!", "success");
-                    }
-                } catch (err) {
-                    if(err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                        setAuthError('E-mail ou senha incorretos.');
-                    } else if(err.code === 'auth/email-already-in-use') {
-                        setAuthError('Este e-mail já está cadastrado.');
-                    } else if(err.code === 'auth/weak-password') {
-                        setAuthError('A senha deve ter pelo menos 6 caracteres.');
-                    } else {
-                        setAuthError('Erro na autenticação. Verifique os dados.');
-                    }
-                }
-            };
-
-            const handleGoogleLogin = async () => {
-                setAuthError('');
-                try {
-                    const provider = new firebase.auth.GoogleAuthProvider();
-                    await auth.signInWithPopup(provider);
-                    showToast("Login com Google realizado!", "success");
-                } catch (err) {
-                    if (err.code !== 'auth/popup-closed-by-user') setAuthError('Erro ao entrar com Google. Tente novamente.');
-                }
-            };
-
-            const handleLogout = () => { auth.signOut(); setEmailInput(''); setPasswordInput(''); };
-
-            const ToastComponent = () => {
-                if (!toast) return null;
-                const isError = toast.type === 'error';
-                return (
-                    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-slide-up w-full max-w-xs px-4">
-                        <div className={`flex items-center p-4 rounded-2xl shadow-xl border ${isError ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>
-                            {isError ? <IconAlertCircle /> : <IconCheck />}
-                            <span className="ml-3 font-bold text-sm leading-tight">{toast.message}</span>
-                        </div>
-                    </div>
-                );
-            };
-
-            const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments });
-                const blob = new Blob([data], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_medicacao_${getTodayDateStr()}.json`; a.click();
-                showToast("Backup gerado com sucesso!");
-            };
-
-            const handleRestore = (e) => {
-                const file = e.target.files[0]; if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments);
-                        updateCloud(data);
-                        showToast("Backup restaurado! Dados sincronizados.");
-                    } catch (err) { showToast("Erro ao ler o arquivo.", "error"); }
-                };
-                reader.readAsText(file); e.target.value = ''; 
-            };
-
-            const handleInstallApp = async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { setDeferredPrompt(null); } } };
+            // 7. Render
 
             if (authLoading) return <div className="min-h-screen bg-zinc-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
 
             if (!user) {
                 return (
-                    <div className="min-h-screen bg-zinc-800 flex flex-col items-center justify-center p-6 animate-fade relative">
-                        <ToastComponent />
+                    <div className="min-h-screen bg-zinc-800 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
+                        <ToastComponent toast={toast} />
                         <div className="w-full max-w-xs space-y-8">
-                            <div className="text-center">
-                                <div className="w-16 h-16 bg-teal-500/10 text-teal-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(20,184,166,0.15)]"><IconLock /></div>
-                                <h1 className="text-3xl font-black italic tracking-tighter text-white mb-1">MEDICAÇÃO</h1>
-                                <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Criar Nova Conta' : 'Acesso Restrito'}</p>
-                            </div>
-                            <form onSubmit={handleAuth} className="space-y-4">
-                                <div>
-                                    <input type="email" required className={`w-full bg-zinc-700/50 border-2 ${authError ? 'border-rose-400' : 'border-zinc-600'} rounded-2xl p-4 text-center text-sm font-bold text-white outline-none focus:border-teal-400 placeholder:text-zinc-500 mb-3 transition-colors`} value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setAuthError(''); }} placeholder="Seu e-mail" />
-                                    <input type="password" required className={`w-full bg-zinc-700/50 border-2 ${authError ? 'border-rose-400' : 'border-zinc-600'} rounded-2xl p-4 text-center text-lg font-black text-white tracking-[0.2em] outline-none focus:border-teal-400 placeholder:text-zinc-500 placeholder:tracking-normal transition-colors`} value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setAuthError(''); }} placeholder="Sua senha" />
-                                    {authError && <p className="text-rose-400 text-[10px] font-bold text-center mt-3 uppercase tracking-widest">{authError}</p>}
-                                </div>
-                                <button type="submit" className="w-full py-5 bg-teal-500 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all mt-4">{isRegisterMode ? 'Cadastrar' : 'Entrar'}</button>
+                            <img src="med.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"; }} />
+                            <h1 className="text-4xl font-black italic tracking-tighter text-white mb-1">MEDICAÇÃO</h1>
+                            <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
+                            <form onSubmit={handleAuth} className="space-y-4 text-left">
+                                <input type="email" required className="w-full bg-zinc-700/50 border-2 border-zinc-600 rounded-2xl p-4 text-center text-sm font-bold text-white outline-none focus:border-teal-400 transition-colors" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Seu e-mail" />
+                                <input type="password" required className="w-full bg-zinc-700/50 border-2 border-zinc-600 rounded-2xl p-4 text-center text-lg font-black text-white tracking-[0.2em] outline-none focus:border-teal-400 transition-colors" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Sua senha" />
+                                {authError && <p className="text-rose-400 text-[10px] font-bold uppercase tracking-widest text-center">{authError}</p>}
+                                <button type="submit" className="w-full py-5 bg-teal-500 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">{isRegisterMode ? 'Cadastrar' : 'Entrar'}</button>
                             </form>
-
-                            <div className="relative flex items-center py-2">
-                                <div className="flex-grow border-t border-zinc-700"></div>
-                                <span className="flex-shrink-0 mx-4 text-zinc-500 text-[9px] font-bold uppercase tracking-widest">ou</span>
-                                <div className="flex-grow border-t border-zinc-700"></div>
-                            </div>
-
-                            <button type="button" onClick={handleGoogleLogin} className="w-full py-4 bg-white text-zinc-800 text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center">
-                                <span className="mr-3"><IconGoogle /></span> Entrar com Google
-                            </button>
-
-                            <div className="text-center mt-6">
-                                <button type="button" onClick={() => {setIsRegisterMode(!isRegisterMode); setAuthError('');}} className="text-[10px] font-bold text-zinc-400 hover:text-teal-300 transition-colors uppercase tracking-widest">
-                                    {isRegisterMode ? 'Já tenho uma conta' : 'Criar uma conta por e-mail'}
-                                </button>
-                            </div>
+                            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-zinc-700"></div><span className="flex-shrink-0 mx-4 text-zinc-500 text-[9px] font-bold uppercase tracking-widest">ou</span><div className="flex-grow border-t border-zinc-700"></div></div>
+                            <button onClick={handleGoogleLogin} className="w-full py-4 bg-white text-zinc-800 text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center"><span className="mr-3"><IconGoogle /></span> Google Login</button>
+                            <button onClick={() => setIsRegisterMode(!isRegisterMode)} className="text-[10px] font-bold text-zinc-400 hover:text-teal-300 transition-colors uppercase tracking-widest mt-4 block mx-auto">{isRegisterMode ? 'Já tenho conta' : 'Criar uma conta'}</button>
                         </div>
                     </div>
                 );
@@ -641,20 +469,23 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    <ToastComponent />
-                    <header className="bg-zinc-800 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.08)] sticky top-0 z-40 border-b-4 border-teal-400">
+                    <ToastComponent toast={toast} />
+                    <header className="bg-zinc-800 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-teal-400">
                         <div className="max-w-md mx-auto flex justify-between items-center">
-                            <div>
-                                <h1 className="text-4xl font-black italic tracking-tighter leading-none mb-1">MEDICAÇÃO</h1>
-                                <div className="flex items-center space-x-1">
-                                    <span className={`transition-colors ${status === 'Erro Cloud' ? 'text-rose-400 animate-pulse' : 'text-teal-400 ' + (status === 'Nuvem Ativa' ? 'animate-pulse' : '')}`}><IconCloud /></span>
-                                    <p className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors ${status === 'Erro Cloud' ? 'text-rose-400' : 'text-teal-400'}`}>Controle de Doses</p>
-                                    <button onClick={() => setShowSettings(true)} className="ml-2 p-1 text-zinc-400 hover:text-white transition-colors"><IconSettings /></button>
+                            <div className="flex items-center">
+                                <img src="med.png" className="w-10 h-10 mr-3 brightness-110" alt="Logo" onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"; }} />
+                                <div>
+                                    <h1 className="text-3xl font-black italic tracking-tighter leading-none">MEDICAÇÃO</h1>
+                                    <div className="flex items-center space-x-1 mt-1">
+                                        <span className={status === 'Erro Cloud' ? 'text-rose-400 animate-pulse' : 'text-teal-400'}><IconCloud /></span>
+                                        <p className="text-[9px] font-black uppercase text-teal-400">Nuvem Ativa</p>
+                                        <button onClick={() => setShowSettings(true)} className="ml-2 p-1 text-zinc-400 hover:text-white"><IconSettings /></button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className={`p-3 px-5 rounded-[2rem] border backdrop-blur-md transition-all ${stats.previsao < 0 ? 'bg-rose-500/10 border-rose-400/50 text-rose-400' : 'bg-teal-500/10 border-teal-400/50 text-teal-300'}`}>
-                                <span className="block text-[8px] font-black uppercase text-center opacity-70">Previsão</span>
-                                <span className="text-3xl font-black leading-none drop-shadow-sm">{stats.previsao}</span>
+                            <div className={`p-3 px-5 rounded-[2rem] border backdrop-blur-md transition-all ${statsCalculated.previsao < 0 ? 'bg-rose-500/10 border-rose-400/50 text-rose-400' : 'bg-teal-500/10 border-teal-400/50 text-teal-300'}`}>
+                                <span className="block text-[8px] font-black uppercase opacity-70 text-center">Previsão</span>
+                                <span className="text-3xl font-black leading-none">{statsCalculated.previsao}</span>
                             </div>
                         </div>
                     </header>
@@ -662,116 +493,52 @@
                     <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
                         {activeTab === 'dashboard' && (
                             <div className="space-y-4 pt-2 animate-fade">
-                                
-                                {/* ESTOQUE REAL E BOTÃO DE COMPRA */}
-                                <div className="bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col justify-between text-center mt-2">
+                                <div className="bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] shadow-sm border border-white text-center mt-2">
                                     <p className="text-zinc-400 text-[10px] font-black uppercase">Estoque Real</p>
-                                    <p className={`text-5xl font-black mt-2 mb-4 leading-none drop-shadow-sm ${stats.estoque < 0 ? 'text-rose-500' : 'text-teal-500'}`}>{stats.estoque}</p>
-                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-zinc-800 text-white py-4 rounded-2xl text-[12px] font-black flex items-center justify-center shadow-lg active:scale-95 transition-all w-full tracking-widest"><span className="mr-2 text-teal-300"><IconPlus /></span> COMPRAR</button>
+                                    <p className={`text-5xl font-black mt-2 mb-4 ${statsCalculated.estoque < 0 ? 'text-rose-500' : 'text-teal-500'}`}>{statsCalculated.estoque}</p>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-zinc-800 text-white py-4 rounded-2xl text-[12px] font-black flex items-center justify-center shadow-lg w-full"><span className="mr-2 text-teal-300"><IconPlus /></span> COMPRAR</button>
                                 </div>
 
-                                {/* DASHBOARD HISTÓRICO COM ABAS */}
-                                <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+                                <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] shadow-sm border border-white">
                                     <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico</h3>
-                                        <div className="flex bg-stone-100/80 rounded-lg p-0.5 border border-stone-200/50">
-                                            <button onClick={() => setChartType('weekly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all ${chartType === 'weekly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Semanal</button>
-                                            <button onClick={() => setChartType('monthly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all ${chartType === 'monthly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Mensal</button>
-                                            <button onClick={() => setChartType('yearly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md transition-all ${chartType === 'yearly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Anual</button>
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Gráfico</h3>
+                                        <div className="flex bg-stone-100 rounded-lg p-0.5 border border-stone-200">
+                                            <button onClick={() => setChartType('weekly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md ${chartType === 'weekly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400'}`}>Semanal</button>
+                                            <button onClick={() => setChartType('monthly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md ${chartType === 'monthly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400'}`}>Mensal</button>
+                                            <button onClick={() => setChartType('yearly')} className={`px-2 py-1 text-[8px] font-black uppercase rounded-md ${chartType === 'yearly' ? 'bg-white shadow-sm text-violet-500' : 'text-zinc-400'}`}>Anual</button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="bg-violet-50 text-violet-600 py-3 rounded-2xl text-center mb-4 border border-violet-100/50">
-                                        <span className="block text-[8px] font-black uppercase tracking-widest opacity-60">Total Geral</span>
-                                        <span className="text-2xl font-black leading-none drop-shadow-sm">{chartTotal} <span className="text-[10px]">Cápsulas</span></span>
-                                    </div>
-
-                                    <div className="h-48 w-full"><ManualBarChart data={chartData} /></div>
+                                    <div className="bg-violet-50 text-violet-600 py-3 rounded-2xl text-center mb-4 border border-violet-100/50"><span className="text-[8px] font-black uppercase opacity-60">Total: </span><span className="text-xl font-black">{chartDataCalculated.total} cápsulas</span></div>
+                                    <div className="h-48 w-full"><ManualBarChart data={chartDataCalculated.data} /></div>
                                 </div>
-
-                                {deferredPrompt && (
-                                    <div className="pb-2 mt-2">
-                                        <button onClick={handleInstallApp} className="w-full py-4 bg-violet-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-violet-500/20 active:scale-95 transition-all">
-                                            <span className="mr-2"><IconDevice /></span> Instalar Aplicativo
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="flex space-x-3 pb-2 mt-2">
-                                    <button onClick={handleBackup} className="flex-1 py-4 bg-white/80 backdrop-blur-md border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm active:scale-95 transition-all">
-                                        <span className="mr-2 text-violet-400"><IconDownload /></span> Backup
-                                    </button>
-                                    <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/80 backdrop-blur-md border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm active:scale-95 transition-all">
-                                        <span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar
-                                    </button>
+                                
+                                <div className="flex space-x-3 mt-4">
+                                    <button onClick={handleBackup} className="flex-1 py-4 bg-white/80 border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase flex items-center justify-center shadow-sm"><span className="mr-2 text-violet-400"><IconDownload /></span> Backup</button>
+                                    <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/80 border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase flex items-center justify-center shadow-sm"><span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar</button>
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+                                {deferredPrompt && (
+                                    <button onClick={handleInstallApp} className="w-full py-4 mt-2 bg-violet-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-violet-500/20 active:scale-95 transition-all"><span className="mr-2"><IconDevice /></span> Instalar Aplicativo</button>
+                                )}
                             </div>
                         )}
 
                         {activeTab === 'agenda' && (
-                            <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white overflow-hidden mt-4 animate-fade">
-                                <div className="p-5 bg-zinc-800 text-white flex justify-between items-center">
-                                    <h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2>
-                                    <div className="flex items-center space-x-3">
-                                        {savingId && <div className="animate-pulse text-[8px] font-black uppercase text-teal-300 flex items-center"><IconCheck /><span className="ml-1">Gravado</span></div>}
-                                        <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 border border-rose-400/30 bg-rose-400/10 px-2 py-1 rounded-lg active:scale-95 transition-all">Limpar Grade</button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] font-black text-zinc-400 uppercase text-center mb-2 mt-4 px-3">
-                                    <div className="w-6 shrink-0"></div>
-                                    <div className="w-10 sm:w-11 shrink-0 text-center">Data</div>
-                                    <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
-                                        <div className="flex-1 max-w-[40px]">D1</div>
-                                        <div className="flex-1 max-w-[40px]">D2</div>
-                                        <div className="flex-1 max-w-[40px]">D3</div>
-                                    </div>
-                                    <div className="w-8 shrink-0 text-center">Tot</div>
-                                    <div className="w-6 shrink-0"></div>
-                                </div>
-                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pb-10 scrollbar-hide relative">
+                            <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-xl border border-white overflow-hidden mt-4 animate-fade">
+                                <div className="p-5 bg-zinc-800 text-white flex justify-between items-center"><h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300">Limpar</button></div>
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pt-4 pb-10 scrollbar-hide">
                                     {calendarDays.map((day, dIdx) => {
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => {
-                                            if (curr.data <= day.dateStr) return acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0);
-                                            return acc;
-                                        }, 0);
-                                        const runningStock = estoqueInicialBase + stats.totalEntrada - totalSaidaAteData;
-                                        
-                                        // Estilo Chic da Tabela
-                                        let rowClass = day.isPast ? 'bg-stone-50/50 border-stone-200/60 shadow-sm' : day.isToday ? 'bg-teal-50/60 border-teal-200/80 shadow-md' : 'bg-white border-stone-100 shadow-sm hover:border-stone-200';
-                                        let iconBtnClassInsert = day.isPast ? 'bg-stone-200 text-stone-500 hover:bg-stone-300' : 'bg-teal-100 text-teal-600 hover:bg-teal-200';
-                                        let iconBtnClassDelete = day.isPast ? 'bg-stone-200 text-stone-500 hover:bg-stone-300' : 'bg-rose-100 text-rose-500 hover:bg-rose-200';
-                                        let dateBoxClass = day.isPast ? 'bg-stone-200 text-stone-500 border-stone-300/50' : day.isToday ? 'bg-teal-500 text-white border-teal-600' : 'bg-teal-50 text-teal-600 border-teal-100';
-                                        let inputClass = day.isPast ? 'bg-white/60 border-stone-200 text-zinc-500 placeholder:text-stone-300 focus:ring-stone-300' : 'bg-violet-50/50 border-violet-100 text-zinc-800 placeholder:text-violet-200 focus:ring-violet-300';
-                                        let closeIconClass = day.isPast ? 'text-stone-400 hover:text-stone-500' : 'text-rose-300 hover:text-rose-400';
-                                        let badgeClass = total > 0 ? (day.isPast ? 'bg-stone-400 text-white' : 'bg-zinc-800 text-white') : 'bg-stone-100 text-stone-400';
-                                        
-                                        if (runningStock <= 0 && !day.isPast) badgeClass = 'bg-rose-400 text-white shadow-[0_0_8px_rgba(251,113,133,0.4)]';
-
+                                        const rowClass = day.isPast ? 'bg-stone-50' : day.isToday ? 'bg-teal-50 shadow-md' : 'bg-white';
+                                        const dateBoxClass = day.isPast ? 'bg-stone-200 text-stone-500' : day.isToday ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600';
                                         return (
-                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border ${rowClass}`}>
-                                                <div className="flex flex-col gap-1 items-center justify-center w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className={`${iconBtnClassInsert} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Inserir Linha"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className={`${iconBtnClassDelete} rounded-md p-1.5 active:scale-90 transition-all shadow-sm`} title="Excluir Linha"><IconDeleteRow /></button>
-                                                </div>
-                                                <div className={`h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border ${dateBoxClass}`}>
-                                                    <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{day.weekday}</span>
-                                                    <span className="text-[16px] leading-none">{day.label.split('/')[0]}</span>
-                                                </div>
-                                                <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
-                                                    {[1,2,3].map((num, doseIdx) => (
-                                                        <input key={num} id={`cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${inputClass}`} value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(day.dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} />
-                                                    ))}
-                                                </div>
-                                                <div className="w-8 flex justify-center shrink-0 relative">
-                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
-                                                    {savingId === day.dateStr && <div className={`absolute -top-1 -right-1 ${day.isPast ? 'text-stone-400' : 'text-teal-400'}`}><IconCheck /></div>}
-                                                </div>
-                                                <div className="w-6 flex justify-center shrink-0">
-                                                    <button onClick={() => handleClearRow(day.dateStr)} className={`flex items-center justify-center active:scale-90 transition-all p-1 ${closeIconClass}`} title="Limpar Dia"><IconX /></button>
-                                                </div>
+                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-[1.25rem] border ${rowClass}`}>
+                                                <div className="flex flex-col gap-1 w-6 shrink-0"><button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5"><IconInsertRow /></button><button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5"><IconDeleteRow /></button></div>
+                                                <div className={`h-11 w-10 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
+                                                <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" placeholder="-" className="w-full max-w-[40px] h-10 text-center rounded-[0.8rem] font-black border bg-white/60" value={log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} />))}</div>
+                                                <div className="w-8 flex justify-center"><span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl ${total > 0 ? 'bg-zinc-800 text-white' : 'bg-stone-100 text-stone-400'}`}>{total || '-'}</span></div>
+                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1"><IconX /></button></div>
                                             </div>
                                         );
                                     })}
@@ -781,48 +548,18 @@
 
                         {activeTab === 'history' && (
                             <div className="space-y-3 pt-4 animate-fade">
-                                <div className="flex justify-between items-center px-2 mb-4">
-                                    <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">Histórico Completo</h2>
-                                    <div className="bg-violet-100/50 text-violet-600 px-3 py-1 rounded-full text-[10px] font-black">Infinito</div>
-                                </div>
+                                <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic ml-2">Histórico Passado</h2>
                                 <div className="space-y-2 pb-10">
-                                    {historyItems.map((item, dIdx) => {
-                                        if (item.type === 'empty_group') {
-                                            return (
-                                                <div key={`empty-${item.startDate}`} className="flex items-center justify-center p-4 rounded-[1.25rem] border bg-stone-50/50 border-stone-200/50 shadow-sm text-stone-400 text-[9px] font-black uppercase tracking-widest text-center my-3">Sem registros de {new Date(item.startDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}<br/> até {new Date(item.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
-                                            );
-                                        }
-                                        const log = item.log;
-                                        const dateStr = log.data;
-                                        const dateObj = new Date(dateStr + 'T12:00:00');
-                                        const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3);
-                                        const label = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        
-                                        let badgeClass = total > 0 ? 'bg-stone-400 text-white' : 'bg-stone-100 text-stone-400';
-                                        
-                                        return (
-                                            <div key={dateStr} className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-[1.25rem] transition-all border bg-stone-50/80 border-stone-200/70 shadow-sm">
-                                                <div className="w-6 flex justify-center shrink-0">
-                                                    <button onClick={() => handleClearRow(dateStr)} className="bg-rose-50 text-rose-400 hover:bg-rose-100 rounded-md p-1.5 active:scale-90 transition-all shadow-sm" title="Excluir Lançamento"><IconMinus /></button>
-                                                </div>
-                                                <div className="h-11 w-10 sm:w-11 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black shadow-sm border bg-stone-200 text-stone-500 border-stone-300/50">
-                                                    <span className="text-[9px] uppercase opacity-80 leading-none mb-[2px]">{weekday}</span>
-                                                    <span className="text-[16px] leading-none">{label.split('/')[0]}</span>
-                                                </div>
-                                                <div className="flex-1 flex justify-center gap-1.5 sm:gap-2">
-                                                    {[1,2,3].map((num, doseIdx) => (
-                                                        <input key={num} id={`hist-cell-${dIdx}-${doseIdx}`} type="number" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] text-[14px] font-black outline-none border transition-all ${item.isEditable ? 'bg-white/60 border-stone-200 text-zinc-600 placeholder:text-stone-300 focus:bg-white focus:ring-stone-300' : 'bg-stone-100/50 border-stone-200/50 text-stone-400 cursor-not-allowed'}`} value={log[`d${num}`]} onFocus={onInputFocus} onBlur={()=>{onInputBlur(); setSavingId(dateStr); setTimeout(()=>setSavingId(null), 1000)}} onKeyDown={(e) => handleKeyDown(e, dIdx, doseIdx)} onChange={e=>handleInputChange(dateStr, `d${num}`, e.target.value)} />
-                                                    ))}
-                                                </div>
-                                                <div className="w-8 flex justify-center shrink-0 relative">
-                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-colors ${badgeClass}`}>{total || '-'}</span>
-                                                    {savingId === dateStr && <div className="absolute -top-1 -right-1 text-stone-400"><IconCheck /></div>}
-                                                </div>
-                                                <div className="w-6 shrink-0"></div>
-                                            </div>
-                                        );
-                                    })}
+                                    {historyItemsCalculated.map((item) => item.type === 'empty_group' ? (
+                                        <div key={item.startDate} className="p-4 rounded-[1.25rem] border bg-stone-50/50 text-stone-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
+                                    ) : (
+                                        <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-[1.25rem] border bg-white/80 shadow-sm">
+                                            <button onClick={() => handleClearRow(item.log.data)} className="bg-rose-50 text-rose-400 rounded-md p-1.5"><IconMinus /></button>
+                                            <div className="h-11 w-10 rounded-[0.8rem] flex flex-col items-center justify-center bg-stone-200 text-stone-500 border"><span className="text-[9px] uppercase">{new Date(item.log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3)}</span><span className="text-[16px]">{item.log.data.split('-')[2]}</span></div>
+                                            <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] font-black border ${item.isEditable ? 'bg-white' : 'bg-stone-100 text-stone-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                            <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-stone-400 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -831,130 +568,64 @@
                             <div className="space-y-3 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-4">
                                     <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic mt-1">Registros</h2>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: true }); setShowSupplyModal(true); }} className="bg-amber-100/70 text-amber-600 px-3 py-1.5 rounded-full text-[9px] font-black flex items-center active:scale-95 transition-all shadow-sm border border-amber-200/50"><IconClock /><span className="ml-1 uppercase tracking-widest">Agendar</span></button>
-                                        <div className="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm border border-teal-100/50">{replenishments.length} Histórico</div>
-                                    </div>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: true }); setShowSupplyModal(true); }} className="bg-amber-100/70 text-amber-600 px-3 py-1.5 rounded-full text-[9px] font-black flex items-center shadow-sm border border-amber-200/50"><IconClock /><span className="ml-1 uppercase">Agendar</span></button>
                                 </div>
                                 <div className="space-y-3 pb-10">
-                                    {[...replenishments].sort((a,b) => {
-                                        if (a.isScheduled && !b.isScheduled) return -1;
-                                        if (!a.isScheduled && b.isScheduled) return 1;
-                                        return new Date(b.date) - new Date(a.date);
-                                    }).map(compra => {
-                                        const daysAgo = calculateDaysAgo(compra.date);
-                                        const isScheduled = compra.isScheduled;
-                                        
-                                        const bgCardClass = isScheduled ? 'bg-amber-50/40 border-amber-100/60' : 'bg-white/80 backdrop-blur-md border-white';
-                                        const dateBoxClass = isScheduled ? 'bg-amber-100/70 text-amber-600 border-amber-200/50' : 'bg-teal-50 text-teal-600 border-teal-100';
-                                        const amountClass = isScheduled ? 'text-amber-500' : 'text-teal-500';
-                                        
+                                    {[...replenishments].sort((a,b) => a.isScheduled === b.isScheduled ? new Date(b.date) - new Date(a.date) : a.isScheduled ? -1 : 1).map(compra => {
+                                        const days = calculateDaysAgo(compra.date);
                                         return (
-                                        <div key={compra.id} className={`p-3 pr-3 pl-3 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border flex items-center justify-between ${bgCardClass}`}>
+                                        <div key={compra.id} className={`p-3 rounded-[2rem] shadow-sm border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/40 border-amber-100/60' : 'bg-white/80 border-white'}`}>
                                             <div className="flex items-center flex-1 min-w-0">
-                                                
-                                                <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 hover:bg-rose-100 rounded-full flex items-center justify-center active:scale-90 transition-all mr-3 shrink-0" title="Excluir">
-                                                    <IconMinus />
-                                                </button>
-
-                                                <div className={`h-12 w-12 rounded-2xl flex flex-col items-center justify-center mr-4 shadow-sm shrink-0 font-black border ${dateBoxClass}`}>
-                                                    <span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span>
-                                                    <span className="text-lg leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit' })}</span>
-                                                </div>
-                                                
+                                                <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mr-3"><IconMinus /></button>
+                                                <div className={`h-12 w-12 rounded-2xl flex flex-col items-center justify-center mr-4 font-black border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200/50' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span><span className="text-lg leading-none">{compra.date.split('-')[2]}</span></div>
                                                 <div className="flex-1 min-w-0 pr-2">
-                                                    <p className={`text-lg font-black leading-none mb-1 ${amountClass}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase tracking-widest font-bold">Cápsulas</span></p>
-                                                    <div className="mt-1.5">
-                                                        {isScheduled ? (
-                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-amber-200/60 text-amber-700">Agendado</span>
-                                                        ) : (
-                                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${daysAgo === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-stone-100 text-stone-400'}`}>{daysAgo === 0 ? 'Comprado Hoje' : daysAgo === 1 ? 'Comprado Ontem' : `Há ${daysAgo} dias`}</span>
-                                                        )}
-                                                    </div>
+                                                    <p className={`text-lg font-black leading-none mb-1 ${compra.isScheduled ? 'text-amber-500' : 'text-teal-500'}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase font-bold">Cápsulas</span></p>
+                                                    <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-stone-100 text-stone-400')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
                                                 </div>
                                             </div>
-                                            
-                                            <div className="flex flex-col gap-1 shrink-0 ml-1">
-                                                {isScheduled && (
-                                                    <button onClick={() => confirmPurchase(compra.id)} className="px-4 py-2 bg-teal-400 text-white rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all shadow-md flex items-center justify-center">
-                                                        Confirmar
-                                                    </button>
-                                                )}
-                                                <button onClick={() => handleEditPurchase(compra)} className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-[9px] font-black uppercase active:scale-95 transition-all shadow-md flex items-center justify-center">
-                                                    Editar
-                                                </button>
+                                            <div className="flex flex-col gap-1">
+                                                {compra.isScheduled && <button onClick={() => confirmPurchase(compra.id)} className="px-4 py-2 bg-teal-400 text-white rounded-xl text-[9px] font-black uppercase shadow-md">Confirmar</button>}
+                                                <button onClick={() => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, isScheduled: compra.isScheduled }); setShowSupplyModal(true); }} className="px-4 py-2 bg-zinc-800 text-white rounded-xl text-[9px] font-black uppercase shadow-md">Editar</button>
                                             </div>
                                         </div>
                                     )})}
-                                    {replenishments.length === 0 && (
-                                        <div className="text-center py-10 opacity-50">
-                                            <div className="flex justify-center mb-2 text-zinc-400"><IconBag /></div>
-                                            <p className="text-xs font-bold text-zinc-500">Nenhum registro encontrado.</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
                     </main>
 
                     {showSettings && (
-                        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-zinc-900/80 backdrop-blur-sm">
+                        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 bg-zinc-900/80 backdrop-blur-sm animate-fade">
                             <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-zinc-800 animate-slide-up">
-                                <div className="flex justify-between items-start mb-6">
-                                    <h2 className="text-xl font-black italic uppercase text-zinc-800 flex items-center"><IconSettings /><span className="ml-2">Configurações</span></h2>
-                                    <button onClick={() => setShowSettings(false)} className="text-zinc-400 hover:text-zinc-600 p-2"><IconX /></button>
+                                <div className="flex justify-between items-start mb-6"><h2 className="text-xl font-black italic uppercase text-zinc-800 flex items-center"><IconSettings /><span className="ml-2">Ajustes</span></h2><button onClick={() => setShowSettings(false)} className="text-zinc-400 p-2"><IconX /></button></div>
+                                <div className="space-y-4 mb-8">
+                                    <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center"><p className="text-[10px] font-black text-zinc-400 uppercase mb-1">E-mail</p><p className="text-sm font-bold text-zinc-700 break-all">{user?.email}</p></div>
                                 </div>
-                                <div className="space-y-5 mb-8">
-                                    <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center">
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Conta Logada</p>
-                                        <p className="text-sm font-bold text-zinc-700 break-all">{user?.email}</p>
-                                    </div>
-                                    <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center">
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Status de Segurança</p>
-                                        <p className="text-xs font-bold text-teal-500 flex items-center justify-center mt-1"><IconCheck /><span className="ml-1">Cofre Trancado</span></p>
-                                    </div>
-                                </div>
-                                <div className="flex space-x-3">
-                                    <button onClick={handleLogout} className="flex-1 py-4 bg-rose-50 text-rose-500 text-xs font-black rounded-2xl uppercase active:scale-95 transition-all">Sair</button>
-                                    <button onClick={() => setShowSettings(false)} className="flex-[2] py-4 bg-zinc-800 text-white text-xs font-black rounded-2xl uppercase shadow-lg shadow-zinc-800/20 active:scale-95 transition-all">Fechar</button>
-                                </div>
+                                <div className="flex space-x-3"><button onClick={handleLogout} className="flex-1 py-4 bg-rose-50 text-rose-600 text-xs font-black rounded-2xl uppercase">Sair</button><button onClick={() => setShowSettings(false)} className="flex-[2] py-4 bg-zinc-800 text-white text-xs font-black rounded-2xl uppercase">Fechar</button></div>
                             </div>
                         </div>
                     )}
 
                     {showSupplyModal && (
-                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-zinc-900/80 backdrop-blur-sm">
-                            <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-teal-400 max-h-[90vh] overflow-y-auto animate-fade">
-                                <h2 className="text-xl font-black text-center italic mb-6 uppercase text-zinc-800">
-                                    {supplyData.id ? (supplyData.isScheduled ? 'Editar Agendamento' : 'Editar Compra') : (supplyData.isScheduled ? 'Agendar Compra' : 'Nova Compra')}
-                                </h2>
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 bg-zinc-900/80 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl border-t-8 border-teal-400 animate-slide-up">
+                                <h2 className="text-xl font-black text-center italic mb-6 uppercase text-zinc-800">{supplyData.id ? (supplyData.isScheduled ? 'Ajustar Agenda' : 'Editar Compra') : (supplyData.isScheduled ? 'Novo Agendamento' : 'Novo Registro')}</h2>
                                 <div className="space-y-4 mb-8">
-                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/60 border-amber-100' : 'bg-teal-50/60 border-teal-100'} p-4 rounded-3xl border`}>
-                                        <label className={`text-[10px] font-black uppercase tracking-widest ml-2 block mb-2 ${supplyData.isScheduled ? 'text-amber-500' : 'text-teal-600'}`}>Quantidade (Cápsulas)*</label>
-                                        <input type="number" placeholder="0" className={`w-full text-4xl font-black text-center bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-500 placeholder:text-amber-200' : 'text-teal-500 placeholder:text-teal-200'}`} value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2 block mb-1">Data</label>
-                                        <input type="date" className={`w-full font-bold bg-stone-50 border border-stone-100 rounded-2xl p-4 text-zinc-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
-                                    </div>
+                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/60 border-amber-100' : 'bg-teal-50/60 border-teal-100'} p-4 rounded-3xl border`}><label className={`text-[10px] font-black uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-500' : 'text-teal-600'}`}>Qtd (Cápsulas)</label><input type="number" placeholder="0" className={`w-full text-4xl font-black text-center bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-500' : 'text-teal-600'}`} value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} /></div>
+                                    <input type="date" className={`w-full font-bold bg-stone-50 border border-stone-100 rounded-2xl p-4 text-zinc-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                 </div>
-                                <div className="flex space-x-3">
-                                    <button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-zinc-400 uppercase bg-stone-100 rounded-2xl active:scale-95 transition-all">Cancelar</button>
-                                    <button onClick={handleSupply} className={`flex-[2] py-4 text-white text-xs font-black rounded-2xl uppercase shadow-lg active:scale-95 transition-all ${supplyData.isScheduled ? 'bg-amber-400 shadow-amber-400/30' : 'bg-teal-500 shadow-teal-500/30'}`}>Salvar</button>
-                                </div>
+                                <div className="flex space-x-3"><button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-zinc-400 bg-stone-100 rounded-2xl uppercase">Voltar</button><button onClick={handleSupply} className={`flex-[2] py-4 text-white text-xs font-black rounded-2xl uppercase shadow-lg ${supplyData.isScheduled ? 'bg-amber-400' : 'bg-teal-500'}`}>Salvar</button></div>
                             </div>
                         </div>
                     )}
 
-                    {isKeyboardVisible && !forceShowNav && isMobileDevice() && (
-                        <div className="fixed bottom-0 left-0 right-0 h-16 z-[45]" onClick={() => setForceShowNav(true)}></div>
-                    )}
+                    {isKeyboardVisible && !forceShowNav && isMobileDevice() && ( <div className="fixed bottom-0 left-0 right-0 h-16 z-[45]" onClick={() => setForceShowNav(true)}></div> )}
 
-                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-stone-100/50 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-[0_-10px_40px_rgb(0,0,0,0.05)] z-40 transition-transform duration-500 ${(isKeyboardVisible && !forceShowNav) ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
-                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'dashboard' ? 'text-teal-600 scale-110 font-black drop-shadow-sm' : 'text-zinc-400 hover:text-teal-400'}`}><IconHome /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Início</span></button>
-                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'agenda' ? 'text-teal-600 scale-110 font-black drop-shadow-sm' : 'text-zinc-400 hover:text-teal-400'}`}><IconTable /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Lançar</span></button>
-                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'history' ? 'text-teal-600 scale-110 font-black drop-shadow-sm' : 'text-zinc-400 hover:text-teal-400'}`}><IconHistory /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Passadas</span></button>
-                        <button onClick={()=>setActiveTab('purchases')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-all ${activeTab === 'purchases' ? 'text-teal-600 scale-110 font-black drop-shadow-sm' : 'text-zinc-400 hover:text-teal-400'}`}><IconBag /><span className="text-[8px] sm:text-[9px] mt-1 uppercase">Compras</span></button>
+                    <nav className={`fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-stone-100/50 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 shadow-2xl z-40 transition-transform duration-500 ${(isKeyboardVisible && !forceShowNav) ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'dashboard' ? 'text-teal-600 scale-110 font-black' : 'text-zinc-400'}`}><IconHome /><span className="text-[9px] mt-1 uppercase">Início</span></button>
+                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'agenda' ? 'text-teal-600 scale-110 font-black' : 'text-zinc-400'}`}><IconTable /><span className="text-[9px] mt-1 uppercase">Grade</span></button>
+                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'history' ? 'text-teal-600 scale-110 font-black' : 'text-zinc-400'}`}><IconHistory /><span className="text-[9px] mt-1 uppercase">Antigas</span></button>
+                        <button onClick={()=>setActiveTab('purchases')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'purchases' ? 'text-teal-600 scale-110 font-black' : 'text-zinc-400'}`}><IconBag /><span className="text-[9px] mt-1 uppercase">Compras</span></button>
                     </nav>
                 </div>
             );
