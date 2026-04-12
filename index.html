@@ -9,7 +9,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27272a">
     
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <!-- Manifest atualizado com a URL externa do ícone -->
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <title>App Med - Gestão Cloud</title>
     
@@ -51,6 +52,9 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
+
+        // URL do ícone centralizada
+        const APP_ICON_URL = "https://med.kaioadriel.com.br/icone/images.png";
 
         // --- Configuração do Firebase ---
         const firebaseConfig = {
@@ -475,7 +479,7 @@
                     <div className="min-h-screen bg-zinc-800 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
                         <ToastComponent toast={toast} />
                         <div className="w-full max-w-xs space-y-8">
-                            <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" />
+                            <img src={APP_ICON_URL} className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"; }} />
                             <h1 className="text-4xl font-black italic tracking-tighter text-white mb-1">APP MED</h1>
                             <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
                             <form onSubmit={handleAuth} className="space-y-4 text-left">
@@ -498,7 +502,7 @@
                     <header className="bg-zinc-800 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-teal-400">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div className="flex items-center">
-                                <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-10 h-10 mr-3 brightness-110" alt="Logo" />
+                                <img src={APP_ICON_URL} className="w-10 h-10 mr-3 brightness-110" alt="Logo" onError={(e) => { e.target.src = "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"; }} />
                                 <div>
                                     <h1 className="text-3xl font-black italic tracking-tighter leading-none">APP MED</h1>
                                     <div className="flex items-center space-x-1 mt-1">
