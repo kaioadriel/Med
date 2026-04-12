@@ -364,7 +364,8 @@
             const onInputBlur = () => {
                 if (!isMobileDevice()) return;
                 if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                keyboardTimeoutRef.current = setTimeout(() => { setIsKeyboardVisible(false); setForceShowNav(false); }, 2000);
+                setIsKeyboardVisible(false);
+                setForceShowNav(false);
             };
 
             const handleInstallApp = async () => { 
