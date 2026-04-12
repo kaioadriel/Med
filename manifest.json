@@ -1,0 +1,20 @@
+{
+  "name": "App Med",
+  "short_name": "App Med",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#27272a",
+  "theme_color": "#27272a",
+  "icons": [
+    {
+      "src": "med.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "med.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
