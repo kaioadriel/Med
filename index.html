@@ -155,6 +155,8 @@
             const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: '', isScheduled: false });
             const [toast, setToast] = useState(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [isStandalone, setIsStandalone] = useState(false);
+            const [showInstallGuide, setShowInstallGuide] = useState(false);
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -427,7 +429,9 @@
                     deferredPrompt.prompt(); 
                     const { outcome } = await deferredPrompt.userChoice; 
                     if (outcome === 'accepted') setDeferredPrompt(null); 
-                } 
+                } else {
+                    setShowInstallGuide(true);
+                }
             };
 
             useEffect(() => {
@@ -475,6 +479,12 @@
             useEffect(() => {
                 const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
                 window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                
+                // Verificar se já está instalado
+                if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                    setIsStandalone(true);
+                }
+                
                 return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             }, []);
 
@@ -554,7 +564,7 @@
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/80 border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase flex items-center justify-center shadow-sm"><span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar</button>
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-                                {deferredPrompt && (
+                                {!isStandalone && (
                                     <button onClick={handleInstallApp} className="w-full py-4 mt-2 bg-violet-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-violet-500/20 active:scale-95 transition-all"><span className="mr-2"><IconDevice /></span> Instalar Aplicativo</button>
                                 )}
                             </div>
@@ -665,6 +675,24 @@
                                     <input type="date" className={`w-full font-bold bg-stone-50 border border-stone-100 rounded-2xl p-4 text-zinc-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                 </div>
                                 <div className="flex space-x-3"><button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-zinc-400 bg-stone-100 rounded-2xl uppercase">Voltar</button><button onClick={handleSupply} className={`flex-[2] py-4 text-white text-xs font-black rounded-2xl uppercase shadow-lg ${supplyData.isScheduled ? 'bg-amber-400' : 'bg-teal-500'}`}>Guardar</button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showInstallGuide && (
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-zinc-900/80 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border-t-8 border-violet-500 animate-slide-up text-center">
+                                <div className="mx-auto w-12 h-12 bg-violet-100 text-violet-500 rounded-full flex items-center justify-center mb-4">
+                                    <IconDevice />
+                                </div>
+                                <h2 className="text-xl font-black italic mb-2 uppercase text-zinc-800">Como Instalar</h2>
+                                <p className="text-sm text-zinc-600 mb-6">Para instalar o App Med no seu telemóvel, siga estes passos rápidos no seu navegador:</p>
+                                <ol className="text-left text-sm text-zinc-700 space-y-3 font-bold mb-8 bg-stone-50 p-4 rounded-2xl border border-stone-100">
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">1.</span> Toque no ícone de menu (três pontos) ou partilha.</li>
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">2.</span> Selecione <span className="text-zinc-900 bg-white px-2 py-0.5 rounded ml-1 shadow-sm border whitespace-nowrap">Adicionar ao Ecrã Inicial</span></li>
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">3.</span> Confirme a instalação.</li>
+                                </ol>
+                                <button onClick={()=>setShowInstallGuide(false)} className="w-full py-4 text-white bg-zinc-800 text-xs font-black rounded-2xl uppercase shadow-lg">Entendido</button>
                             </div>
                         </div>
                     )}
