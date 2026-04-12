@@ -13,6 +13,15 @@
     
     <title>App Med - Gestão Cloud</title>
     
+    <script>
+        // Captura global imediata do evento de instalação para evitar que o React perca o timing
+        window.globalDeferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window.globalDeferredPrompt = e;
+        });
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -151,7 +160,8 @@
             const [showSupplyModal, setShowSupplyModal] = useState(false);
             const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: '', isScheduled: false });
             const [toast, setToast] = useState(null);
-            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [deferredPrompt, setDeferredPrompt] = useState(window.globalDeferredPrompt);
+            const [isStandalone, setIsStandalone] = useState(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -423,8 +433,13 @@
                 if (deferredPrompt) { 
                     deferredPrompt.prompt(); 
                     const { outcome } = await deferredPrompt.userChoice; 
-                    if (outcome === 'accepted') setDeferredPrompt(null); 
-                } 
+                    if (outcome === 'accepted') {
+                        setDeferredPrompt(null); 
+                        window.globalDeferredPrompt = null;
+                    }
+                } else {
+                    showToast("Clique no ícone de instalação na barra de endereços (topo direito) ou no menu do navegador.", "error");
+                }
             };
 
             useEffect(() => {
@@ -470,10 +485,24 @@
             }, [activeTab]);
 
             useEffect(() => {
-                const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+                if (window.globalDeferredPrompt) {
+                    setDeferredPrompt(window.globalDeferredPrompt);
+                }
+                const handleBeforeInstallPrompt = (e) => { 
+                    e.preventDefault(); 
+                    setDeferredPrompt(e); 
+                    window.globalDeferredPrompt = e;
+                };
                 window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
                 
-                return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                const mq = window.matchMedia('(display-mode: standalone)');
+                const handleMQ = (e) => setIsStandalone(e.matches);
+                mq.addEventListener('change', handleMQ);
+
+                return () => {
+                    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                    mq.removeEventListener('change', handleMQ);
+                };
             }, []);
 
             if (authLoading) return <div className="min-h-screen bg-zinc-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -552,7 +581,7 @@
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/80 border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase flex items-center justify-center shadow-sm"><span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar</button>
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-                                {deferredPrompt && (
+                                {!isStandalone && (
                                     <button onClick={handleInstallApp} className="w-full py-4 mt-2 bg-violet-500 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-violet-500/20 active:scale-95 transition-all"><span className="mr-2"><IconDevice /></span> Instalar Aplicativo</button>
                                 )}
                             </div>
