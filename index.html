@@ -162,6 +162,7 @@
             const [toast, setToast] = useState(null);
             const [deferredPrompt, setDeferredPrompt] = useState(window.globalDeferredPrompt);
             const [isStandalone, setIsStandalone] = useState(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
+            const [showInstallGuide, setShowInstallGuide] = useState(false); // Adicionado estado para o Guia
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -438,7 +439,8 @@
                         window.globalDeferredPrompt = null;
                     }
                 } else {
-                    showToast("Clique no ícone de instalação na barra de endereços (topo direito) ou no menu do navegador.", "error");
+                    // Agora, se o Chrome bloquear o prompt automático, abrimos o Guia Elegante
+                    setShowInstallGuide(true);
                 }
             };
 
@@ -692,6 +694,24 @@
                                     <input type="date" className={`w-full font-bold bg-stone-50 border border-stone-100 rounded-2xl p-4 text-zinc-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                 </div>
                                 <div className="flex space-x-3"><button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-zinc-400 bg-stone-100 rounded-2xl uppercase">Voltar</button><button onClick={handleSupply} className={`flex-[2] py-4 text-white text-xs font-black rounded-2xl uppercase shadow-lg ${supplyData.isScheduled ? 'bg-amber-400' : 'bg-teal-500'}`}>Guardar</button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showInstallGuide && (
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-zinc-900/80 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border-t-8 border-violet-500 animate-slide-up text-center">
+                                <div className="mx-auto w-12 h-12 bg-violet-100 text-violet-500 rounded-full flex items-center justify-center mb-4">
+                                    <IconDevice />
+                                </div>
+                                <h2 className="text-xl font-black italic mb-2 uppercase text-zinc-800">Instalação Manual</h2>
+                                <p className="text-sm text-zinc-600 mb-6">O navegador bloqueou a instalação automática. Para instalar o App Med, siga estes passos rápidos no seu Chrome:</p>
+                                <ol className="text-left text-sm text-zinc-700 space-y-3 font-bold mb-8 bg-stone-50 p-4 rounded-2xl border border-stone-100">
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">1.</span> Clique no ícone de menu (três pontinhos no canto superior direito).</li>
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">2.</span> Vá a <span className="text-zinc-900 bg-white px-2 py-0.5 rounded mx-1 shadow-sm border whitespace-nowrap">Guardar e partilhar</span>.</li>
+                                    <li className="flex items-start"><span className="text-violet-500 mr-2">3.</span> Selecione <span className="text-zinc-900 bg-white px-2 py-0.5 rounded ml-1 shadow-sm border whitespace-nowrap">Instalar página...</span></li>
+                                </ol>
+                                <button onClick={()=>setShowInstallGuide(false)} className="w-full py-4 text-white bg-zinc-800 text-xs font-black rounded-2xl uppercase shadow-lg">Entendido</button>
                             </div>
                         </div>
                     )}
