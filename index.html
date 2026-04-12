@@ -9,12 +9,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27272a">
     
-    <!-- URL do ícone centralizada -->
+    <!-- Links de Ícone para Navegador e iOS -->
     <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png">
     <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png">
     
-    <!-- Manifest PWA corrigido para exibição de ícone no Android/Chrome -->
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
+    <!-- Manifest PWA ajustado para ícones não-ajustáveis (evita bordas brancas no Android) -->
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%5D%7D'>
     
     <title>App Med - Gestão Cloud</title>
     
@@ -57,7 +57,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // URL do ícone oficial
         const APP_ICON_URL = "https://med.kaioadriel.com.br/icone/images.png";
 
         // --- Configuração do Firebase ---
@@ -73,7 +72,7 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // --- Ícones Auxiliares ---
+        // --- Ícones ---
         const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
         const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
         const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
@@ -93,7 +92,7 @@
         const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
 
-        // --- Componente de Notificação ---
+        // --- Notificação ---
         const ToastComponent = ({ toast }) => {
             if (!toast) return null;
             const isError = toast.type === 'error';
@@ -126,10 +125,8 @@
         };
 
         const App = () => {
-            // --- CONSTANTES ---
             const estoqueInicialBase = 54;
 
-            // --- ESTADOS ---
             const [user, setUser] = useState(null);
             const [authLoading, setAuthLoading] = useState(true);
             const [emailInput, setEmailInput] = useState('');
@@ -153,7 +150,7 @@
             const todayRowRef = useRef(null);
             const toastTimeout = useRef(null);
 
-            // --- AUXILIARES ---
+            // --- Cálculos ---
             const getTodayDateStr = () => {
                 const d = new Date();
                 const offset = d.getTimezoneOffset() * 60000;
@@ -176,12 +173,6 @@
                 return days;
             }, []);
 
-            const getLogsValue = (dateStr) => {
-                if (dateStr > getTodayDateStr()) return 0;
-                const log = logs[dateStr];
-                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
-            };
-
             const statsCalculated = useMemo(() => {
                 const allEntries = Object.values(logs);
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
@@ -195,19 +186,24 @@
                 let data = []; let totalGeral = 0;
                 const today = new Date(); today.setHours(0,0,0,0);
                 const formatD = (d) => { const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
+                const getVal = (dateStr) => {
+                    if (dateStr > getTodayDateStr()) return 0;
+                    const log = logs[dateStr];
+                    return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+                };
 
                 if (chartType === 'weekly') {
-                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
-                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getLogsValue(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
+                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getVal(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
                 } else if (chartType === 'monthly') {
-                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
-                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getLogsValue(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
+                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getVal(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
                 } else if (chartType === 'yearly') {
                     let cYear = today.getFullYear(); let cMonth = today.getMonth(); let monthsData = [];
-                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getLogsValue(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
-                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getLogsValue(date); });
+                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getVal(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
+                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getVal(date); });
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); data = [...data, ...monthsData];
                 }
                 return { data, total: totalGeral };
@@ -232,7 +228,7 @@
                 return items;
             }, [logs]);
 
-            // --- INTERAÇÃO ---
+            // --- Funções ---
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -240,13 +236,6 @@
             };
 
             const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-            const calculateDaysAgo = (dateStr) => {
-                if (!dateStr) return null;
-                const today = new Date(getTodayDateStr() + 'T12:00:00');
-                const pastDate = new Date(dateStr + 'T12:00:00');
-                return Math.floor((today - pastDate) / (1000 * 60 * 60 * 24));
-            };
 
             const updateCloud = (updates) => {
                 if (!user || !db) return;
@@ -360,18 +349,8 @@
                 setLogs(updated); updateCloud({ logs: updated }); showToast("Grade limpa!");
             };
 
-            const onInputFocus = () => {
-                if (!isMobileDevice()) return;
-                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                setIsKeyboardVisible(true); setForceShowNav(false);
-            };
-
-            const onInputBlur = () => {
-                if (!isMobileDevice()) return;
-                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-                setIsKeyboardVisible(false); 
-                setForceShowNav(false);
-            };
+            const onInputFocus = () => { if (isMobileDevice()) setIsKeyboardVisible(true); };
+            const onInputBlur = () => { if (isMobileDevice()) setIsKeyboardVisible(false); };
 
             const handleKeyDown = (e, dayIdx, doseNum) => {
                 const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -407,11 +386,11 @@
                         showToast("Instalação iniciada!");
                     }
                 } else {
-                    showToast("Abra o menu do Chrome e clique em 'Instalar Aplicativo'.", "error");
+                    showToast("Prompt indisponível. Use o menu do navegador.", "error");
                 }
             };
 
-            // --- EFFECTS ---
+            // --- Effects ---
             useEffect(() => {
                 const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
                 return () => unsub();
@@ -439,9 +418,7 @@
 
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
-                    setTimeout(() => {
-                        todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 100);
+                    setTimeout(() => { todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
                 }
             }, [activeTab]);
 
@@ -451,7 +428,6 @@
                 return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             }, []);
 
-            // --- RENDER ---
             if (authLoading) return <div className="min-h-screen bg-zinc-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
 
             if (!user) {
@@ -529,8 +505,8 @@
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
 
-                                {/* Botão de Instalação no final da Dashboard */}
-                                <button onClick={handleInstallApp} className="w-full py-4 mt-4 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
+                                {/* Botão de Instalação posicionado por último na Dashboard */}
+                                <button onClick={handleInstallApp} className="w-full py-4 mt-2 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
                                     <span className="mr-2"><IconDevice /></span> INSTALAR APLICATIVO
                                 </button>
                             </div>
