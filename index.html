@@ -13,7 +13,6 @@
     
     <title>App Med - Gestão Cloud</title>
     
-    <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -70,9 +69,13 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // Ativar Persistência Offline do Firestore (Funciona em ficheiro único)
-        db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-            console.warn('Persistência Offline:', err.code);
+        // Ativar Persistência Offline (Crítico para Rule 3)
+        db.enablePersistence().catch((err) => {
+            if (err.code === 'failed-precondition') {
+                console.warn('Persistência falhou: Múltiplas abas abertas.');
+            } else if (err.code === 'unimplemented') {
+                console.warn('Persistência falhou: Navegador não suportado.');
+            }
         });
 
         // --- Ícones Globais ---
@@ -95,6 +98,7 @@
         const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
 
+        // --- Componente de Notificação ---
         const ToastComponent = ({ toast }) => {
             if (!toast) return null;
             const isError = toast.type === 'error';
@@ -127,7 +131,10 @@
         };
 
         const App = () => {
+            // --- CONSTANTES ---
             const estoqueInicialBase = 54;
+
+            // --- ESTADOS ---
             const [user, setUser] = useState(null);
             const [authLoading, setAuthLoading] = useState(true);
             const [emailInput, setEmailInput] = useState('');
@@ -135,7 +142,7 @@
             const [isRegisterMode, setIsRegisterMode] = useState(false);
             const [authError, setAuthError] = useState('');
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [status, setStatus] = useState('Modo Offline Ativo 🔋'); 
+            const [status, setStatus] = useState('Modo Offline Ativo'); // Melhorado para feedback
             const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
             const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
             const [chartType, setChartType] = useState('weekly');
@@ -150,6 +157,8 @@
             const fileInputRef = useRef(null);
             const todayRowRef = useRef(null);
             const toastTimeout = useRef(null);
+
+            // --- CÁLCULOS ---
 
             const getTodayDateStr = () => {
                 const d = new Date();
@@ -229,6 +238,8 @@
                 return items;
             }, [logs]);
 
+            // --- FUNÇÕES DE INTERAÇÃO ---
+
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -246,13 +257,14 @@
 
             const updateCloud = (updates) => {
                 if (!user || !db) return;
+                // Rule 1: Caminho obrigatório
                 db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('profile').set({ 
                     logs: updates.logs || logs, 
                     replenishments: updates.replenishments || replenishments,
                     lastUpdate: new Date().toISOString()
                 }, { merge: true })
-                .then(() => setStatus('Sincronizado ✅'))
-                .catch(() => setStatus('Modo Offline Ativo 🔋'));
+                .then(() => setStatus('Sincronizado'))
+                .catch(() => setStatus('Erro Sinc.'));
             };
 
             const handleBackup = () => {
@@ -420,11 +432,16 @@
                 } 
             };
 
+            // --- EFFECTS ---
+
+            // Effect 1: Auth Listener (Rule 3)
             useEffect(() => {
                 const initAuth = async () => {
                     const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     if (token) {
-                        await auth.signInWithCustomToken(token).catch(() => {});
+                        await auth.signInWithCustomToken(token).catch(() => auth.signInAnonymously());
+                    } else {
+                        // signInAnonymously() as fallback is already handled by login UI if needed
                     }
                 };
                 initAuth();
@@ -432,6 +449,7 @@
                 return () => unsub();
             }, []);
 
+            // Effect 2: Data Sourcing (Rule 3: Guarded by user)
             useEffect(() => {
                 if (!user) return;
                 
@@ -444,11 +462,13 @@
                         const data = doc.data();
                         if (data.logs) setLogs(data.logs);
                         if (data.replenishments) setReplenishments(data.replenishments);
+                        setStatus('Online (Sinc)');
                     } else {
                         updateCloud({ logs, replenishments });
                     }
                 }, (error) => {
-                    console.log("Modo Offline Ativo");
+                    console.log("Firebase Error:", error);
+                    setStatus('Offline (Local)');
                 });
                 return () => unsub();
             }, [user]);
@@ -466,6 +486,8 @@
                 window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
                 return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             }, []);
+
+            // --- RENDER ---
 
             if (authLoading) return <div className="min-h-screen bg-zinc-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
 
