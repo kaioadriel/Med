@@ -9,12 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27272a">
     
-    <!-- Links de Ícone para Navegador e iOS -->
-    <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png">
-    <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png">
-    
-    <!-- Manifest PWA ajustado para ícones não-ajustáveis (evita bordas brancas no Android) -->
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%5D%7D'>
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
     
     <title>App Med - Gestão Cloud</title>
     
@@ -57,8 +52,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        const APP_ICON_URL = "https://med.kaioadriel.com.br/icone/images.png";
-
         // --- Configuração do Firebase ---
         const firebaseConfig = {
             apiKey: "AIzaSyCVuPb0tji1Xd3qgzGsAVW-X4GyRwQpSdo",
@@ -72,7 +65,7 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // --- Ícones ---
+        // --- Ícones Globais ---
         const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
         const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
         const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
@@ -92,7 +85,7 @@
         const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
         const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
 
-        // --- Notificação ---
+        // --- Componente de Notificação ---
         const ToastComponent = ({ toast }) => {
             if (!toast) return null;
             const isError = toast.type === 'error';
@@ -125,8 +118,10 @@
         };
 
         const App = () => {
+            // --- CONSTANTES ---
             const estoqueInicialBase = 54;
 
+            // --- ESTADOS ---
             const [user, setUser] = useState(null);
             const [authLoading, setAuthLoading] = useState(true);
             const [emailInput, setEmailInput] = useState('');
@@ -150,7 +145,8 @@
             const todayRowRef = useRef(null);
             const toastTimeout = useRef(null);
 
-            // --- Cálculos ---
+            // --- CÁLCULOS ---
+
             const getTodayDateStr = () => {
                 const d = new Date();
                 const offset = d.getTimezoneOffset() * 60000;
@@ -173,6 +169,12 @@
                 return days;
             }, []);
 
+            const getLogsValue = (dateStr) => {
+                if (dateStr > getTodayDateStr()) return 0;
+                const log = logs[dateStr];
+                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+            };
+
             const statsCalculated = useMemo(() => {
                 const allEntries = Object.values(logs);
                 const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
@@ -186,24 +188,19 @@
                 let data = []; let totalGeral = 0;
                 const today = new Date(); today.setHours(0,0,0,0);
                 const formatD = (d) => { const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
-                const getVal = (dateStr) => {
-                    if (dateStr > getTodayDateStr()) return 0;
-                    const log = logs[dateStr];
-                    return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
-                };
 
                 if (chartType === 'weekly') {
-                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
+                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
-                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getVal(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
+                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getLogsValue(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
                 } else if (chartType === 'monthly') {
-                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
+                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
-                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getVal(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
+                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getLogsValue(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
                 } else if (chartType === 'yearly') {
                     let cYear = today.getFullYear(); let cMonth = today.getMonth(); let monthsData = [];
-                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getVal(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
-                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getVal(date); });
+                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getLogsValue(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
+                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getLogsValue(date); });
                     data.push({ name: '<', Total: sumAnt, isSpecial: true }); data = [...data, ...monthsData];
                 }
                 return { data, total: totalGeral };
@@ -228,7 +225,8 @@
                 return items;
             }, [logs]);
 
-            // --- Funções ---
+            // --- FUNÇÕES DE INTERAÇÃO ---
+
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 if (toastTimeout.current) clearTimeout(toastTimeout.current);
@@ -237,12 +235,19 @@
 
             const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+            const calculateDaysAgo = (dateStr) => {
+                if (!dateStr) return null;
+                const today = new Date(getTodayDateStr() + 'T12:00:00');
+                const pastDate = new Date(dateStr + 'T12:00:00');
+                return Math.floor((today - pastDate) / (1000 * 60 * 60 * 24));
+            };
+
             const updateCloud = (updates) => {
                 if (!user || !db) return;
                 db.collection('medicacao_users').doc(user.uid).update({ 
                     logs: updates.logs || logs, 
                     replenishments: updates.replenishments || replenishments 
-                }).catch(() => setStatus('Erro na Nuvem'));
+                }).catch(() => setStatus('Erro Cloud'));
             };
 
             const handleBackup = () => {
@@ -349,25 +354,50 @@
                 setLogs(updated); updateCloud({ logs: updated }); showToast("Grade limpa!");
             };
 
-            const onInputFocus = () => { if (isMobileDevice()) setIsKeyboardVisible(true); };
-            const onInputBlur = () => { if (isMobileDevice()) setIsKeyboardVisible(false); };
+            const onInputFocus = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(true); setForceShowNav(false);
+            };
+
+            const onInputBlur = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(false); 
+                setForceShowNav(false);
+            };
 
             const handleKeyDown = (e, dayIdx, doseNum) => {
                 const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
                 if (!keys.includes(e.key)) return;
+
                 let nextDayIdx = dayIdx;
                 let nextDoseNum = doseNum;
+
                 if (e.key === 'ArrowRight') {
-                    if (doseNum < 3) nextDoseNum++;
-                    else if (dayIdx < calendarDays.length - 1) { nextDayIdx++; nextDoseNum = 1; }
+                    if (doseNum < 3) {
+                        nextDoseNum++;
+                    } else if (dayIdx < calendarDays.length - 1) {
+                        nextDayIdx++;
+                        nextDoseNum = 1;
+                    }
                 } else if (e.key === 'ArrowLeft') {
-                    if (doseNum > 1) nextDoseNum--;
-                    else if (dayIdx > 0) { nextDayIdx--; nextDoseNum = 3; }
+                    if (doseNum > 1) {
+                        nextDoseNum--;
+                    } else if (dayIdx > 0) {
+                        nextDayIdx--;
+                        nextDoseNum = 3;
+                    }
                 } else if (e.key === 'ArrowDown') {
-                    if (dayIdx < calendarDays.length - 1) nextDayIdx++;
+                    if (dayIdx < calendarDays.length - 1) {
+                        nextDayIdx++;
+                    }
                 } else if (e.key === 'ArrowUp') {
-                    if (dayIdx > 0) nextDayIdx--;
+                    if (dayIdx > 0) {
+                        nextDayIdx--;
+                    }
                 }
+
                 if (nextDayIdx !== dayIdx || nextDoseNum !== doseNum) {
                     e.preventDefault();
                     const targetDate = calendarDays[nextDayIdx].dateStr;
@@ -377,6 +407,7 @@
                 }
             };
 
+            // Função para forçar a instalação do app
             const handleInstallApp = async () => { 
                 if (deferredPrompt) { 
                     deferredPrompt.prompt(); 
@@ -386,11 +417,12 @@
                         showToast("Instalação iniciada!");
                     }
                 } else {
-                    showToast("Prompt indisponível. Use o menu do navegador.", "error");
+                    showToast("O instalador não está pronto. Tente usar 'Adicionar à tela de início' no menu do Chrome.", "error");
                 }
             };
 
-            // --- Effects ---
+            // --- EFFECTS ---
+
             useEffect(() => {
                 const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
                 return () => unsub();
@@ -418,15 +450,23 @@
 
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
-                    setTimeout(() => { todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+                    setTimeout(() => {
+                        todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
                 }
             }, [activeTab]);
 
+            // Captura o evento de instalação do Chrome
             useEffect(() => {
-                const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+                const handleBeforeInstallPrompt = (e) => { 
+                    e.preventDefault(); 
+                    setDeferredPrompt(e); 
+                };
                 window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
                 return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             }, []);
+
+            // --- RENDER ---
 
             if (authLoading) return <div className="min-h-screen bg-zinc-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -435,7 +475,7 @@
                     <div className="min-h-screen bg-zinc-800 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
                         <ToastComponent toast={toast} />
                         <div className="w-full max-w-xs space-y-8">
-                            <img src={APP_ICON_URL} className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" />
+                            <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" />
                             <h1 className="text-4xl font-black italic tracking-tighter text-white mb-1">APP MED</h1>
                             <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
                             <form onSubmit={handleAuth} className="space-y-4 text-left">
@@ -458,7 +498,7 @@
                     <header className="bg-zinc-800 text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] shadow-2xl sticky top-0 z-40 border-b-4 border-teal-400">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div className="flex items-center">
-                                <img src={APP_ICON_URL} className="w-10 h-10 mr-3 brightness-110" alt="Logo" />
+                                <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-10 h-10 mr-3 brightness-110" alt="Logo" />
                                 <div>
                                     <h1 className="text-3xl font-black italic tracking-tighter leading-none">APP MED</h1>
                                     <div className="flex items-center space-x-1 mt-1">
@@ -481,7 +521,12 @@
                                 <div className="bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] shadow-sm border border-white text-center mt-2">
                                     <p className="text-zinc-400 text-[10px] font-black uppercase">Estoque Real</p>
                                     <p className={`text-5xl font-black mt-2 mb-4 drop-shadow-sm ${statsCalculated.estoque < 0 ? 'text-rose-500' : 'text-teal-500'}`}>{statsCalculated.estoque}</p>
-                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-zinc-800 text-white py-4 rounded-2xl text-[12px] font-black flex items-center justify-center shadow-lg w-full"><span className="mr-2 text-teal-300"><IconPlus /></span> REGISTRAR COMPRA</button>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-zinc-800 text-white py-4 rounded-2xl text-[12px] font-black flex items-center justify-center shadow-lg w-full mb-3"><span className="mr-2 text-teal-300"><IconPlus /></span> REGISTRAR COMPRA</button>
+                                    
+                                    {/* Botão de Instalação Forçada */}
+                                    <button onClick={handleInstallApp} className="w-full py-4 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
+                                        <span className="mr-2"><IconDevice /></span> INSTALAR APLICATIVO
+                                    </button>
                                 </div>
 
                                 <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] shadow-sm border border-white">
@@ -504,11 +549,6 @@
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/80 border border-white text-zinc-600 rounded-[2rem] text-[10px] font-black uppercase flex items-center justify-center shadow-sm"><span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar</button>
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-
-                                {/* Botão de Instalação posicionado por último na Dashboard */}
-                                <button onClick={handleInstallApp} className="w-full py-4 mt-2 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
-                                    <span className="mr-2"><IconDevice /></span> INSTALAR APLICATIVO
-                                </button>
                             </div>
                         )}
 
@@ -521,17 +561,19 @@
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
                                         const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
                                         const runningStock = estoqueInicialBase + statsCalculated.totalEntrada - totalSaidaAteData;
+
                                         const rowClass = day.isPast ? 'bg-stone-50' : day.isToday ? 'bg-teal-50 shadow-md' : 'bg-white';
                                         const dateBoxClass = day.isPast ? 'bg-stone-200 text-stone-500' : day.isToday ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600';
                                         let badgeClass = total > 0 ? (day.isPast ? 'bg-stone-400 text-white' : 'bg-zinc-800 text-white') : 'bg-stone-100 text-stone-400';
                                         if (runningStock <= 0 && !day.isPast) {
                                             badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.5)] animate-pulse';
                                         }
+
                                         return (
                                             <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-[1.25rem] border ${rowClass}`}>
                                                 <div className="flex flex-col gap-1 w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5"><IconDeleteRow /></button>
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5" title="Inserir linha"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5" title="Excluir linha"><IconDeleteRow /></button>
                                                 </div>
                                                 <div className={`h-11 w-10 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
                                                 <div className="flex-1 flex justify-center gap-1.5">
@@ -553,7 +595,7 @@
                                                 <div className="w-8 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
                                                 </div>
-                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1"><IconX /></button></div>
+                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1" title="Limpar dia"><IconX /></button></div>
                                             </div>
                                         );
                                     })}
