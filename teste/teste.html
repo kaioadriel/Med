@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#27272a">
+    
+    <!-- Links de Ícone para Navegador e iOS -->
+    <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png">
+    <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png">
+    
+    <!-- Manifest PWA ajustado para ícones não-ajustáveis (evita bordas brancas no Android) -->
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2327272a%22%2C%22theme_color%22%3A%22%2327272a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%22%7D%5D%7D'>
+    
+    <title>App Med - Gestão Cloud</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+            background-color: #fafaf9; 
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(162, 60%, 92%, 0.8) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(250, 60%, 94%, 0.8) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .tab-active { transform: scale(1.1); color: #0d9488; font-weight: 900; filter: drop-shadow(0 4px 6px rgba(20, 184, 166, 0.2)); }
+        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='%2352525b' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>"); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%; }
+        html { scroll-behavior: smooth; }
+        
+        /* Melhorias visuais */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+        }
+        
+        .glass-card-dark {
+            background: rgba(39, 39, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-modern {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-modern:active {
+            transform: scale(0.96);
+        }
+        
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn-modern:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .input-modern {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1.5px solid rgba(20, 184, 166, 0.2);
+        }
+        
+        .input-modern:focus {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(20, 184, 166, 0.6);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        
+        .card-shadow-lg {
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+        
+        .badge-modern {
+            transition: all 0.3s ease;
+        }
+        
+        .badge-modern:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="text-zinc-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const APP_ICON_URL = "https://med.kaioadriel.com.br/icone/images.png";
+
+        // --- Configuração do Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVuPb0tji1Xd3qgzGsAVW-X4GyRwQpSdo",
+            authDomain: "medicacao-afb43.firebaseapp.com",
+            projectId: "medicacao-afb43",
+            storageBucket: "medicacao-afb43.firebasestorage.app",
+            messagingSenderId: "106132279676",
+            appId: "1:106132279676:web:eb94017be76a71f67b14f9"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // --- Ícones ---
+        const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
+        const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
+        const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
+        const IconPlus = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+        const IconCloud = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.4-1.9-4.3-4.2-4.5C17.3 6.6 14.4 4 11 4 7.6 4 4.8 6.6 4.2 10.1 1.9 10.3 0 12.3 0 14.7 0 17.1 1.9 19 4.3 19h13.2Z"/></svg>;
+        const IconX = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const IconBag = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>;
+        const IconDownload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const IconUpload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+        const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
+        const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
+        const IconMinus = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconLogout = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
+        const IconAlertCircle = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+        const IconGoogle = () => <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+        const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
+
+        // --- Notificação ---
+        const ToastComponent = ({ toast }) => {
+            if (!toast) return null;
+            const isError = toast.type === 'error';
+            return (
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-slide-up w-full max-w-xs px-4">
+                    <div className={`flex items-center p-4 rounded-2xl card-shadow-lg border backdrop-blur-md ${isError ? 'bg-rose-50/95 border-rose-200 text-rose-600' : 'bg-teal-50/95 border-teal-200 text-teal-700'}`}>
+                        {isError ? <IconAlertCircle /> : <IconCheck />}
+                        <span className="ml-3 font-bold text-sm leading-tight">{toast.message}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const ManualBarChart = ({ data }) => {
+            const maxVal = Math.max(...data.map(d => d.Total), 1);
+            const textClass = data.length > 8 ? "text-[8px]" : "text-[10px]";
+            return (
+                <div className="flex items-end justify-between h-full pt-2 pb-2 px-1 gap-1">
+                    {data.map((d, i) => (
+                        <div key={i} className="flex flex-col items-center justify-end h-full flex-1 min-w-0">
+                            <span className={`${textClass} font-black text-zinc-700 mb-1 truncate w-full text-center`}>{d.Total > 0 ? d.Total : ''}</span>
+                            <div className="w-full max-w-[28px] rounded-t-sm sm:rounded-t-md transition-all duration-500"
+                                style={{ height: `${(d.Total / maxVal) * 100}%`, backgroundColor: d.isSpecial ? '#a78bfa' : (d.Total > 0 ? '#14b8a6' : '#f5f5f4'), minHeight: d.Total > 0 ? '6px' : '3px' }}>
+                            </div>
+                            <span className={`${textClass} font-bold ${d.isSpecial ? 'text-violet-400' : 'text-zinc-400'} mt-1 truncate w-full text-center leading-tight`}>{d.name}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const estoqueInicialBase = 54;
+
+            const [user, setUser] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [emailInput, setEmailInput] = useState('');
+            const [passwordInput, setPasswordInput] = useState('');
+            const [isRegisterMode, setIsRegisterMode] = useState(false);
+            const [authError, setAuthError] = useState('');
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [status, setStatus] = useState('Controle de Doses');
+            const [logs, setLogs] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_logs') || '{}'));
+            const [replenishments, setReplenishments] = useState(() => JSON.parse(localStorage.getItem('tramal_app_final_supply') || '[]'));
+            const [chartType, setChartType] = useState('weekly');
+            const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+            const [forceShowNav, setForceShowNav] = useState(false);
+            const [showSupplyModal, setShowSupplyModal] = useState(false);
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: '', isScheduled: false });
+            const [toast, setToast] = useState(null);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+            const keyboardTimeoutRef = useRef(null);
+            const fileInputRef = useRef(null);
+            const todayRowRef = useRef(null);
+            const toastTimeout = useRef(null);
+
+            // --- Cálculos ---
+            const getTodayDateStr = () => {
+                const d = new Date();
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            };
+
+            const calendarDays = useMemo(() => {
+                const days = [];
+                for (let i = -3; i <= 60; i++) {
+                    const d = new Date(); d.setDate(d.getDate() + i);
+                    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    days.push({ 
+                        dateStr, 
+                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3), 
+                        isToday: i === 0, 
+                        isPast: i < 0 
+                    });
+                }
+                return days;
+            }, []);
+
+            const statsCalculated = useMemo(() => {
+                const allEntries = Object.values(logs);
+                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
+                const todayStr = getTodayDateStr();
+                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
+                return { previsao: estoqueInicialBase + totalEntrada - totalSaidaGeral, estoque: estoqueInicialBase + totalEntrada - totalSaidaAteHoje, totalEntrada };
+            }, [logs, replenishments, estoqueInicialBase]);
+
+            const chartDataCalculated = useMemo(() => {
+                let data = []; let totalGeral = 0;
+                const today = new Date(); today.setHours(0,0,0,0);
+                const formatD = (d) => { const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
+                const getVal = (dateStr) => {
+                    if (dateStr > getTodayDateStr()) return 0;
+                    const log = logs[dateStr];
+                    return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+                };
+
+                if (chartType === 'weekly') {
+                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
+                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getVal(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
+                } else if (chartType === 'monthly') {
+                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getVal(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
+                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getVal(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
+                } else if (chartType === 'yearly') {
+                    let cYear = today.getFullYear(); let cMonth = today.getMonth(); let monthsData = [];
+                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getVal(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
+                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getVal(date); });
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); data = [...data, ...monthsData];
+                }
+                return { data, total: totalGeral };
+            }, [logs, chartType]);
+
+            const historyItemsCalculated = useMemo(() => {
+                const todayStr = getTodayDateStr();
+                const pastLogs = Object.values(logs).filter(l => l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0);
+                if (pastLogs.length === 0) return [];
+                const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                while (currDate >= oldestDateObj) {
+                    const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                    if (total > 0) {
+                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                        emptyStreak = []; items.push({ type: 'log', log, isEditable: logCount < 5 }); logCount++;
+                    } else { emptyStreak.push(log); }
+                    currDate.setDate(currDate.getDate() - 1);
+                }
+                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                return items;
+            }, [logs]);
+
+            // --- Funções ---
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                toastTimeout.current = setTimeout(() => setToast(null), 3000);
+            };
+
+            const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            const updateCloud = (updates) => {
+                if (!user || !db) return;
+                db.collection('medicacao_users').doc(user.uid).update({ 
+                    logs: updates.logs || logs, 
+                    replenishments: updates.replenishments || replenishments 
+                }).catch(() => setStatus('Erro na Nuvem'));
+            };
+
+            const handleBackup = () => {
+                const data = JSON.stringify({ logs, replenishments });
+                const blob = new Blob([data], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+                a.download = `backup_med_${getTodayDateStr()}.json`; a.click();
+                showToast("Backup salvo!");
+            };
+
+            const handleRestore = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments);
+                        updateCloud(data); showToast("Restauração concluída!", "success");
+                    } catch (err) { showToast("Erro no arquivo.", "error"); }
+                };
+                reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const handleAuth = async (e) => {
+                e.preventDefault(); setAuthError('');
+                try {
+                    if (isRegisterMode) await auth.createUserWithEmailAndPassword(emailInput, passwordInput);
+                    else await auth.signInWithEmailAndPassword(emailInput, passwordInput);
+                    showToast("Sucesso!", "success");
+                } catch (err) { setAuthError('E-mail ou senha inválidos.'); }
+            };
+
+            const handleGoogleLogin = async () => {
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await auth.signInWithPopup(provider);
+                    showToast("Login Google realizado!", "success");
+                } catch (err) { if (err.code !== 'auth/popup-closed-by-user') setAuthError('Erro no Login Google.'); }
+            };
+
+            const handleLogout = () => auth.signOut();
+
+            const handleSupply = () => {
+                if (!supplyData.amount) { showToast("Insira a quantidade.", "error"); return; }
+                let updated;
+                if (supplyData.id) {
+                    updated = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, isScheduled: supplyData.isScheduled } : r);
+                } else {
+                    updated = [...replenishments, { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled, id: Date.now() }];
+                }
+                setReplenishments(updated); updateCloud({ replenishments: updated }); setShowSupplyModal(false);
+                setSupplyData({ id: null, amount: '', date: '', isScheduled: false });
+                showToast("Registro salvo!");
+            };
+
+            const confirmPurchase = (id) => {
+                const updated = replenishments.map(r => r.id === id ? { ...r, isScheduled: false, date: getTodayDateStr() } : r);
+                setReplenishments(updated); updateCloud({ replenishments: updated });
+                showToast("Compra confirmada!", "success");
+            };
+
+            const deletePurchase = (id) => {
+                const updated = replenishments.filter(r => r.id !== id);
+                setReplenishments(updated); updateCloud({ replenishments: updated });
+                showToast("Excluído.", "error");
+            };
+
+            const handleInputChange = (dateStr, field, value) => {
+                const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
+                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
+                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
+            };
+
+            const handleInsertRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = calendarDays.length - 1; i > idx; i--) {
+                    const prev = calendarDays[i-1].dateStr; const curr = calendarDays[i].dateStr;
+                    if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[targetDate]; setLogs(newLogs); updateCloud({ logs: newLogs });
+            };
+
+            const handleDeleteRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = idx; i < calendarDays.length - 1; i++) {
+                    const curr = calendarDays[i].dateStr; const next = calendarDays[i+1].dateStr;
+                    if (newLogs[next]) newLogs[curr] = { ...newLogs[next], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[calendarDays[calendarDays.length - 1].dateStr]; setLogs(newLogs); updateCloud({ logs: newLogs });
+            };
+
+            const handleClearRow = (dateStr) => {
+                const updated = { ...logs }; delete updated[dateStr]; 
+                setLogs(updated); updateCloud({ logs: updated });
+            };
+
+            const handleClearAll = () => {
+                const today = getTodayDateStr(); const updated = {};
+                Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
+                setLogs(updated); updateCloud({ logs: updated }); showToast("Grade limpa!");
+            };
+
+            const onInputFocus = () => { if (isMobileDevice()) setIsKeyboardVisible(true); };
+            const onInputBlur = () => { if (isMobileDevice()) setIsKeyboardVisible(false); };
+
+            const handleKeyDown = (e, dayIdx, doseNum) => {
+                const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+                if (!keys.includes(e.key)) return;
+                let nextDayIdx = dayIdx;
+                let nextDoseNum = doseNum;
+                if (e.key === 'ArrowRight') {
+                    if (doseNum < 3) nextDoseNum++;
+                    else if (dayIdx < calendarDays.length - 1) { nextDayIdx++; nextDoseNum = 1; }
+                } else if (e.key === 'ArrowLeft') {
+                    if (doseNum > 1) nextDoseNum--;
+                    else if (dayIdx > 0) { nextDayIdx--; nextDoseNum = 3; }
+                } else if (e.key === 'ArrowDown') {
+                    if (dayIdx < calendarDays.length - 1) nextDayIdx++;
+                } else if (e.key === 'ArrowUp') {
+                    if (dayIdx > 0) nextDayIdx--;
+                }
+                if (nextDayIdx !== dayIdx || nextDoseNum !== doseNum) {
+                    e.preventDefault();
+                    const targetDate = calendarDays[nextDayIdx].dateStr;
+                    const targetId = `dose-${targetDate}-${nextDoseNum}`;
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) targetEl.focus();
+                }
+            };
+
+            const handleInstallApp = async () => { 
+                if (deferredPrompt) { 
+                    deferredPrompt.prompt(); 
+                    const { outcome } = await deferredPrompt.userChoice; 
+                    if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                        showToast("Instalação iniciada!");
+                    }
+                } else {
+                    showToast("Prompt indisponível. Use o menu do navegador.", "error");
+                }
+            };
+
+            const calculateDaysAgo = (dateStr) => {
+                const today = getTodayDateStr();
+                const d1 = new Date(today + 'T12:00:00');
+                const d2 = new Date(dateStr + 'T12:00:00');
+                return Math.floor((d1 - d2) / (1000 * 60 * 60 * 24));
+            };
+
+            // --- Effects ---
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
+                return () => unsub();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                localStorage.setItem('tramal_app_final_logs', JSON.stringify(logs));
+                localStorage.setItem('tramal_app_final_supply', JSON.stringify(replenishments));
+            }, [logs, replenishments, user]);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                const unsub = db.collection('medicacao_users').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.logs) setLogs(data.logs);
+                        if (data.replenishments) setReplenishments(data.replenishments);
+                    } else {
+                        db.collection('medicacao_users').doc(user.uid).set({ logs, replenishments });
+                    }
+                }, (error) => console.log("Firebase Error:", error));
+                return () => unsub();
+            }, [user]);
+
+            useEffect(() => {
+                if (activeTab === 'agenda' && todayRowRef.current) {
+                    setTimeout(() => { todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+                }
+            }, [activeTab]);
+
+            useEffect(() => {
+                const handleBeforeInstallPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+                window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }, []);
+
+            if (authLoading) return <div className="min-h-screen header-gradient flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
+
+            if (!user) {
+                return (
+                    <div className="min-h-screen header-gradient flex flex-col items-center justify-center p-6 animate-fade relative text-center">
+                        <ToastComponent toast={toast} />
+                        <div className="w-full max-w-xs space-y-8">
+                            <img src={APP_ICON_URL} className="w-24 h-24 mx-auto mb-6 drop-shadow-2xl" alt="Logo" />
+                            <div>
+                                <h1 className="text-4xl font-black italic tracking-tighter text-white mb-2">APP MED</h1>
+                                <p className="text-xs font-semibold text-teal-300">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
+                            </div>
+                            <form onSubmit={handleAuth} className="space-y-4 text-left">
+                                <input type="email" required className="w-full input-modern rounded-2xl p-4 text-center text-sm font-semibold text-zinc-800 outline-none placeholder:text-zinc-400 transition-all" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Seu e-mail" />
+                                <input type="password" required className="w-full input-modern rounded-2xl p-4 text-center text-lg font-black text-zinc-800 tracking-[0.2em] outline-none placeholder:text-zinc-400 transition-all" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Senha" />
+                                {authError && <p className="text-rose-300 text-xs font-semibold uppercase tracking-widest text-center">{authError}</p>}
+                                <button type="submit" className="w-full py-5 btn-modern bg-teal-500 hover:bg-teal-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/30 transition-all">{isRegisterMode ? 'Registrar' : 'Entrar'}</button>
+                            </form>
+                            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-zinc-700"></div><span className="flex-shrink-0 mx-4 text-zinc-500 text-xs font-semibold uppercase tracking-widest">ou</span><div className="flex-grow border-t border-zinc-700"></div></div>
+                            <button onClick={handleGoogleLogin} className="w-full py-4 btn-modern bg-white hover:bg-zinc-50 text-zinc-800 text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg transition-all flex items-center justify-center"><span className="mr-3"><IconGoogle /></span> Login com Google</button>
+                            <button onClick={() => setIsRegisterMode(!isRegisterMode)} className="text-xs font-semibold text-zinc-400 hover:text-teal-300 transition-colors uppercase tracking-widest mt-4 block mx-auto">{isRegisterMode ? 'Já tenho conta' : 'Criar uma conta'}</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <ToastComponent toast={toast} />
+                    <header className="header-gradient text-white pt-8 pb-10 px-6 rounded-b-[3.5rem] card-shadow-lg sticky top-0 z-40 border-b-4 border-teal-400">
+                        <div className="max-w-md mx-auto flex justify-between items-center">
+                            <div className="flex items-center">
+                                <img src={APP_ICON_URL} className="w-10 h-10 mr-3 brightness-110" alt="Logo" />
+                                <div>
+                                    <h1 className="text-3xl font-black italic tracking-tighter leading-none">APP MED</h1>
+                                    <div className="flex items-center space-x-1 mt-1">
+                                        <span className="text-teal-300"><IconCloud /></span>
+                                        <p className="text-xs font-semibold uppercase text-teal-300">{status}</p>
+                                        <button onClick={handleLogout} className="ml-2 p-1 text-rose-400 hover:text-rose-300 transition-colors" title="Sair"><IconLogout /></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={`p-3 px-5 rounded-[2rem] border backdrop-blur-md transition-all ${statsCalculated.previsao < 0 ? 'bg-rose-500/15 border-rose-400/50 text-rose-300' : 'bg-teal-500/15 border-teal-400/50 text-teal-200'}`}>
+                                <span className="block text-xs font-semibold uppercase opacity-70 text-center">Previsão</span>
+                                <span className="text-3xl font-black leading-none drop-shadow-sm">{statsCalculated.previsao}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-md mx-auto px-4 -mt-4 relative z-10 flex-1 w-full pb-32">
+                        {activeTab === 'dashboard' && (
+                            <div className="space-y-4 pt-2 animate-fade">
+                                <div className="glass-card p-5 rounded-[2.5rem] card-shadow text-center mt-2">
+                                    <p className="text-zinc-500 text-xs font-semibold uppercase">Estoque Real</p>
+                                    <p className={`text-5xl font-black mt-3 mb-4 drop-shadow-sm ${statsCalculated.estoque < 0 ? 'text-rose-500' : 'text-teal-500'}`}>{statsCalculated.estoque}</p>
+                                </div>
+
+                                <div className="glass-card p-6 rounded-[2.5rem] card-shadow">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Gráfico de Uso</h3>
+                                        <div className="flex bg-stone-100 rounded-lg p-0.5 border border-stone-200">
+                                            <button onClick={() => setChartType('weekly')} className={`px-2 py-1 text-[8px] font-semibold uppercase rounded-md transition-all ${chartType === 'weekly' ? 'bg-white shadow-sm text-violet-500 font-bold' : 'text-zinc-400'}`}>Semanal</button>
+                                            <button onClick={() => setChartType('monthly')} className={`px-2 py-1 text-[8px] font-semibold uppercase rounded-md transition-all ${chartType === 'monthly' ? 'bg-white shadow-sm text-violet-500 font-bold' : 'text-zinc-400'}`}>Mensal</button>
+                                            <button onClick={() => setChartType('yearly')} className={`px-2 py-1 text-[8px] font-semibold uppercase rounded-md transition-all ${chartType === 'yearly' ? 'bg-white shadow-sm text-violet-500 font-bold' : 'text-zinc-400'}`}>Anual</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-violet-50 text-violet-600 py-3 rounded-2xl text-center mb-4 border border-violet-100/50">
+                                        <span className="text-xl font-black">{chartDataCalculated.total} cápsulas</span>
+                                    </div>
+                                    <div className="h-48 w-full"><ManualBarChart data={chartDataCalculated.data} /></div>
+                                </div>
+                                
+                                <div className="flex space-x-3 mt-4">
+                                    <button onClick={handleBackup} className="flex-1 py-4 btn-modern glass-card text-zinc-600 rounded-[2rem] text-xs font-semibold uppercase flex items-center justify-center card-shadow hover:bg-white/95 transition-all"><span className="mr-2 text-violet-400"><IconDownload /></span> Backup</button>
+                                    <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 btn-modern glass-card text-zinc-600 rounded-[2rem] text-xs font-semibold uppercase flex items-center justify-center card-shadow hover:bg-white/95 transition-all"><span className="mr-2 text-teal-400"><IconUpload /></span> Restaurar</button>
+                                </div>
+                                <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+
+                                <button onClick={handleInstallApp} className="w-full py-4 btn-modern mt-2 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl text-xs font-semibold uppercase tracking-widest flex items-center justify-center card-shadow-lg shadow-teal-500/30 transition-all">
+                                    <span className="mr-2"><IconDevice /></span> INSTALAR APLICATIVO
+                                </button>
+                            </div>
+                        )}
+
+                        {activeTab === 'agenda' && (
+                            <div className="glass-card rounded-[2.5rem] card-shadow-lg overflow-hidden mt-4 animate-fade">
+                                <div className="p-5 glass-card-dark text-white flex justify-between items-center"><h2 className="text-xs font-semibold uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><button onClick={handleClearAll} className="text-xs font-semibold uppercase text-rose-300 hover:text-rose-200 transition-colors">Limpar Tudo</button></div>
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto px-2 pt-4 pb-10 scrollbar-hide">
+                                    {calendarDays.map((day, dIdx) => {
+                                        const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
+                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                        const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                                        const runningStock = estoqueInicialBase + statsCalculated.totalEntrada - totalSaidaAteData;
+                                        const rowClass = day.isPast ? 'bg-stone-50' : day.isToday ? 'bg-teal-50 shadow-md' : 'bg-white';
+                                        const dateBoxClass = day.isPast ? 'bg-stone-200 text-stone-500' : day.isToday ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600';
+                                        let badgeClass = total > 0 ? (day.isPast ? 'bg-stone-400 text-white' : 'bg-zinc-800 text-white') : 'bg-stone-100 text-stone-400';
+                                        if (runningStock <= 0 && !day.isPast) {
+                                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.5)] animate-pulse';
+                                        }
+                                        return (
+                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-[1.25rem] border ${rowClass}`}>
+                                                <div className="flex flex-col gap-1 w-6 shrink-0">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition-colors"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition-colors"><IconDeleteRow /></button>
+                                                </div>
+                                                <div className={`h-11 w-10 rounded-[0.8rem] flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
+                                                <div className="flex-1 flex justify-center gap-1.5">
+                                                    {[1,2,3].map(num => (
+                                                        <input 
+                                                            key={num} 
+                                                            id={`dose-${day.dateStr}-${num}`}
+                                                            type="number" 
+                                                            placeholder="-" 
+                                                            className="w-full max-w-[40px] h-10 text-center rounded-[0.8rem] font-bold border input-modern outline-none transition-all" 
+                                                            value={log[`d${num}`]} 
+                                                            onFocus={onInputFocus} 
+                                                            onBlur={onInputBlur} 
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num)}
+                                                            onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div className="w-8 flex justify-center shrink-0 relative">
+                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-bold rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
+                                                </div>
+                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-400 transition-colors"><IconX /></button></div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="space-y-3 pt-4 animate-fade">
+                                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest italic ml-2">Histórico de Registros</h2>
+                                <div className="space-y-2 pb-10">
+                                    {historyItemsCalculated.map((item) => item.type === 'empty_group' ? (
+                                        <div key={item.startDate} className="p-4 rounded-[1.25rem] border bg-stone-50/50 text-stone-400 text-xs font-semibold uppercase text-center my-2">Vazio: {item.count} dias</div>
+                                    ) : (
+                                        <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-[1.25rem] border glass-card card-shadow">
+                                            <button onClick={() => handleClearRow(item.log.data)} className="bg-rose-50 text-rose-400 rounded-md p-1.5 hover:bg-rose-100 transition-colors"><IconMinus /></button>
+                                            <div className="h-11 w-10 rounded-[0.8rem] flex flex-col items-center justify-center bg-stone-200 text-stone-500 border"><span className="text-[9px] uppercase">{new Date(item.log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3)}</span><span className="text-[16px]">{item.log.data.split('-')[2]}</span></div>
+                                            <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-[0.8rem] font-bold border ${item.isEditable ? 'input-modern' : 'bg-stone-100 text-stone-300 border-stone-200'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                            <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-xs font-bold rounded-xl bg-stone-400 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'purchases' && (
+                            <div className="space-y-3 pt-4 animate-fade">
+                                <div className="flex justify-between items-center px-2 mb-4">
+                                    <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest italic mt-1">Compras e Agendamentos</h2>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: true }); setShowSupplyModal(true); }} className="bg-amber-100/70 text-amber-600 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center card-shadow border border-amber-200/50 hover:bg-amber-100 transition-colors"><IconClock /><span className="ml-1 uppercase">Agendar</span></button>
+                                </div>
+                                <div className="space-y-3 pb-10">
+                                    {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id).map(compra => {
+                                        const days = calculateDaysAgo(compra.date);
+                                        return (
+                                        <div key={compra.id} className={`p-3 rounded-[2rem] card-shadow border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/40 border-amber-100/60' : 'glass-card'}`}>
+                                            <div className="flex items-center flex-1 min-w-0">
+                                                <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mr-3 hover:bg-rose-100 transition-colors"><IconMinus /></button>
+                                                <div className={`h-12 w-12 rounded-2xl flex flex-col items-center justify-center mr-4 font-bold border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200/50' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span><span className="text-lg leading-none">{compra.date.split('-')[2]}</span></div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <p className={`text-lg font-bold leading-none mb-1 ${compra.isScheduled ? 'text-amber-500' : 'text-teal-500'}`}>{compra.amount} <span className="text-xs opacity-70 uppercase font-semibold">Cápsulas</span></p>
+                                                    <div className="mt-1.5"><span className={`text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-stone-100 text-stone-400')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                {compra.isScheduled && <button onClick={() => confirmPurchase(compra.id)} className="px-4 py-2 btn-modern bg-teal-400 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold uppercase card-shadow transition-all">Confirmar</button>}
+                                                <button onClick={() => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, isScheduled: compra.isScheduled }); setShowSupplyModal(true); }} className="px-4 py-2 btn-modern bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-semibold uppercase card-shadow transition-all">Editar</button>
+                                            </div>
+                                        </div>
+                                    )})}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {showSupplyModal && (
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 bg-zinc-900/80 backdrop-blur-sm animate-fade">
+                            <div className="glass-card w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 card-shadow-lg border-t-8 border-teal-400 animate-slide-up">
+                                <h2 className="text-xl font-bold text-center italic mb-6 uppercase text-zinc-800">{supplyData.id ? (supplyData.isScheduled ? 'Ajustar Agenda' : 'Editar Compra') : (supplyData.isScheduled ? 'Novo Agendamento' : 'Novo Registro')}</h2>
+                                <div className="space-y-4 mb-8">
+                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/60 border-amber-100' : 'bg-teal-50/60 border-teal-100'} p-4 rounded-3xl border`}><label className={`text-xs font-semibold uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-500' : 'text-teal-600'}`}>Qtd (Cápsulas)</label><input type="number" placeholder="0" className={`w-full text-4xl font-black text-center input-modern bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`} value={supplyData.amount} onChange={e => setSupplyData({...supplyData, amount: e.target.value})} /></div>
+                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/60 border-amber-100' : 'bg-teal-50/60 border-teal-100'} p-4 rounded-3xl border`}><label className={`text-xs font-semibold uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-500' : 'text-teal-600'}`}>Data</label><input type="date" className={`w-full text-lg font-bold text-center input-modern bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`} value={supplyData.date} onChange={e => setSupplyData({...supplyData, date: e.target.value})} /></div>
+                                    <label className="flex items-center space-x-3 p-4 rounded-3xl border border-zinc-200 bg-zinc-50/50 cursor-pointer hover:bg-zinc-50 transition-colors"><input type="checkbox" checked={supplyData.isScheduled} onChange={e => setSupplyData({...supplyData, isScheduled: e.target.checked})} className="w-5 h-5 rounded accent-teal-500" /><span className="text-sm font-semibold text-zinc-700">Marcar como agendado</span></label>
+                                </div>
+                                <div className="flex space-x-3"><button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 btn-modern text-xs font-semibold text-zinc-600 bg-stone-100 hover:bg-stone-200 rounded-2xl uppercase transition-all">Voltar</button><button onClick={handleSupply} className={`flex-[2] py-4 btn-modern text-white text-xs font-semibold rounded-2xl uppercase card-shadow transition-all ${supplyData.isScheduled ? 'bg-amber-400 hover:bg-amber-500' : 'bg-teal-500 hover:bg-teal-600'}`}>Salvar</button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    <nav className={`fixed bottom-0 left-0 right-0 glass-card-dark border-t border-zinc-700/50 flex justify-between items-center py-2 px-4 sm:px-6 pb-10 card-shadow-lg z-40 transition-transform duration-500 ${(isKeyboardVisible && !forceShowNav) ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'dashboard' ? 'text-teal-400 scale-110 font-bold' : 'text-slate-400 hover:text-slate-300'}`}><IconHome /><span className="text-[9px] mt-1 uppercase">Início</span></button>
+                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'agenda' ? 'text-teal-400 scale-110 font-bold' : 'text-slate-400 hover:text-slate-300'}`}><IconTable /><span className="text-[9px] mt-1 uppercase">Lançar</span></button>
+                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'history' ? 'text-teal-400 scale-110 font-bold' : 'text-slate-400 hover:text-slate-300'}`}><IconHistory /><span className="text-[9px] mt-1 uppercase">Registros</span></button>
+                        <button onClick={()=>setActiveTab('purchases')} className={`flex flex-col items-center p-2 sm:p-3 rounded-2xl transition-all ${activeTab === 'purchases' ? 'text-teal-400 scale-110 font-bold' : 'text-slate-400 hover:text-slate-300'}`}><IconBag /><span className="text-[9px] mt-1 uppercase">Compras</span></button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
