@@ -160,8 +160,17 @@
 
             const [activeMedicationId, setActiveMedicationId] = useState(1);
 
-                        const updateActiveMedication = (updates) => {
-                setMedications(prev => prev.map(m => m.id === activeMedicationId ? { ...m, ...updates } : m));
+                        const syncData = (updatedMeds) => {
+                setMedications(updatedMeds);
+                if (user && db) {
+                    db.collection('medicacao_users').doc(user.uid).update({ medications: updatedMeds })
+                        .catch(err => console.error("Erro ao sincronizar:", err));
+                }
+            };
+
+            const updateActiveMedication = (updates) => {
+                const updatedMeds = medications.map(m => m.id === activeMedicationId ? { ...m, ...updates } : m);
+                syncData(updatedMeds);
             };
 
             const activeMedication = useMemo(() => {
@@ -170,6 +179,9 @@
 
             const logs = activeMedication?.logs || {};
             const replenishments = activeMedication?.replenishments || [];
+
+            const setLogs = (newLogs) => updateActiveMedication({ logs: newLogs });
+            const setReplenishments = (newRepls) => updateActiveMedication({ replenishments: newRepls });
             const [chartType, setChartType] = useState('weekly');
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
             const [forceShowNav, setForceShowNav] = useState(false);
@@ -350,13 +362,7 @@
                 return Math.floor((today - pastDate) / (1000 * 60 * 60 * 24));
             };
 
-            const updateCloud = (updates) => {
-                if (!user || !db) return;
-                db.collection('medicacao_users').doc(user.uid).update({ 
-                    logs: updates.logs || logs, 
-                    replenishments: updates.replenishments || replenishments 
-                }).catch(() => setStatus('Erro Cloud'));
-            };
+
 
             const handleBackup = () => {
                 const data = JSON.stringify({ logs, replenishments });
@@ -372,8 +378,13 @@
                 reader.onload = (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        if (data.logs) setLogs(data.logs); if (data.replenishments) setReplenishments(data.replenishments);
-                        updateCloud(data); showToast("Restauração concluída!", "success");
+                        if (data.medications) {
+                            syncData(data.medications);
+                        } else if (data.logs || data.replenishments) {
+                            const updatedMeds = medications.map(m => m.id === activeMedicationId ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : m);
+                            syncData(updatedMeds);
+                        }
+                        showToast("Restauração concluída!", "success");
                     } catch (err) { showToast("Erro no arquivo.", "error"); }
                 };
                 reader.readAsText(file); e.target.value = ''; 
@@ -406,27 +417,27 @@
                 } else {
                     updated = [...replenishments, { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled, id: Date.now() }];
                 }
-                setReplenishments(updated); updateCloud({ replenishments: updated }); setShowSupplyModal(false);
+                setReplenishments(updated);  setShowSupplyModal(false);
                 setSupplyData({ id: null, amount: '', date: '', isScheduled: false });
                 showToast("Registro salvo!");
             };
 
             const confirmPurchase = (id) => {
                 const updated = replenishments.map(r => r.id === id ? { ...r, isScheduled: false, date: getTodayDateStr() } : r);
-                setReplenishments(updated); updateCloud({ replenishments: updated });
+                setReplenishments(updated); 
                 showToast("Compra confirmada!", "success");
             };
 
             const deletePurchase = (id) => {
                 const updated = replenishments.filter(r => r.id !== id);
-                setReplenishments(updated); updateCloud({ replenishments: updated });
+                setReplenishments(updated); 
                 showToast("Excluído.", "error");
             };
 
             const handleInputChange = (dateStr, field, value) => {
                 const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
                 const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
-                setLogs(updatedLogs); updateCloud({ logs: updatedLogs });
+                setLogs(updatedLogs); 
             };
 
             const handleInsertRow = (targetDate) => {
@@ -437,7 +448,7 @@
                     if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
                     else delete newLogs[curr];
                 }
-                delete newLogs[targetDate]; updateActiveMedication({ logs: newLogs }); updateCloud({ logs: newLogs });
+                delete newLogs[targetDate]; updateActiveMedication({ logs: newLogs }); 
             };
 
             const handleDeleteRow = (targetDate) => {
@@ -448,18 +459,18 @@
                     if (newLogs[next]) newLogs[curr] = { ...newLogs[next], data: curr };
                     else delete newLogs[curr];
                 }
-                delete newLogs[calendarDays[calendarDays.length - 1].dateStr]; updateActiveMedication({ logs: newLogs }); updateCloud({ logs: newLogs });
+                delete newLogs[calendarDays[calendarDays.length - 1].dateStr]; updateActiveMedication({ logs: newLogs }); 
             };
 
             const handleClearRow = (dateStr) => {
                 const updated = { ...logs }; delete updated[dateStr]; 
-                setLogs(updated); updateCloud({ logs: updated });
+                setLogs(updated); 
             };
 
             const handleClearAll = () => {
                 const today = getTodayDateStr(); const updated = {};
                 Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
-                setLogs(updated); updateCloud({ logs: updated }); showToast("Grade limpa!");
+                setLogs(updated);  showToast("Grade limpa!");
             };
 
             const onInputFocus = () => {
@@ -595,14 +606,7 @@
                 return () => unsub();
             }, [user]);
 
-            useEffect(() => {
-                if (!user || !db) return;
-                db.collection('medicacao_users').doc(user.uid).update({ medications }).catch(err => {
-                    if (err.code === 'not-found') {
-                        db.collection('medicacao_users').doc(user.uid).set({ medications });
-                    }
-                });
-            }, [medications, user]);
+
 
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
