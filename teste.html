@@ -261,18 +261,17 @@
                     )
                     : false;
 
-                const diasRestantes = mediaDiaria > 0
-                    ? Math.floor(statsCalculated.estoque / mediaDiaria)
+                const registrosComDose = Object.entries(logs)
+                    .map(([dateStr, log]) => ({
+                        data: log.data || dateStr,
+                        total: (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0)
+                    }))
+                    .filter(item => item.total > 0 && item.data)
+                    .sort((a, b) => b.data.localeCompare(a.data));
+
+                const terminoData = registrosComDose.length
+                    ? new Date(registrosComDose[0].data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
                     : null;
-                
-                let previsaoTerminoData = null;
-                if (diasRestantes !== null) {
-                    const dataFim = new Date();
-                    // Ajustar para o fuso de SP antes de adicionar dias
-                    const spNow = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
-                    spNow.setDate(spNow.getDate() + diasRestantes);
-                    previsaoTerminoData = spNow.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                }
 
                 const todayStr = getTodayDateStr();
                 let fimEstoqueData = null;
@@ -340,7 +339,7 @@
                     mediaSemanal,
                     tendencia,
                     fimEstoque: fimEstoqueData,
-                    previsaoTermino: previsaoTerminoData,
+                    termino: terminoData,
                     consumoMesAtual,
                     consumoMesAnterior
                 };
@@ -780,9 +779,9 @@
                                         </div>
 
                                         <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Previsão Término</p>
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Término</p>
                                             <p className="text-xl font-black text-rose-500">
-                                                {advancedStats.previsaoTermino || '--'}
+                                                {advancedStats.termino || '--'}
                                             </p>
                                         </div>
 
