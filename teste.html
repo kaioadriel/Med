@@ -191,6 +191,7 @@
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showMedicationModal, setShowMedicationModal] = useState(false);
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
+            const [historySearch, setHistorySearch] = useState('');
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -387,6 +388,21 @@
                 return items;
             }, [logs]);
 
+            const historyFilteredItems = useMemo(() => {
+                const query = historySearch.trim().toLowerCase();
+                if (!query) return historyItemsCalculated;
+
+                return historyItemsCalculated.filter(item => {
+                    if (item.type !== 'log') return false;
+                    const log = item.log;
+                    const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                    const dataBR = new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR');
+                    const weekday = new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' });
+                    const searchable = `${log.data} ${dataBR} ${weekday} ${log.d1 || ''} ${log.d2 || ''} ${log.d3 || ''} ${total}`.toLowerCase();
+                    return searchable.includes(query);
+                });
+            }, [historyItemsCalculated, historySearch]);
+
             // --- FUNÇÕES DE INTERAÇÃO (exatamente iguais) ---
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
@@ -405,12 +421,45 @@
 
 
 
+            const downloadTextFile = (content, filename, type = 'text/plain;charset=utf-8') => {
+                const blob = new Blob([content], { type });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            };
+
+            const csvCell = (value) => {
+                const text = value === null || value === undefined ? '' : String(value);
+                return `"${text.replace(/"/g, '""')}"`;
+            };
+
+            const htmlCell = (value) => {
+                const text = value === null || value === undefined ? '' : String(value);
+                return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            };
+
+            const formatDateBR = (dateStr) => {
+                if (!dateStr) return '';
+                return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR');
+            };
+
+            const getLogTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0);
+
             const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments });
-                const blob = new Blob([data], { type: 'application/json' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-                a.download = `backup_med_${getTodayDateStr()}.json`; a.click();
-                showToast("Backup salvo!");
+                const data = JSON.stringify({
+                    version: 2,
+                    app: 'App Med',
+                    exportedAt: new Date().toISOString(),
+                    activeMedicationId,
+                    medications,
+                    // Mantém compatibilidade com backups antigos do medicamento ativo
+                    logs,
+                    replenishments
+                }, null, 2);
+                downloadTextFile(data, `backup_med_completo_${getTodayDateStr()}.json`, 'application/json;charset=utf-8');
+                showToast("Backup completo salvo!");
             };
 
             const handleRestore = (e) => {
@@ -429,6 +478,127 @@
                     } catch (err) { showToast("Erro no arquivo.", "error"); }
                 };
                 reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const buildExportRows = () => {
+                const rows = [];
+                medications.forEach(med => {
+                    Object.values(med.logs || {})
+                        .sort((a, b) => (a.data || '').localeCompare(b.data || ''))
+                        .forEach(log => {
+                            const total = getLogTotal(log);
+                            if (total > 0) {
+                                rows.push({
+                                    tipo: 'Dose',
+                                    medicamento: med.name,
+                                    data: log.data,
+                                    dataBR: formatDateBR(log.data),
+                                    d1: log.d1 || '',
+                                    d2: log.d2 || '',
+                                    d3: log.d3 || '',
+                                    total,
+                                    quantidade: '',
+                                    status: ''
+                                });
+                            }
+                        });
+
+                    (med.replenishments || [])
+                        .slice()
+                        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                        .forEach(item => {
+                            rows.push({
+                                tipo: item.isScheduled ? 'Compra Agendada' : 'Compra Confirmada',
+                                medicamento: med.name,
+                                data: item.date,
+                                dataBR: formatDateBR(item.date),
+                                d1: '',
+                                d2: '',
+                                d3: '',
+                                total: '',
+                                quantidade: item.amount || '',
+                                status: item.isScheduled ? 'Agendado' : 'Confirmado'
+                            });
+                        });
+                });
+                return rows.sort((a, b) => (a.data || '').localeCompare(b.data || '') || a.medicamento.localeCompare(b.medicamento));
+            };
+
+            const handleExportCSV = () => {
+                const header = ['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total Doses', 'Quantidade Compra', 'Status'];
+                const lines = [header.map(csvCell).join(';')];
+                buildExportRows().forEach(row => {
+                    lines.push([
+                        row.tipo,
+                        row.medicamento,
+                        row.dataBR,
+                        row.d1,
+                        row.d2,
+                        row.d3,
+                        row.total,
+                        row.quantidade,
+                        row.status
+                    ].map(csvCell).join(';'));
+                });
+                downloadTextFile(lines.join('\n'), `app_med_export_${getTodayDateStr()}.csv`, 'text/csv;charset=utf-8');
+                showToast("CSV exportado!");
+            };
+
+            const handleExportPDF = () => {
+                const rows = buildExportRows();
+                const htmlRows = rows.map(row => `
+                    <tr>
+                        <td>${htmlCell(row.tipo)}</td>
+                        <td>${htmlCell(row.medicamento)}</td>
+                        <td>${htmlCell(row.dataBR)}</td>
+                        <td>${htmlCell(row.d1)}</td>
+                        <td>${htmlCell(row.d2)}</td>
+                        <td>${htmlCell(row.d3)}</td>
+                        <td>${htmlCell(row.total)}</td>
+                        <td>${htmlCell(row.quantidade)}</td>
+                        <td>${htmlCell(row.status)}</td>
+                    </tr>
+                `).join('');
+
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    showToast("Permita pop-ups para exportar PDF.", "error");
+                    return;
+                }
+
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8" />
+                        <title>App Med - Exportação PDF</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; color: #1e293b; padding: 24px; }
+                            h1 { margin: 0; font-size: 26px; }
+                            p { color: #64748b; margin-top: 4px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 11px; }
+                            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+                            th { background: #0f766e; color: white; }
+                            tr:nth-child(even) { background: #f8fafc; }
+                            @media print { button { display: none; } body { padding: 0; } }
+                        </style>
+                    </head>
+                    <body>
+                        <button onclick="window.print()" style="padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right;">Salvar como PDF</button>
+                        <h1>APP MED</h1>
+                        <p>Exportação completa gerada em ${new Date().toLocaleString('pt-BR')}</p>
+                        <table>
+                            <thead>
+                                <tr><th>Tipo</th><th>Medicamento</th><th>Data</th><th>Dose 1</th><th>Dose 2</th><th>Dose 3</th><th>Total</th><th>Compra</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>${htmlRows || '<tr><td colspan="9">Nenhum registro encontrado.</td></tr>'}</tbody>
+                        </table>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                showToast("PDF pronto para salvar!");
             };
 
             const handleAuth = async (e) => {
@@ -470,6 +640,7 @@
             };
 
             const deletePurchase = (id) => {
+                if (!confirm("Excluir esta compra/agendamento? Esta ação não pode ser desfeita.")) return;
                 const updated = replenishments.filter(r => r.id !== id);
                 setReplenishments(updated); 
                 showToast("Excluído.", "error");
@@ -493,6 +664,7 @@
             };
 
             const handleDeleteRow = (targetDate) => {
+                if (!confirm("Excluir esta linha e puxar os próximos lançamentos para cima?")) return;
                 const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = idx; i < calendarDays.length - 1; i++) {
@@ -504,11 +676,13 @@
             };
 
             const handleClearRow = (dateStr) => {
+                if (!confirm("Limpar os lançamentos deste dia?")) return;
                 const updated = { ...logs }; delete updated[dateStr]; 
                 setLogs(updated); 
             };
 
             const handleClearAll = () => {
+                if (!confirm("Limpar todos os lançamentos de hoje e dos próximos dias? Os registros antigos serão mantidos.")) return;
                 const today = getTodayDateStr(); const updated = {};
                 Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
                 setLogs(updated);  showToast("Grade limpa!");
@@ -568,27 +742,38 @@
             };
 
                         const handleMedicationSave = () => {
-                if (!medicationFormData.name || !medicationFormData.estoqueInicial) {
+                if (!medicationFormData.name || medicationFormData.estoqueInicial === '') {
                     showToast("Preencha todos os campos", "error");
                     return;
                 }
-                const newMed = {
-                    id: medicationFormData.id || Date.now(),
-                    name: medicationFormData.name,
-                    estoqueInicial: Number(medicationFormData.estoqueInicial),
-                    logs: medicationFormData.id ? activeMedication.logs : {},
-                    replenishments: medicationFormData.id ? activeMedication.replenishments : []
-                };
+
+                if (Number(medicationFormData.estoqueInicial) < 0) {
+                    showToast("O estoque inicial não pode ser negativo.", "error");
+                    return;
+                }
 
                 if (medicationFormData.id) {
-                    setMedications(prev => prev.map(m => m.id === medicationFormData.id ? { ...m, ...newMed } : m));
+                    const updatedMeds = medications.map(m => m.id === medicationFormData.id ? {
+                        ...m,
+                        name: medicationFormData.name.trim(),
+                        estoqueInicial: Number(medicationFormData.estoqueInicial)
+                    } : m);
+                    syncData(updatedMeds);
                     showToast("Medicamento atualizado!");
+                    setShowMedicationModal('list');
                 } else {
-                    setMedications(prev => [...prev, newMed]);
+                    const newMed = {
+                        id: Date.now(),
+                        name: medicationFormData.name.trim(),
+                        estoqueInicial: Number(medicationFormData.estoqueInicial),
+                        logs: {},
+                        replenishments: []
+                    };
+                    syncData([...medications, newMed]);
                     setActiveMedicationId(newMed.id);
                     showToast("Medicamento cadastrado!");
+                    setShowMedicationModal('list');
                 }
-                setShowMedicationModal(false);
             };
 
             const deleteMedication = (id) => {
@@ -598,7 +783,7 @@
                 }
                 if (confirm("Tem certeza que deseja excluir este medicamento? Todos os dados serão perdidos.")) {
                     const newMeds = medications.filter(m => m.id !== id);
-                    setMedications(newMeds);
+                    syncData(newMeds);
                     if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
                     showToast("Medicamento excluído");
                 }
@@ -627,7 +812,7 @@
                 if (!user) return;
                 
                 localStorage.setItem('app_med_medications', JSON.stringify(medications));
-            }, [logs, replenishments, user]);
+            }, [medications, user]);
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -807,6 +992,10 @@
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Backup</button>
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Restaurar</button>
                                 </div>
+                                <div className="flex space-x-3 mt-3">
+                                    <button onClick={handleExportCSV} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconDownload /></span> Exportar CSV</button>
+                                    <button onClick={handleExportPDF} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-rose-500"><IconDownload /></span> Exportar PDF</button>
+                                </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
                             </div>
                         )}
@@ -865,8 +1054,19 @@
                         {activeTab === 'history' && (
                             <div className="space-y-4 pt-4 animate-fade">
                                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-2">Histórico de Registros</h2>
+                                <div className="glass-card p-3 rounded-3xl">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscar no histórico</label>
+                                    <div className="flex gap-2 mt-2">
+                                        <input type="text" className="flex-1 bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Data, dia, dose ou total" />
+                                        {historySearch && <button onClick={() => setHistorySearch('')} className="px-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar</button>}
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{historyFilteredItems.filter(item => item.type === 'log').length} resultado(s)</p>
+                                </div>
                                 <div className="space-y-2 pb-10">
-                                    {historyItemsCalculated.map((item) => item.type === 'empty_group' ? (
+                                    {historyFilteredItems.length === 0 && (
+                                        <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhum registro encontrado</div>
+                                    )}
+                                    {historyFilteredItems.map((item) => item.type === 'empty_group' ? (
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
                                         <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
@@ -922,14 +1122,21 @@
                                         </div>
                                         <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
                                             {medications.map(med => (
-                                                <div key={med.id} className="flex items-center justify-between p-3 bg-white/50 rounded-2xl border border-slate-100">
-                                                    <div className="flex-1 min-w-0 mr-2">
-                                                        <p className="font-black text-slate-700 truncate">{med.name}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Início: {med.estoqueInicial} cáps.</p>
+                                                <div key={med.id} className={`p-3 bg-white/70 rounded-2xl border ${activeMedicationId === med.id ? 'border-teal-300 shadow-sm' : 'border-slate-100'}`}>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className="font-black text-slate-700 truncate">{med.name}</p>
+                                                                {activeMedicationId === med.id && <span className="bg-teal-100 text-teal-700 text-[7px] font-black uppercase px-2 py-0.5 rounded-full">Ativo</span>}
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Estoque inicial: {med.estoqueInicial} cáps.</p>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Registros: {Object.keys(med.logs || {}).length} dia(s) · Compras: {(med.replenishments || []).length}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="p-2 text-teal-600 hover:bg-teal-50 rounded-xl transition-colors"><IconEdit /></button>
-                                                        <button onClick={() => deleteMedication(med.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"><IconTrash /></button>
+                                                    <div className="grid grid-cols-3 gap-2 mt-3">
+                                                        <button onClick={() => { setActiveMedicationId(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
+                                                        <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="py-2 bg-slate-100 text-slate-600 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconEdit /> Editar</button>
+                                                        <button onClick={() => deleteMedication(med.id)} className="py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconTrash /> Excluir</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -942,6 +1149,9 @@
                                             <h3 className="text-lg font-black text-slate-800">{medicationFormData.id ? 'Editar Medicação' : 'Nova Medicação'}</h3>
                                             <button onClick={() => setShowMedicationModal('list')} className="text-slate-400"><IconX /></button>
                                         </div>
+                                        <p className="text-[10px] text-slate-400 font-bold leading-relaxed mb-4 bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                                            Edite apenas nome e estoque inicial. Os lançamentos, compras e histórico desta medicação serão preservados.
+                                        </p>
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do Medicamento</label>
