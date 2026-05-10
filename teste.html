@@ -1,1 +1,996 @@
-T
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e293b">
+    
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231e293b%22%2C%22theme_color%22%3A%22%231e293b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    
+    <title>App Med - Gestão Cloud</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700;14..32,800;14..32,900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+            background: linear-gradient(145deg, #f1f5f9 0%, #e6edf5 100%);
+            background-attachment: fixed;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .tab-active { transform: scale(1.05); color: #0f766e; font-weight: 800; filter: drop-shadow(0 2px 4px rgba(15, 118, 110, 0.2)); }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='%23475569' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>"); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03), 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.02);
+        }
+        input, button { transition: all 0.2s ease; }
+        .btn-teal {
+            background: linear-gradient(105deg, #0f766e 0%, #14b8a6 100%);
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);
+        }
+        .btn-teal:active { transform: scale(0.97); }
+    </style>
+</head>
+<body class="text-slate-700">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- Configuração do Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVuPb0tji1Xd3qgzGsAVW-X4GyRwQpSdo",
+            authDomain: "medicacao-afb43.firebaseapp.com",
+            projectId: "medicacao-afb43",
+            storageBucket: "medicacao-afb43.firebasestorage.app",
+            messagingSenderId: "106132279676",
+            appId: "1:106132279676:web:eb94017be76a71f67b14f9"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // --- Ícones Globais (mantidos idênticos aos originais) ---
+        const IconHome = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
+        const IconTable = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path></svg>;
+        const IconHistory = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>;
+        const IconPlus = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+        const IconCloud = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5 0-2.4-1.9-4.3-4.2-4.5C17.3 6.6 14.4 4 11 4 7.6 4 4.8 6.6 4.2 10.1 1.9 10.3 0 12.3 0 14.7 0 17.1 1.9 19 4.3 19h13.2Z"/></svg>;
+        const IconX = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const IconBag = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>;
+        const IconDownload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const IconUpload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+        const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
+        const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
+        const IconMinus = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconLogout = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
+        const IconAlertCircle = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+        const IconGoogle = () => <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+        const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const IconDevice = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>;
+        const IconEdit = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
+        const IconTrash = () => <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+        const IconSettings = () => <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+
+        // --- Componente de Notificação ---
+        const ToastComponent = ({ toast }) => {
+            if (!toast) return null;
+            const isError = toast.type === 'error';
+            return (
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[200] animate-slide-up w-full max-w-xs px-4">
+                    <div className={`flex items-center p-4 rounded-2xl shadow-xl border backdrop-blur-md ${isError ? 'bg-rose-50/90 border-rose-200 text-rose-600' : 'bg-teal-50/90 border-teal-200 text-teal-700'}`}>
+                        {isError ? <IconAlertCircle /> : <IconCheck />}
+                        <span className="ml-3 font-semibold text-sm leading-tight">{toast.message}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const ManualBarChart = ({ data }) => {
+            const maxVal = Math.max(...data.map(d => d.Total), 1);
+            const textClass = data.length > 8 ? "text-[8px]" : "text-[10px]";
+            return (
+                <div className="flex items-end justify-between h-full pt-2 pb-2 px-1 gap-1">
+                    {data.map((d, i) => (
+                        <div key={i} className="flex flex-col items-center justify-end h-full flex-1 min-w-0">
+                            <span className={`${textClass} font-extrabold text-slate-600 mb-1 whitespace-nowrap overflow-visible w-max max-w-none text-center`}>{d.Total > 0 ? d.Total : ''}</span>
+                            <div className="w-full max-w-[28px] rounded-sm sm:rounded-md transition-all duration-500"
+                                style={{ height: `${(d.Total / maxVal) * 100}%`, backgroundColor: d.isSpecial ? '#a78bfa' : (d.Total > 0 ? '#0d9488' : '#e2e8f0'), minHeight: d.Total > 0 ? '6px' : '3px' }}>
+                            </div>
+                            <span className={`${textClass} font-bold ${d.isSpecial ? 'text-violet-400' : 'text-slate-400'} mt-1 truncate w-full text-center leading-tight`}>{d.name}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const App = () => {
+            // --- CONSTANTES ---
+            
+
+            // --- ESTADOS ---
+            const [user, setUser] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [emailInput, setEmailInput] = useState('');
+            const [passwordInput, setPasswordInput] = useState('');
+            const [isRegisterMode, setIsRegisterMode] = useState(false);
+            const [authError, setAuthError] = useState('');
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [status, setStatus] = useState('Controle de Doses');
+            const [medications, setMedications] = useState(() => {
+                return JSON.parse(localStorage.getItem('app_med_medications') || JSON.stringify([
+                    {
+                        id: 1,
+                        name: 'Medicamento Principal',
+                        estoqueInicial: 54,
+                        logs: {},
+                        replenishments: []
+                    }
+                ]));
+            });
+
+            const [activeMedicationId, setActiveMedicationId] = useState(1);
+
+                        const syncData = (updatedMeds) => {
+                setMedications(updatedMeds);
+                if (user && db) {
+                    db.collection('medicacao_users').doc(user.uid).update({ medications: updatedMeds })
+                        .catch(err => console.error("Erro ao sincronizar:", err));
+                }
+            };
+
+            const updateActiveMedication = (updates) => {
+                const updatedMeds = medications.map(m => m.id === activeMedicationId ? { ...m, ...updates } : m);
+                syncData(updatedMeds);
+            };
+
+            const activeMedication = useMemo(() => {
+                return medications.find(m => m.id === activeMedicationId);
+            }, [medications, activeMedicationId]);
+
+            const logs = activeMedication?.logs || {};
+            const replenishments = activeMedication?.replenishments || [];
+
+            const setLogs = (newLogs) => updateActiveMedication({ logs: newLogs });
+            const setReplenishments = (newRepls) => updateActiveMedication({ replenishments: newRepls });
+            const [chartType, setChartType] = useState('weekly');
+            const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+            const [forceShowNav, setForceShowNav] = useState(false);
+            const [showSupplyModal, setShowSupplyModal] = useState(false);
+            const [supplyData, setSupplyData] = useState({ id: null, amount: '', date: '', isScheduled: false });
+            const [toast, setToast] = useState(null);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [showMedicationModal, setShowMedicationModal] = useState(false);
+            const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
+
+            const keyboardTimeoutRef = useRef(null);
+            const fileInputRef = useRef(null);
+            const todayRowRef = useRef(null);
+            const toastTimeout = useRef(null);
+
+            // --- CÁLCULOS (idênticos ao original) ---
+                        const getTodayDateStr = () => {
+                const now = new Date();
+                const spDate = new Intl.DateTimeFormat('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(now);
+                const [day, month, year] = spDate.split('/');
+                return `${year}-${month}-${day}`;
+            };
+
+            const calendarDays = useMemo(() => {
+                const days = [];
+                for (let i = -3; i <= 60; i++) {
+                    const d = new Date(); d.setDate(d.getDate() + i);
+                    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                    days.push({ 
+                        dateStr, 
+                        label: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), 
+                        weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3), 
+                        isToday: i === 0, 
+                        isPast: i < 0 
+                    });
+                }
+                return days;
+            }, []);
+
+            const getLogsValue = (dateStr) => {
+                if (dateStr > getTodayDateStr()) return 0;
+                const log = logs[dateStr];
+                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+            };
+
+            const statsCalculated = useMemo(() => {
+                const allEntries = Object.values(logs);
+                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
+                const todayStr = getTodayDateStr();
+                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
+                return { previsao: (activeMedication?.estoqueInicial || 0) + totalEntrada - totalSaidaGeral, estoque: (activeMedication?.estoqueInicial || 0) + totalEntrada - totalSaidaAteHoje, totalEntrada };
+            }, [logs, replenishments, (activeMedication?.estoqueInicial || 0)]);
+
+            const advancedStats = useMemo(() => {
+
+                const allLogs = Object.values(logs);
+
+                const totals = allLogs.map(log => {
+                    return (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                }).filter(v => v > 0);
+
+                const totalConsumido = totals.reduce((a,b) => a+b, 0);
+
+                const mediaDiaria = totals.length ? (totalConsumido / totals.length) : 0;
+                const mediaSemanal = mediaDiaria * 7;
+
+                const tendencia = totals.length >= 14
+                    ? (
+                        totals.slice(-7).reduce((a,b)=>a+b,0) >
+                        totals.slice(-14,-7).reduce((a,b)=>a+b,0)
+                    )
+                    : false;
+
+                const diasRestantes = mediaDiaria > 0
+                    ? Math.floor(statsCalculated.estoque / mediaDiaria)
+                    : null;
+                
+                let previsaoTerminoData = null;
+                if (diasRestantes !== null) {
+                    const dataFim = new Date();
+                    // Ajustar para o fuso de SP antes de adicionar dias
+                    const spNow = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+                    spNow.setDate(spNow.getDate() + diasRestantes);
+                    previsaoTerminoData = spNow.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                }
+
+                const todayStr = getTodayDateStr();
+                let fimEstoqueData = null;
+                let estoqueProjetado = statsCalculated.estoque;
+
+                if (estoqueProjetado <= 0) {
+                    fimEstoqueData = new Date(todayStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                } else {
+                    const diasFuturos = calendarDays
+                        .filter(day => day.dateStr > todayStr)
+                        .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+
+                    for (const day of diasFuturos) {
+                        const log = logs[day.dateStr];
+                        const totalDoDia = log
+                            ? (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0)
+                            : 0;
+
+                        estoqueProjetado -= totalDoDia;
+
+                        if (estoqueProjetado <= 0) {
+                            fimEstoqueData = new Date(day.dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                            break;
+                        }
+                    }
+                }
+
+                const hoje = new Date();
+
+                const mesAtual = hoje.getMonth();
+                const anoAtual = hoje.getFullYear();
+
+                let consumoMesAtual = 0;
+                let consumoMesAnterior = 0;
+
+                Object.values(logs).forEach(log => {
+
+                    const data = new Date(log.data + 'T12:00:00');
+
+                    const total =
+                        (Number(log.d1)||0) +
+                        (Number(log.d2)||0) +
+                        (Number(log.d3)||0);
+
+                    if (
+                        data.getMonth() === mesAtual &&
+                        data.getFullYear() === anoAtual
+                    ) {
+                        consumoMesAtual += total;
+                    }
+
+                    const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
+                    const anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+
+                    if (
+                        data.getMonth() === mesAnterior &&
+                        data.getFullYear() === anoAnterior
+                    ) {
+                        consumoMesAnterior += total;
+                    }
+                });
+
+                return {
+                    mediaDiaria,
+                    mediaSemanal,
+                    tendencia,
+                    fimEstoque: fimEstoqueData,
+                    previsaoTermino: previsaoTerminoData,
+                    consumoMesAtual,
+                    consumoMesAnterior
+                };
+
+            }, [logs, statsCalculated, calendarDays]);
+
+            const chartDataCalculated = useMemo(() => {
+                let data = []; let totalGeral = 0;
+                const today = new Date(); today.setHours(0,0,0,0);
+                const formatD = (d) => { const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().split('T')[0]; };
+
+                if (chartType === 'weekly') {
+                    let sumAnt = 0; for (let i = 13; i >= 7; i--) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
+                    for (let i = 6; i >= 0; i--) { let d = new Date(today); d.setDate(d.getDate() - i); let val = getLogsValue(formatD(d)); data.push({ name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3), Total: val }); totalGeral += val; }
+                } else if (chartType === 'monthly') {
+                    let sumAnt = 0; for(let i = 28; i < 56; i++) { let d = new Date(today); d.setDate(d.getDate() - i); sumAnt += getLogsValue(formatD(d)); }
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); 
+                    for(let w = 3; w >= 0; w--) { let sumW = 0; for(let dIdx = 0; dIdx < 7; dIdx++) { let d = new Date(today); d.setDate(d.getDate() - ((w * 7) + dIdx)); sumW += getLogsValue(formatD(d)); } data.push({ name: `Sem ${4 - w}`, Total: sumW }); totalGeral += sumW; }
+                } else if (chartType === 'yearly') {
+                    let cYear = today.getFullYear(); let cMonth = today.getMonth(); let monthsData = [];
+                    for(let i = 11; i >= 0; i--) { let d = new Date(cYear, cMonth - i, 1); let mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; let sumM = 0; Object.keys(logs).forEach(date => { if (date.startsWith(mStr)) sumM += getLogsValue(date); }); monthsData.push({ name: d.toLocaleDateString('pt-BR', { month: 'short' }).slice(0,3), Total: sumM, sortKey: mStr }); totalGeral += sumM; }
+                    let oldestM = monthsData[0].sortKey; let sumAnt = 0; Object.keys(logs).forEach(date => { if (date.slice(0, 7) < oldestM) sumAnt += getLogsValue(date); });
+                    data.push({ name: '<', Total: sumAnt, isSpecial: true }); data = [...data, ...monthsData];
+                }
+                return { data, total: totalGeral };
+            }, [logs, chartType]);
+
+            const historyItemsCalculated = useMemo(() => {
+                const todayStr = getTodayDateStr();
+                const pastLogs = Object.values(logs).filter(l => l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0);
+                if (pastLogs.length === 0) return [];
+                const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                while (currDate >= oldestDateObj) {
+                    const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                    if (total > 0) {
+                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                        emptyStreak = []; items.push({ type: 'log', log, isEditable: logCount < 5 }); logCount++;
+                    } else { emptyStreak.push(log); }
+                    currDate.setDate(currDate.getDate() - 1);
+                }
+                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                return items;
+            }, [logs]);
+
+            // --- FUNÇÕES DE INTERAÇÃO (exatamente iguais) ---
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                if (toastTimeout.current) clearTimeout(toastTimeout.current);
+                toastTimeout.current = setTimeout(() => setToast(null), 3000);
+            };
+
+            const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            const calculateDaysAgo = (dateStr) => {
+                if (!dateStr) return null;
+                const today = new Date(getTodayDateStr() + 'T12:00:00');
+                const pastDate = new Date(dateStr + 'T12:00:00');
+                return Math.floor((today - pastDate) / (1000 * 60 * 60 * 24));
+            };
+
+
+
+            const handleBackup = () => {
+                const data = JSON.stringify({ logs, replenishments });
+                const blob = new Blob([data], { type: 'application/json' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+                a.download = `backup_med_${getTodayDateStr()}.json`; a.click();
+                showToast("Backup salvo!");
+            };
+
+            const handleRestore = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.medications) {
+                            syncData(data.medications);
+                        } else if (data.logs || data.replenishments) {
+                            const updatedMeds = medications.map(m => m.id === activeMedicationId ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : m);
+                            syncData(updatedMeds);
+                        }
+                        showToast("Restauração concluída!", "success");
+                    } catch (err) { showToast("Erro no arquivo.", "error"); }
+                };
+                reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const handleAuth = async (e) => {
+                e.preventDefault(); setAuthError('');
+                try {
+                    if (isRegisterMode) await auth.createUserWithEmailAndPassword(emailInput, passwordInput);
+                    else await auth.signInWithEmailAndPassword(emailInput, passwordInput);
+                    showToast("Sucesso!", "success");
+                } catch (err) { setAuthError('E-mail ou senha inválidos.'); }
+            };
+
+            const handleGoogleLogin = async () => {
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await auth.signInWithPopup(provider);
+                    showToast("Login Google realizado!", "success");
+                } catch (err) { if (err.code !== 'auth/popup-closed-by-user') setAuthError('Erro no Login Google.'); }
+            };
+
+            const handleLogout = () => auth.signOut();
+
+            const handleSupply = () => {
+                if (!supplyData.amount) { showToast("Insira a quantidade.", "error"); return; }
+                let updated;
+                if (supplyData.id) {
+                    updated = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, isScheduled: supplyData.isScheduled } : r);
+                } else {
+                    updated = [...replenishments, { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled, id: Date.now() }];
+                }
+                setReplenishments(updated);  setShowSupplyModal(false);
+                setSupplyData({ id: null, amount: '', date: '', isScheduled: false });
+                showToast("Registro salvo!");
+            };
+
+            const confirmPurchase = (id) => {
+                const updated = replenishments.map(r => r.id === id ? { ...r, isScheduled: false, date: getTodayDateStr() } : r);
+                setReplenishments(updated); 
+                showToast("Compra confirmada!", "success");
+            };
+
+            const deletePurchase = (id) => {
+                const updated = replenishments.filter(r => r.id !== id);
+                setReplenishments(updated); 
+                showToast("Excluído.", "error");
+            };
+
+            const handleInputChange = (dateStr, field, value) => {
+                const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
+                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
+                setLogs(updatedLogs); 
+            };
+
+            const handleInsertRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = calendarDays.length - 1; i > idx; i--) {
+                    const prev = calendarDays[i-1].dateStr; const curr = calendarDays[i].dateStr;
+                    if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[targetDate]; updateActiveMedication({ logs: newLogs }); 
+            };
+
+            const handleDeleteRow = (targetDate) => {
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
+                const newLogs = { ...logs };
+                for (let i = idx; i < calendarDays.length - 1; i++) {
+                    const curr = calendarDays[i].dateStr; const next = calendarDays[i+1].dateStr;
+                    if (newLogs[next]) newLogs[curr] = { ...newLogs[next], data: curr };
+                    else delete newLogs[curr];
+                }
+                delete newLogs[calendarDays[calendarDays.length - 1].dateStr]; updateActiveMedication({ logs: newLogs }); 
+            };
+
+            const handleClearRow = (dateStr) => {
+                const updated = { ...logs }; delete updated[dateStr]; 
+                setLogs(updated); 
+            };
+
+            const handleClearAll = () => {
+                const today = getTodayDateStr(); const updated = {};
+                Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
+                setLogs(updated);  showToast("Grade limpa!");
+            };
+
+            const onInputFocus = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(true); setForceShowNav(false);
+            };
+
+            const onInputBlur = () => {
+                if (!isMobileDevice()) return;
+                if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
+                setIsKeyboardVisible(false); 
+                setForceShowNav(false);
+            };
+
+            const handleKeyDown = (e, dayIdx, doseNum) => {
+                const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+                if (!keys.includes(e.key)) return;
+
+                let nextDayIdx = dayIdx;
+                let nextDoseNum = doseNum;
+
+                if (e.key === 'ArrowRight') {
+                    if (doseNum < 3) {
+                        nextDoseNum++;
+                    } else if (dayIdx < calendarDays.length - 1) {
+                        nextDayIdx++;
+                        nextDoseNum = 1;
+                    }
+                } else if (e.key === 'ArrowLeft') {
+                    if (doseNum > 1) {
+                        nextDoseNum--;
+                    } else if (dayIdx > 0) {
+                        nextDayIdx--;
+                        nextDoseNum = 3;
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    if (dayIdx < calendarDays.length - 1) {
+                        nextDayIdx++;
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    if (dayIdx > 0) {
+                        nextDayIdx--;
+                    }
+                }
+
+                if (nextDayIdx !== dayIdx || nextDoseNum !== doseNum) {
+                    e.preventDefault();
+                    const targetDate = calendarDays[nextDayIdx].dateStr;
+                    const targetId = `dose-${targetDate}-${nextDoseNum}`;
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) targetEl.focus();
+                }
+            };
+
+                        const handleMedicationSave = () => {
+                if (!medicationFormData.name || !medicationFormData.estoqueInicial) {
+                    showToast("Preencha todos os campos", "error");
+                    return;
+                }
+                const newMed = {
+                    id: medicationFormData.id || Date.now(),
+                    name: medicationFormData.name,
+                    estoqueInicial: Number(medicationFormData.estoqueInicial),
+                    logs: medicationFormData.id ? activeMedication.logs : {},
+                    replenishments: medicationFormData.id ? activeMedication.replenishments : []
+                };
+
+                if (medicationFormData.id) {
+                    setMedications(prev => prev.map(m => m.id === medicationFormData.id ? { ...m, ...newMed } : m));
+                    showToast("Medicamento atualizado!");
+                } else {
+                    setMedications(prev => [...prev, newMed]);
+                    setActiveMedicationId(newMed.id);
+                    showToast("Medicamento cadastrado!");
+                }
+                setShowMedicationModal(false);
+            };
+
+            const deleteMedication = (id) => {
+                if (medications.length <= 1) {
+                    showToast("Você precisa de pelo menos um medicamento", "error");
+                    return;
+                }
+                if (confirm("Tem certeza que deseja excluir este medicamento? Todos os dados serão perdidos.")) {
+                    const newMeds = medications.filter(m => m.id !== id);
+                    setMedications(newMeds);
+                    if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
+                    showToast("Medicamento excluído");
+                }
+            };
+
+            const handleInstallApp = async () => { 
+                if (deferredPrompt) { 
+                    deferredPrompt.prompt(); 
+                    const { outcome } = await deferredPrompt.userChoice; 
+                    if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                        showToast("Instalação iniciada!");
+                    }
+                } else {
+                    showToast("O instalador não está pronto. Tente usar 'Adicionar à tela de início' no menu do Chrome.", "error");
+                }
+            };
+
+            // --- EFFECTS (idênticos) ---
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(u => { setUser(u); setAuthLoading(false); });
+                return () => unsub();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                
+                localStorage.setItem('app_med_medications', JSON.stringify(medications));
+            }, [logs, replenishments, user]);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                const unsub = db.collection('medicacao_users').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.medications) {
+                            setMedications(data.medications);
+                        } else if (data.logs || data.replenishments) {
+                            // Migração de dados antigos
+                            setMedications(prev => prev.map(m => m.id === 1 ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : m));
+                        }
+                    } else {
+                        db.collection('medicacao_users').doc(user.uid).set({ medications });
+                    }
+                }, (error) => console.log("Firebase Error:", error));
+                return () => unsub();
+            }, [user]);
+
+
+
+            useEffect(() => {
+                if (activeTab === 'agenda' && todayRowRef.current) {
+                    setTimeout(() => {
+                        todayRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            }, [activeTab]);
+
+            useEffect(() => {
+                const handleBeforeInstallPrompt = (e) => { 
+                    e.preventDefault(); 
+                    setDeferredPrompt(e); 
+                };
+                window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }, []);
+
+            // --- RENDER (layout modernizado) ---
+            if (authLoading) return <div className="min-h-screen bg-slate-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
+
+            if (!user) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
+                        <ToastComponent toast={toast} />
+                        <div className="w-full max-w-xs space-y-8">
+                            <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" alt="Logo" />
+                            <h1 className="text-5xl font-black italic tracking-tighter text-white mb-1">APP MED</h1>
+                            <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
+                            <form onSubmit={handleAuth} className="space-y-4 text-left">
+                                <input type="email" required className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-center text-sm font-semibold text-white outline-none focus:border-teal-400 placeholder:text-white/40 transition-colors" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="Seu e-mail" />
+                                <input type="password" required className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-center text-lg font-black text-white tracking-[0.2em] outline-none focus:border-teal-400 placeholder:text-white/40 transition-colors" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Senha" />
+                                {authError && <p className="text-rose-400 text-[10px] font-bold uppercase tracking-widest text-center">{authError}</p>}
+                                <button type="submit" className="w-full py-5 bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/30 active:scale-95 transition-all">{isRegisterMode ? 'Registrar' : 'Entrar'}</button>
+                            </form>
+                            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-white/10"></div><span className="flex-shrink-0 mx-4 text-white/40 text-[9px] font-bold uppercase tracking-widest">ou</span><div className="flex-grow border-t border-white/10"></div></div>
+                            <button onClick={handleGoogleLogin} className="w-full py-4 bg-white text-slate-800 text-xs font-black rounded-2xl uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center"><span className="mr-3"><IconGoogle /></span> Login com Google</button>
+                            <button onClick={() => setIsRegisterMode(!isRegisterMode)} className="text-[10px] font-bold text-white/60 hover:text-teal-300 transition-colors uppercase tracking-widest mt-4 block mx-auto">{isRegisterMode ? 'Já tenho conta' : 'Criar uma conta'}</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <ToastComponent toast={toast} />
+                    <header className="glass-card sticky top-0 z-40 rounded-b-3xl shadow-sm mx-0 mt-0 pt-4 pb-5 px-4">
+                        <div className="max-w-md mx-auto flex justify-between items-center gap-3">
+                            <div className="flex items-center">
+                                <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-8 h-8 mr-2 drop-shadow-sm" alt="Logo" />
+                                <div>
+                                    <h1 className="text-xl font-black italic tracking-tighter leading-none text-slate-800">APP MED</h1>
+                                    <div className="flex items-center space-x-1 mt-0.5">
+                                        <span className="text-teal-600"><IconCloud /></span>
+                                        <p className="text-[8px] font-black uppercase text-teal-600 tracking-wide">{status}</p>
+                                        <button onClick={handleLogout} className="ml-1.5 p-1 text-rose-400 hover:text-rose-500 transition-colors" title="Sair"><IconLogout /></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={`p-2.5 px-4 rounded-2xl backdrop-blur-sm transition-all shadow-sm ${statsCalculated.previsao < 0 ? 'bg-rose-50 border border-rose-200 text-rose-600' : 'bg-teal-50 border border-teal-100 text-teal-700'}`}>
+                                <span className="block text-[7px] font-black uppercase opacity-70 text-center tracking-wider">Previsão</span>
+                                <span className="text-2xl font-black leading-none">{statsCalculated.previsao}</span>
+                            </div>
+                        </div>
+                    
+                    <div className="max-w-md mx-auto mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                        {medications.map(med => (
+                            <button
+                                key={med.id}
+                                onClick={() => setActiveMedicationId(med.id)}
+                                className={`px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap border transition-all ${
+                                    activeMedicationId === med.id
+                                        ? 'bg-teal-500 text-white border-teal-500'
+                                        : 'bg-white text-slate-600 border-slate-200'
+                                }`}
+                            >
+                                {med.name}
+                            </button>
+                        ))}
+                    </div>
+
+</header>
+
+                    <main className="max-w-md mx-auto px-4 -mt-2 relative z-10 flex-1 w-full pb-32">
+                        {activeTab === 'dashboard' && (
+                            <div className="space-y-5 pt-2 animate-fade">
+                                <div className="glass-card p-5 rounded-3xl text-center mt-2">
+                                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest">Estoque Real</p>
+                                    <p className={`text-5xl font-black mt-1 mb-4 drop-shadow-sm ${statsCalculated.estoque < 0 ? 'text-rose-500' : 'text-teal-600'}`}>{statsCalculated.estoque}</p>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="btn-teal text-white py-3.5 rounded-2xl text-[11px] font-black flex items-center justify-center w-full mb-3 transition-all"><span className="mr-2 text-teal-200"><IconPlus /></span> REGISTRAR COMPRA</button>
+                                                                        <button onClick={() => { setMedicationFormData({ id: null, name: '', estoqueInicial: '' }); setShowMedicationModal(true); }} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all mb-3">
+                                        <span className="mr-2 text-teal-500"><IconPlus /></span> CADASTRAR MEDICAÇÃO
+                                    </button>
+                                    <button onClick={() => setShowMedicationModal('list')} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all mb-3">
+                                        <span className="mr-2 text-teal-500"><IconSettings /></span> VER MEDICAÇÕES
+                                    </button>
+                                    <button onClick={handleInstallApp} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all">
+                                        <span className="mr-2 text-teal-500"><IconDevice /></span> INSTALAR APLICATIVO
+                                    </button>
+                                </div>
+
+                                
+                                <div className="glass-card p-5 rounded-3xl space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Estatísticas Avançadas
+                                    </h3>
+
+                                    <div className="grid grid-cols-2 gap-3">
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média diária</p>
+                                            <p className="text-2xl font-black text-teal-600">
+                                                {advancedStats.mediaDiaria.toFixed(1)}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média semanal</p>
+                                            <p className="text-2xl font-black text-violet-600">
+                                                {advancedStats.mediaSemanal.toFixed(1)}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Fim Estoque</p>
+                                            <p className="text-xl font-black text-rose-500">
+                                                {advancedStats.fimEstoque || '--'}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Previsão Término</p>
+                                            <p className="text-xl font-black text-rose-500">
+                                                {advancedStats.previsaoTermino || '--'}
+                                            </p>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+<div className="glass-card p-5 rounded-3xl">
+                                    <div className="flex justify-between items-center mb-5">
+                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gráfico de Uso</h3>
+                                        <div className="flex bg-white/50 rounded-full p-0.5 border border-slate-100 shadow-sm">
+                                            <button onClick={() => setChartType('weekly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'weekly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Semanal</button>
+                                            <button onClick={() => setChartType('monthly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'monthly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Mensal</button>
+                                            <button onClick={() => setChartType('yearly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'yearly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Anual</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-teal-50/60 text-teal-700 py-3 rounded-2xl text-center mb-5 border border-teal-100">
+                                        <span className="text-xl font-black">{chartDataCalculated.total} cápsulas</span>
+                                    </div>
+                                    <div className="h-48 w-full"><ManualBarChart data={chartDataCalculated.data} /></div>
+                                </div>
+                                
+                                <div className="flex space-x-3 mt-2">
+                                    <button onClick={handleBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Backup</button>
+                                    <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Restaurar</button>
+                                </div>
+                                <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+                            </div>
+                        )}
+
+                        {activeTab === 'agenda' && (
+                            <div className="glass-card rounded-3xl overflow-hidden mt-3">
+                                <div className="p-4 bg-slate-800 text-white flex justify-between items-center"><h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Limpar Tudo</button></div>
+                                <div className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
+                                    {calendarDays.map((day, dIdx) => {
+                                        const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
+                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                        const totalSaidaAteData = Object.values(logs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                                        const runningStock = (activeMedication?.estoqueInicial || 0) + statsCalculated.totalEntrada - totalSaidaAteData;
+
+                                        const rowClass = day.isPast ? 'bg-slate-50/80' : day.isToday ? 'bg-teal-50/90 shadow-sm' : 'bg-white/90';
+                                        const dateBoxClass = day.isPast ? 'bg-slate-200 text-slate-500' : day.isToday ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-100 text-teal-700';
+                                        let badgeClass = total > 0 ? (day.isPast ? 'bg-slate-400 text-white' : 'bg-slate-700 text-white') : 'bg-slate-100 text-slate-400';
+                                        if (runningStock <= 0 && !day.isPast) {
+                                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse';
+                                        }
+
+                                        return (
+                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-2xl shadow-sm ${rowClass}`}>
+                                                <div className="flex flex-col gap-1 w-6 shrink-0">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                                                </div>
+                                                <div className={`h-11 w-10 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
+                                                <div className="flex-1 flex justify-center gap-1.5">
+                                                    {[1,2,3].map(num => (
+                                                        <input 
+                                                            key={num} 
+                                                            id={`dose-${day.dateStr}-${num}`}
+                                                            type="number" 
+                                                            placeholder="-" 
+                                                            className="w-full max-w-[40px] h-10 text-center rounded-xl font-black border border-slate-200 bg-white/60 focus:bg-white focus:border-teal-400 outline-none transition-all" 
+                                                            value={log[`d${num}`]} 
+                                                            onFocus={onInputFocus} 
+                                                            onBlur={onInputBlur} 
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num)}
+                                                            onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value)} 
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div className="w-8 flex justify-center shrink-0 relative">
+                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
+                                                </div>
+                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="space-y-4 pt-4 animate-fade">
+                                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-2">Histórico de Registros</h2>
+                                <div className="space-y-2 pb-10">
+                                    {historyItemsCalculated.map((item) => item.type === 'empty_group' ? (
+                                        <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
+                                    ) : (
+                                        <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
+                                            <button onClick={() => handleClearRow(item.log.data)} className="bg-rose-50 text-rose-400 rounded-md p-1.5 hover:bg-rose-100 transition"><IconMinus /></button>
+                                            <div className="h-11 w-10 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border"><span className="text-[9px] uppercase">{new Date(item.log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0,3)}</span><span className="text-[16px]">{item.log.data.split('-')[2]}</span></div>
+                                            <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-xl font-black border ${item.isEditable ? 'bg-white border-slate-200 focus:border-teal-400' : 'bg-slate-100 text-slate-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                            <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'purchases' && (
+                            <div className="space-y-4 pt-4 animate-fade">
+                                <div className="flex justify-between items-center px-2 mb-2">
+                                    <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mt-1">Compras e Agendamentos</h2>
+                                    <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-teal-100 text-teal-700 px-3 py-1.5 rounded-full text-[9px] font-black flex items-center shadow-sm hover:bg-teal-200 transition"><IconPlus /><span className="ml-1 uppercase">Registrar Compra</span></button>
+                                </div>
+                                <div className="space-y-3 pb-10">
+                                    {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id).map(compra => {
+                                        const days = calculateDaysAgo(compra.date);
+                                        return (
+                                        <div key={compra.id} className={`p-3 rounded-2xl shadow-sm border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-white/90 border-slate-100'}`}>
+                                            <div className="flex items-center flex-1 min-w-0">
+                                                <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mr-3 hover:bg-rose-100 transition"><IconMinus /></button>
+                                                <div className={`h-12 w-12 rounded-xl flex flex-col items-center justify-center mr-4 font-black border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span><span className="text-lg leading-none">{compra.date.split('-')[2]}</span></div>
+                                                <div className="flex-1 min-w-0 pr-2">
+                                                    <p className={`text-lg font-black leading-none mb-1 ${compra.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase font-bold">Cápsulas</span></p>
+                                                    <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-slate-100 text-slate-500')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                {compra.isScheduled && <button onClick={() => confirmPurchase(compra.id)} className="px-4 py-2 bg-teal-500 text-white rounded-xl text-[9px] font-black uppercase shadow-sm hover:bg-teal-600 transition">Confirmar</button>}
+                                                <button onClick={() => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, isScheduled: compra.isScheduled }); setShowSupplyModal(true); }} className="px-4 py-2 bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase shadow-sm hover:bg-slate-800 transition">Editar</button>
+                                            </div>
+                                        </div>
+                                    )})}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                                        {showMedicationModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade">
+                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowMedicationModal(false)}></div>
+                            <div className="glass-card w-full max-w-xs rounded-3xl p-6 relative animate-slide-up overflow-hidden">
+                                {showMedicationModal === 'list' ? (
+                                    <>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-lg font-black text-slate-800">Minhas Medicações</h3>
+                                            <button onClick={() => setShowMedicationModal(false)} className="text-slate-400"><IconX /></button>
+                                        </div>
+                                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
+                                            {medications.map(med => (
+                                                <div key={med.id} className="flex items-center justify-between p-3 bg-white/50 rounded-2xl border border-slate-100">
+                                                    <div className="flex-1 min-w-0 mr-2">
+                                                        <p className="font-black text-slate-700 truncate">{med.name}</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Início: {med.estoqueInicial} cáps.</p>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="p-2 text-teal-600 hover:bg-teal-50 rounded-xl transition-colors"><IconEdit /></button>
+                                                        <button onClick={() => deleteMedication(med.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"><IconTrash /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={() => { setMedicationFormData({ id: null, name: '', estoqueInicial: '' }); setShowMedicationModal('form'); }} className="w-full mt-6 py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">Novo Medicamento</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-lg font-black text-slate-800">{medicationFormData.id ? 'Editar Medicação' : 'Nova Medicação'}</h3>
+                                            <button onClick={() => setShowMedicationModal('list')} className="text-slate-400"><IconX /></button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do Medicamento</label>
+                                                <input type="text" className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={medicationFormData.name} onChange={e => setMedicationFormData({...medicationFormData, name: e.target.value})} placeholder="Ex: Tramal, Rivotril..." />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Estoque Inicial (Cápsulas)</label>
+                                                <input type="number" className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={medicationFormData.estoqueInicial} onChange={e => setMedicationFormData({...medicationFormData, estoqueInicial: e.target.value})} placeholder="Ex: 54" />
+                                            </div>
+                                            <div className="flex gap-2 pt-2">
+                                                <button onClick={() => setShowMedicationModal('list')} className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black rounded-2xl uppercase tracking-widest active:scale-95 transition-all">Voltar</button>
+                                                <button onClick={handleMedicationSave} className="flex-[2] py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">Salvar</button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {showSupplyModal && (
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 bg-slate-900/60 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 shadow-2xl border-t-8 border-teal-500 animate-slide-up">
+                                <h2 className="text-xl font-black text-center italic mb-6 uppercase text-slate-800">{supplyData.id ? (supplyData.isScheduled ? 'Ajustar Agenda' : 'Editar Compra') : (supplyData.isScheduled ? 'Novo Agendamento' : 'Novo Registro')}</h2>
+                                <div className="space-y-5 mb-8">
+                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-teal-50/80 border-teal-100'} p-4 rounded-2xl border`}><label className={`text-[10px] font-black uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>Qtd (Cápsulas)</label><input type="number" placeholder="0" className={`w-full text-4xl font-black text-center bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`} value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} /></div>
+                                    <input type="date" className={`w-full font-bold bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
+                                    <button type="button" onClick={() => setSupplyData({...supplyData, isScheduled: !supplyData.isScheduled})} className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center border transition-all active:scale-[0.99] ${supplyData.isScheduled ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                        <span className="mr-2"><IconClock /></span>{supplyData.isScheduled ? 'Compra agendada' : 'Agendar esta compra'}
+                                    </button>
+                                </div>
+                                <div className="flex space-x-3"><button onClick={()=>setShowSupplyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-500 bg-slate-100 rounded-xl uppercase">Voltar</button><button onClick={handleSupply} className={`flex-[2] py-4 text-white text-xs font-black rounded-xl uppercase shadow-lg ${supplyData.isScheduled ? 'bg-amber-500' : 'btn-teal'}`}>Salvar</button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    <nav className={`glass-nav fixed bottom-0 left-0 right-0 flex justify-between items-center py-1.5 px-4 sm:px-6 pb-8 z-40 transition-transform duration-500 ${(isKeyboardVisible && !forceShowNav) ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                        <button onClick={()=>setActiveTab('dashboard')} className={`flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'text-teal-600 scale-110 font-extrabold' : 'text-slate-400'}`}><IconHome /><span className="text-[9px] mt-1 uppercase">Início</span></button>
+                        <button onClick={()=>setActiveTab('agenda')} className={`flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all ${activeTab === 'agenda' ? 'text-teal-600 scale-110 font-extrabold' : 'text-slate-400'}`}><IconTable /><span className="text-[9px] mt-1 uppercase">Lançar</span></button>
+                        <button onClick={()=>setActiveTab('history')} className={`flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all ${activeTab === 'history' ? 'text-teal-600 scale-110 font-extrabold' : 'text-slate-400'}`}><IconHistory /><span className="text-[9px] mt-1 uppercase">Registros</span></button>
+                        <button onClick={()=>setActiveTab('purchases')} className={`flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all ${activeTab === 'purchases' ? 'text-teal-600 scale-110 font-extrabold' : 'text-slate-400'}`}><IconBag /><span className="text-[9px] mt-1 uppercase">Compras</span></button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
