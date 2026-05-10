@@ -198,10 +198,16 @@
             const toastTimeout = useRef(null);
 
             // --- CÁLCULOS (idênticos ao original) ---
-            const getTodayDateStr = () => {
-                const d = new Date();
-                const offset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+                        const getTodayDateStr = () => {
+                const now = new Date();
+                const spDate = new Intl.DateTimeFormat('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(now);
+                const [day, month, year] = spDate.split('/');
+                return `${year}-${month}-${day}`;
             };
 
             const calendarDays = useMemo(() => {
@@ -255,9 +261,18 @@
                     )
                     : false;
 
-                const previsaoTermino = mediaDiaria > 0
+                const diasRestantes = mediaDiaria > 0
                     ? Math.floor(statsCalculated.estoque / mediaDiaria)
                     : null;
+                
+                let previsaoTerminoData = null;
+                if (diasRestantes !== null) {
+                    const dataFim = new Date();
+                    // Ajustar para o fuso de SP antes de adicionar dias
+                    const spNow = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+                    spNow.setDate(spNow.getDate() + diasRestantes);
+                    previsaoTerminoData = spNow.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                }
 
                 const hoje = new Date();
 
@@ -298,7 +313,7 @@
                     mediaDiaria,
                     mediaSemanal,
                     tendencia,
-                    previsaoTermino,
+                    previsaoTermino: previsaoTerminoData,
                     consumoMesAtual,
                     consumoMesAnterior
                 };
@@ -733,9 +748,7 @@
                                         <div className="bg-white rounded-2xl p-4 border border-slate-100">
                                             <p className="text-[9px] uppercase font-black text-slate-400">Previsão término</p>
                                             <p className="text-xl font-black text-rose-500">
-                                                {advancedStats.previsaoTermino !== null
-                                                    ? `${advancedStats.previsaoTermino} dias`
-                                                    : '--'}
+                                                {advancedStats.previsaoTermino || '--'}
                                             </p>
                                         </div>
 
