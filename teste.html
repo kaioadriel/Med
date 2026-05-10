@@ -274,6 +274,32 @@
                     previsaoTerminoData = spNow.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                 }
 
+                const todayStr = getTodayDateStr();
+                let fimEstoqueData = null;
+                let estoqueProjetado = statsCalculated.estoque;
+
+                if (estoqueProjetado <= 0) {
+                    fimEstoqueData = new Date(todayStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                } else {
+                    const diasFuturos = calendarDays
+                        .filter(day => day.dateStr > todayStr)
+                        .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+
+                    for (const day of diasFuturos) {
+                        const log = logs[day.dateStr];
+                        const totalDoDia = log
+                            ? (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0)
+                            : 0;
+
+                        estoqueProjetado -= totalDoDia;
+
+                        if (estoqueProjetado <= 0) {
+                            fimEstoqueData = new Date(day.dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                            break;
+                        }
+                    }
+                }
+
                 const hoje = new Date();
 
                 const mesAtual = hoje.getMonth();
@@ -313,12 +339,13 @@
                     mediaDiaria,
                     mediaSemanal,
                     tendencia,
+                    fimEstoque: fimEstoqueData,
                     previsaoTermino: previsaoTerminoData,
                     consumoMesAtual,
                     consumoMesAnterior
                 };
 
-            }, [logs, statsCalculated]);
+            }, [logs, statsCalculated, calendarDays]);
 
             const chartDataCalculated = useMemo(() => {
                 let data = []; let totalGeral = 0;
