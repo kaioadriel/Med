@@ -183,7 +183,6 @@
             const setLogs = (newLogs) => updateActiveMedication({ logs: newLogs });
             const setReplenishments = (newRepls) => updateActiveMedication({ replenishments: newRepls });
             const [chartType, setChartType] = useState('weekly');
-            const [historySearch, setHistorySearch] = useState('');
             const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
             const [forceShowNav, setForceShowNav] = useState(false);
             const [showSupplyModal, setShowSupplyModal] = useState(false);
@@ -192,9 +191,15 @@
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showMedicationModal, setShowMedicationModal] = useState(false);
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
+            const [historySearch, setHistorySearch] = useState('');
+            const [historyPeriodFilter, setHistoryPeriodFilter] = useState('past');
+            const [historyMedicationFilter, setHistoryMedicationFilter] = useState('active');
+            const [historyTypeFilter, setHistoryTypeFilter] = useState('doses');
+            const [purchaseSearch, setPurchaseSearch] = useState('');
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
+            const selectiveFileInputRef = useRef(null);
             const todayRowRef = useRef(null);
             const toastTimeout = useRef(null);
 
@@ -210,21 +215,6 @@
                 const [day, month, year] = spDate.split('/');
                 return `${year}-${month}-${day}`;
             };
-
-            const formatDateDDMMAA = (dateStr) => {
-                if (!dateStr) return '';
-                const [year, month, day] = dateStr.split('-');
-                return `${day}/${month}/${String(year).slice(-2)}`;
-            };
-
-            const normalizeSearchText = (value) => (value || '')
-                .toString()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase()
-                .trim();
-
-            const getDoseTotal = (log) => (Number(log?.d1) || 0) + (Number(log?.d2) || 0) + (Number(log?.d3) || 0);
 
             const calendarDays = useMemo(() => {
                 const days = [];
@@ -257,29 +247,49 @@
                 return { previsao: (activeMedication?.estoqueInicial || 0) + totalEntrada - totalSaidaGeral, estoque: (activeMedication?.estoqueInicial || 0) + totalEntrada - totalSaidaAteHoje, totalEntrada };
             }, [logs, replenishments, (activeMedication?.estoqueInicial || 0)]);
 
+            // --- FORMATAÇÃO, VALIDAÇÃO E CÁLCULOS ORGANIZADOS ---
+            const isValidDateStr = (dateStr) => /^\d{4}-\d{2}-\d{2}$/.test(dateStr || '') && !Number.isNaN(new Date(dateStr + 'T12:00:00').getTime());
+
+            const formatDateShortBR = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return '';
+                return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            };
+
+            const buildDateSearchTokens = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return '';
+                const [year, month, day] = dateStr.split('-');
+                const yy = year.slice(-2);
+                return `${dateStr} ${day}/${month}/${yy} ${day}/${month}/${year} ${day}${month}${yy} ${day}${month}${year}`;
+            };
+
+            const toNumberOrZero = (value) => Number(value) || 0;
+            const getDoseTotal = (log) => toNumberOrZero(log?.d1) + toNumberOrZero(log?.d2) + toNumberOrZero(log?.d3);
+
             const advancedStats = useMemo(() => {
                 const todayStr = getTodayDateStr();
-                const allLogs = Object.values(logs || {});
-                const logsComDose = allLogs.filter(log => getDoseTotal(log) > 0);
+                const allLogs = Object.entries(logs)
+                    .map(([dateStr, log]) => ({
+                        data: log.data || dateStr,
+                        total: getDoseTotal(log)
+                    }))
+                    .filter(item => item.total > 0 && item.data);
 
-                const pastTotals = logsComDose
-                    .filter(log => log.data <= todayStr)
-                    .map(log => getDoseTotal(log));
+                const pastLogs = allLogs.filter(item => item.data <= todayStr).sort((a, b) => a.data.localeCompare(b.data));
+                const futureLogs = allLogs.filter(item => item.data > todayStr).sort((a, b) => a.data.localeCompare(b.data));
 
-                const futureDoseLogs = logsComDose
-                    .filter(log => log.data > todayStr)
-                    .sort((a, b) => a.data.localeCompare(b.data));
+                const calcAverage = (items) => {
+                    const total = items.reduce((acc, item) => acc + item.total, 0);
+                    return items.length ? total / items.length : 0;
+                };
 
-                const futureTotals = futureDoseLogs.map(log => getDoseTotal(log));
-
-                const totalConsumidoPassado = pastTotals.reduce((a, b) => a + b, 0);
-                const totalConsumidoFuturo = futureTotals.reduce((a, b) => a + b, 0);
-
-                const mediaDiaria = pastTotals.length ? (totalConsumidoPassado / pastTotals.length) : 0;
+                const mediaDiaria = calcAverage(pastLogs);
+                const mediaDiariaFutura = calcAverage(futureLogs);
                 const mediaSemanal = mediaDiaria * 7;
-                const mediaFuturaDiaria = futureTotals.length ? (totalConsumidoFuturo / futureTotals.length) : 0;
-                const mediaFuturaSemanal = mediaFuturaDiaria * 7;
+                const mediaSemanalFutura = mediaDiariaFutura * 7;
+                const mediaMensal = mediaDiaria * 30;
+                const mediaMensalFutura = mediaDiariaFutura * 30;
 
+                const pastTotals = pastLogs.map(item => item.total);
                 const tendencia = pastTotals.length >= 14
                     ? (
                         pastTotals.slice(-7).reduce((a,b)=>a+b,0) >
@@ -287,29 +297,40 @@
                     )
                     : false;
 
-                let estoqueProjetado = statsCalculated.estoque;
+                const terminoData = pastLogs.length
+                    ? formatDateShortBR(pastLogs[pastLogs.length - 1].data)
+                    : null;
+
                 let fimEstoqueData = null;
-                for (const log of futureDoseLogs) {
-                    estoqueProjetado -= getDoseTotal(log);
-                    if (estoqueProjetado <= 0) {
-                        fimEstoqueData = formatDateDDMMAA(log.data);
-                        break;
+                let estoqueProjetado = statsCalculated.estoque;
+
+                if (estoqueProjetado <= 0) {
+                    fimEstoqueData = formatDateShortBR(todayStr);
+                } else {
+                    const diasFuturos = calendarDays
+                        .filter(day => day.dateStr > todayStr)
+                        .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+
+                    for (const day of diasFuturos) {
+                        const totalDoDia = getDoseTotal(logs[day.dateStr]);
+                        estoqueProjetado -= totalDoDia;
+
+                        if (estoqueProjetado <= 0) {
+                            fimEstoqueData = formatDateShortBR(day.dateStr);
+                            break;
+                        }
                     }
                 }
 
-                const ultimoLogComDose = logsComDose
-                    .slice()
-                    .sort((a, b) => a.data.localeCompare(b.data))
-                    .pop();
-                const termino = ultimoLogComDose ? formatDateDDMMAA(ultimoLogComDose.data) : null;
-
-                const hoje = new Date();
+                const hoje = new Date(todayStr + 'T12:00:00');
                 const mesAtual = hoje.getMonth();
                 const anoAtual = hoje.getFullYear();
+
                 let consumoMesAtual = 0;
                 let consumoMesAnterior = 0;
 
-                allLogs.forEach(log => {
+                Object.values(logs).forEach(log => {
+                    if (!isValidDateStr(log.data)) return;
                     const data = new Date(log.data + 'T12:00:00');
                     const total = getDoseTotal(log);
 
@@ -327,17 +348,19 @@
 
                 return {
                     mediaDiaria,
+                    mediaDiariaFutura,
                     mediaSemanal,
-                    mediaFuturaDiaria,
-                    mediaFuturaSemanal,
+                    mediaSemanalFutura,
+                    mediaMensal,
+                    mediaMensalFutura,
                     tendencia,
                     fimEstoque: fimEstoqueData,
-                    termino,
+                    termino: terminoData,
                     consumoMesAtual,
                     consumoMesAnterior
                 };
 
-            }, [logs, statsCalculated.estoque]);
+            }, [logs, statsCalculated, calendarDays]);
 
             const chartDataCalculated = useMemo(() => {
                 let data = []; let totalGeral = 0;
@@ -361,51 +384,128 @@
                 return { data, total: totalGeral };
             }, [logs, chartType]);
 
+            const buildHistoryItemsForMedication = (med, includeDoses = true, includePurchases = true) => {
+                const items = [];
+                if (includeDoses) {
+                    Object.values(med.logs || {}).forEach(log => {
+                        const total = getDoseTotal(log);
+                        if (total > 0 && isValidDateStr(log.data)) {
+                            items.push({ type: 'log', eventType: 'dose', log, medicationId: med.id, medicationName: med.name, total });
+                        }
+                    });
+                }
+                if (includePurchases) {
+                    (med.replenishments || []).forEach(item => {
+                        if (isValidDateStr(item.date)) {
+                            items.push({ type: 'purchase', eventType: item.isScheduled ? 'scheduled_purchase' : 'purchase', purchase: item, medicationId: med.id, medicationName: med.name, total: Number(item.amount) || 0, data: item.date });
+                        }
+                    });
+                }
+                return items;
+            };
+
             const historyItemsCalculated = useMemo(() => {
                 const todayStr = getTodayDateStr();
-                const pastLogs = Object.values(logs).filter(l => l.data < todayStr && ((Number(l.d1)||0) + (Number(l.d2)||0) + (Number(l.d3)||0)) > 0);
-                if (pastLogs.length === 0) return [];
-                const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
-                const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
-                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
-                while (currDate >= oldestDateObj) {
-                    const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                    if (total > 0) {
-                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
-                        emptyStreak = []; items.push({ type: 'log', log, isEditable: logCount < 5 }); logCount++;
-                    } else { emptyStreak.push(log); }
-                    currDate.setDate(currDate.getDate() - 1);
-                }
-                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
-                return items;
-            }, [logs]);
 
-            const filteredHistoryItems = useMemo(() => {
-                const term = normalizeSearchText(historySearch);
-                if (!term) return historyItemsCalculated;
+                if (historyMedicationFilter === 'active' && historyTypeFilter === 'doses' && historyPeriodFilter === 'past') {
+                    const pastLogs = Object.values(logs).filter(l => l.data < todayStr && getDoseTotal(l) > 0);
+                    if (pastLogs.length === 0) return [];
+                    const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                    const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                    const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                    while (currDate >= oldestDateObj) {
+                        const dStr = currDate.toISOString().split('T')[0];
+                        const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr };
+                        const total = getDoseTotal(log);
+                        if (total > 0) {
+                            if (emptyStreak.length > 5) {
+                                items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length });
+                            } else if (emptyStreak.length > 0) {
+                                emptyStreak.forEach(emptyLog => items.push({ type: 'log', eventType: 'dose', log: emptyLog, medicationId: activeMedicationId, medicationName: activeMedication?.name || '', total: 0, isEditable: logCount < 5 }));
+                            }
+                            emptyStreak = [];
+                            items.push({ type: 'log', eventType: 'dose', log, medicationId: activeMedicationId, medicationName: activeMedication?.name || '', total, isEditable: logCount < 5 });
+                            logCount++;
+                        } else {
+                            emptyStreak.push(log);
+                        }
+                        currDate.setDate(currDate.getDate() - 1);
+                    }
+                    if (emptyStreak.length > 5) {
+                        items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length });
+                    } else if (emptyStreak.length > 0) {
+                        emptyStreak.forEach(emptyLog => items.push({ type: 'log', eventType: 'dose', log: emptyLog, medicationId: activeMedicationId, medicationName: activeMedication?.name || '', total: 0, isEditable: logCount < 5 }));
+                    }
+                    return items;
+                }
+
+                const selectedMeds = historyMedicationFilter === 'all' ? medications : medications.filter(m => m.id === activeMedicationId);
+                const includeDoses = historyTypeFilter === 'all' || historyTypeFilter === 'doses';
+                const includePurchases = historyTypeFilter === 'all' || historyTypeFilter === 'purchases';
+
+                let items = selectedMeds.flatMap(med => buildHistoryItemsForMedication(med, includeDoses, includePurchases));
+
+                items = items.filter(item => {
+                    const date = item.type === 'log' ? item.log.data : item.purchase.date;
+                    if (historyPeriodFilter === 'past') return date < todayStr;
+                    if (historyPeriodFilter === 'today') return date === todayStr;
+                    if (historyPeriodFilter === 'future') return date > todayStr;
+                    return true;
+                });
+
+                return items.sort((a, b) => {
+                    const dateA = a.type === 'log' ? a.log.data : a.purchase.date;
+                    const dateB = b.type === 'log' ? b.log.data : b.purchase.date;
+                    return dateB.localeCompare(dateA) || String(b.medicationName).localeCompare(String(a.medicationName));
+                }).map((item, idx) => ({ ...item, isEditable: item.type === 'log' && item.medicationId === activeMedicationId && idx < 5 }));
+            }, [logs, medications, activeMedicationId, activeMedication, historyPeriodFilter, historyMedicationFilter, historyTypeFilter]);
+
+            const historyFilteredItems = useMemo(() => {
+                const query = historySearch.trim().toLowerCase();
+                if (!query) return historyItemsCalculated;
 
                 return historyItemsCalculated.filter(item => {
-                    if (item.type === 'empty_group') {
-                        const start = formatDateDDMMAA(item.startDate);
-                        const end = formatDateDDMMAA(item.endDate);
-                        const searchText = normalizeSearchText(`${start} ${end} ${start.replaceAll('/', '')} ${end.replaceAll('/', '')} ${item.count}`);
-                        return searchText.includes(term);
-                    }
-
-                    const [year, month, day] = item.log.data.split('-');
-                    const year2 = String(year).slice(-2);
-                    const fullDate = formatDateDDMMAA(item.log.data);
-                    const total = getDoseTotal(item.log);
-                    const searchText = normalizeSearchText(`${fullDate} ${day}/${month} ${day}/${month}/${year2} ${day}${month}${year2} ${day}${month} ${year} ${item.log.data} ${item.log.d1 || ''} ${item.log.d2 || ''} ${item.log.d3 || ''} ${total}`);
-                    return searchText.includes(term);
+                    if (item.type === 'empty_group') return false;
+                    const date = item.type === 'log' ? item.log.data : item.purchase.date;
+                    const total = item.type === 'log' ? getDoseTotal(item.log) : (Number(item.purchase.amount) || 0);
+                    const dateTokens = buildDateSearchTokens(date);
+                    const searchable = item.type === 'log'
+                        ? `${item.medicationName} dose registro ${dateTokens} ${item.log.d1 || ''} ${item.log.d2 || ''} ${item.log.d3 || ''} ${total}`
+                        : `${item.medicationName} compra ${item.purchase.isScheduled ? 'agendada agendamento' : 'confirmada'} ${dateTokens} ${total}`;
+                    return searchable.toLowerCase().includes(query);
                 });
             }, [historyItemsCalculated, historySearch]);
+
+            const purchasesFilteredItems = useMemo(() => {
+                const query = purchaseSearch.trim().toLowerCase();
+                const items = [...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+                if (!query) return items;
+                return items.filter(compra => {
+                    const days = calculateDaysAgo(compra.date);
+                    const searchable = `${buildDateSearchTokens(compra.date)} ${compra.amount || ''} ${compra.isScheduled ? 'agendada agendamento futuro' : 'confirmada compra'} ${days === 0 ? 'hoje' : `há ${days} dias`}`.toLowerCase();
+                    return searchable.includes(query);
+                });
+            }, [replenishments, purchaseSearch]);
 
             // --- FUNÇÕES DE INTERAÇÃO (exatamente iguais) ---
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
                 if (toastTimeout.current) clearTimeout(toastTimeout.current);
                 toastTimeout.current = setTimeout(() => setToast(null), 3000);
+            };
+
+            const confirmDestructive = (message) => {
+                return confirm(message) && confirm("Confirma novamente? Esta ação não pode ser desfeita.");
+            };
+
+            const normalizePositiveNumber = (value, label = 'valor') => {
+                if (value === '') return '';
+                const number = Number(value);
+                if (!Number.isFinite(number) || number < 0) {
+                    showToast(`O ${label} não pode ser negativo ou inválido.`, 'error');
+                    return null;
+                }
+                return number;
             };
 
             const isMobileDevice = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -419,16 +519,50 @@
 
 
 
+            const downloadTextFile = (content, filename, type = 'text/plain;charset=utf-8') => {
+                const blob = new Blob([content], { type });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            };
+
+            const csvCell = (value) => {
+                const text = value === null || value === undefined ? '' : String(value);
+                return `"${text.replace(/"/g, '""')}"`;
+            };
+
+            const htmlCell = (value) => {
+                const text = value === null || value === undefined ? '' : String(value);
+                return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+            };
+
+            const formatDateBR = (dateStr) => {
+                if (!dateStr) return '';
+                return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR');
+            };
+
+            const getLogTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0);
+
             const handleBackup = () => {
-                const data = JSON.stringify({ logs, replenishments });
-                const blob = new Blob([data], { type: 'application/json' });
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-                a.download = `backup_med_${getTodayDateStr()}.json`; a.click();
-                showToast("Backup salvo!");
+                const data = JSON.stringify({
+                    version: 2,
+                    app: 'App Med',
+                    exportedAt: new Date().toISOString(),
+                    activeMedicationId,
+                    medications,
+                    // Mantém compatibilidade com backups antigos do medicamento ativo
+                    logs,
+                    replenishments
+                }, null, 2);
+                downloadTextFile(data, `backup_med_completo_${getTodayDateStr()}.json`, 'application/json;charset=utf-8');
+                showToast("Backup completo salvo!");
             };
 
             const handleRestore = (e) => {
                 const file = e.target.files[0]; if (!file) return;
+                if (!confirmDestructive("Restaurar backup completo? Os dados atuais podem ser substituídos.")) { e.target.value = ''; return; }
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
@@ -443,6 +577,203 @@
                     } catch (err) { showToast("Erro no arquivo.", "error"); }
                 };
                 reader.readAsText(file); e.target.value = ''; 
+            };
+
+            const handleSelectiveBackup = () => {
+                if (!activeMedication) return;
+                const data = JSON.stringify({
+                    version: 2,
+                    app: 'App Med',
+                    exportType: 'medication',
+                    exportedAt: new Date().toISOString(),
+                    medication: activeMedication
+                }, null, 2);
+                const safeName = (activeMedication.name || 'medicamento').toLowerCase().replace(/[^a-z0-9]+/gi, '_');
+                downloadTextFile(data, `backup_med_${safeName}_${getTodayDateStr()}.json`, 'application/json;charset=utf-8');
+                showToast("Backup do medicamento ativo salvo!");
+            };
+
+            const handleSelectiveRestore = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                if (!confirmDestructive("Importar dados para o medicamento ativo? Os registros e compras dele podem ser substituídos.")) { e.target.value = ''; return; }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        const imported = data.medication || data;
+                        if (!imported || (!imported.logs && !imported.replenishments)) {
+                            showToast("Arquivo seletivo inválido.", "error");
+                            return;
+                        }
+                        const updatedMeds = medications.map(m => m.id === activeMedicationId ? {
+                            ...m,
+                            logs: imported.logs || {},
+                            replenishments: imported.replenishments || [],
+                            estoqueInicial: imported.estoqueInicial !== undefined ? Number(imported.estoqueInicial) : m.estoqueInicial
+                        } : m);
+                        syncData(updatedMeds);
+                        showToast("Importação seletiva concluída!", "success");
+                    } catch (err) { showToast("Erro no arquivo seletivo.", "error"); }
+                };
+                reader.readAsText(file); e.target.value = '';
+            };
+
+            const buildExportRows = () => {
+                const rows = [];
+                medications.forEach(med => {
+                    Object.values(med.logs || {})
+                        .sort((a, b) => (a.data || '').localeCompare(b.data || ''))
+                        .forEach(log => {
+                            const total = getLogTotal(log);
+                            if (total > 0) {
+                                rows.push({
+                                    tipo: 'Dose',
+                                    medicamento: med.name,
+                                    data: log.data,
+                                    dataBR: formatDateBR(log.data),
+                                    d1: log.d1 || '',
+                                    d2: log.d2 || '',
+                                    d3: log.d3 || '',
+                                    total,
+                                    quantidade: '',
+                                    status: ''
+                                });
+                            }
+                        });
+
+                    (med.replenishments || [])
+                        .slice()
+                        .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                        .forEach(item => {
+                            rows.push({
+                                tipo: item.isScheduled ? 'Compra Agendada' : 'Compra Confirmada',
+                                medicamento: med.name,
+                                data: item.date,
+                                dataBR: formatDateBR(item.date),
+                                d1: '',
+                                d2: '',
+                                d3: '',
+                                total: '',
+                                quantidade: item.amount || '',
+                                status: item.isScheduled ? 'Agendado' : 'Confirmado'
+                            });
+                        });
+                });
+                return rows.sort((a, b) => (a.data || '').localeCompare(b.data || '') || a.medicamento.localeCompare(b.medicamento));
+            };
+
+            const handleExportCSV = () => {
+                const header = ['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total Doses', 'Quantidade Compra', 'Status'];
+                const lines = [header.map(csvCell).join(';')];
+                buildExportRows().forEach(row => {
+                    lines.push([
+                        row.tipo,
+                        row.medicamento,
+                        row.dataBR,
+                        row.d1,
+                        row.d2,
+                        row.d3,
+                        row.total,
+                        row.quantidade,
+                        row.status
+                    ].map(csvCell).join(';'));
+                });
+                downloadTextFile(lines.join('\n'), `app_med_export_${getTodayDateStr()}.csv`, 'text/csv;charset=utf-8');
+                showToast("CSV exportado!");
+            };
+
+            const handleExportPDF = () => {
+                const rows = buildExportRows();
+                const summary = medications.map(med => {
+                    const doseTotal = Object.values(med.logs || {}).reduce((acc, log) => acc + getLogTotal(log), 0);
+                    const purchaseTotal = (med.replenishments || []).reduce((acc, item) => acc + (item.isScheduled ? 0 : (Number(item.amount) || 0)), 0);
+                    const scheduledTotal = (med.replenishments || []).reduce((acc, item) => acc + (item.isScheduled ? (Number(item.amount) || 0) : 0), 0);
+                    return {
+                        medicamento: med.name,
+                        estoqueInicial: med.estoqueInicial || 0,
+                        comprasConfirmadas: purchaseTotal,
+                        comprasAgendadas: scheduledTotal,
+                        doses: doseTotal,
+                        saldo: (med.estoqueInicial || 0) + purchaseTotal - doseTotal
+                    };
+                });
+
+                const htmlSummaryRows = summary.map(row => `
+                    <tr>
+                        <td>${htmlCell(row.medicamento)}</td>
+                        <td>${htmlCell(row.estoqueInicial)}</td>
+                        <td>${htmlCell(row.comprasConfirmadas)}</td>
+                        <td>${htmlCell(row.comprasAgendadas)}</td>
+                        <td>${htmlCell(row.doses)}</td>
+                        <td>${htmlCell(row.saldo)}</td>
+                    </tr>
+                `).join('');
+
+                const htmlRows = rows.map(row => `
+                    <tr>
+                        <td>${htmlCell(row.tipo)}</td>
+                        <td>${htmlCell(row.medicamento)}</td>
+                        <td>${htmlCell(row.dataBR)}</td>
+                        <td>${htmlCell(row.d1)}</td>
+                        <td>${htmlCell(row.d2)}</td>
+                        <td>${htmlCell(row.d3)}</td>
+                        <td>${htmlCell(row.total)}</td>
+                        <td>${htmlCell(row.quantidade)}</td>
+                        <td>${htmlCell(row.status)}</td>
+                    </tr>
+                `).join('');
+
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    showToast("Permita pop-ups para exportar PDF.", "error");
+                    return;
+                }
+
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8" />
+                        <title>App Med - Exportação PDF</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; color: #1e293b; padding: 24px; }
+                            h1 { margin: 0; font-size: 26px; }
+                            h2 { margin-top: 28px; font-size: 16px; color: #0f766e; }
+                            p { color: #64748b; margin-top: 4px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 11px; }
+                            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+                            th { background: #0f766e; color: white; }
+                            tr:nth-child(even) { background: #f8fafc; }
+                            .summary th { background: #334155; }
+                            @media print { button { display: none; } body { padding: 0; } }
+                        </style>
+                    </head>
+                    <body>
+                        <button onclick="window.print()" style="padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right;">Salvar como PDF</button>
+                        <h1>APP MED</h1>
+                        <p>Exportação completa gerada em ${new Date().toLocaleString('pt-BR')}</p>
+
+                        <h2>Resumo por Medicamento</h2>
+                        <table class="summary">
+                            <thead>
+                                <tr><th>Medicamento</th><th>Estoque Inicial</th><th>Compras Confirmadas</th><th>Compras Agendadas</th><th>Total de Doses</th><th>Saldo Previsto</th></tr>
+                            </thead>
+                            <tbody>${htmlSummaryRows || '<tr><td colspan="6">Nenhum medicamento encontrado.</td></tr>'}</tbody>
+                        </table>
+
+                        <h2>Registros Detalhados</h2>
+                        <table>
+                            <thead>
+                                <tr><th>Tipo</th><th>Medicamento</th><th>Data</th><th>Dose 1</th><th>Dose 2</th><th>Dose 3</th><th>Total</th><th>Compra</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>${htmlRows || '<tr><td colspan="9">Nenhum registro encontrado.</td></tr>'}</tbody>
+                        </table>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                showToast("PDF com resumo pronto para salvar!");
             };
 
             const handleAuth = async (e) => {
@@ -466,11 +797,15 @@
 
             const handleSupply = () => {
                 if (!supplyData.amount) { showToast("Insira a quantidade.", "error"); return; }
+                const amount = normalizePositiveNumber(supplyData.amount, 'quantidade');
+                if (amount === null || amount === '') return;
+                const date = supplyData.date || getTodayDateStr();
+                if (!isValidDateStr(date)) { showToast("Data inválida.", "error"); return; }
                 let updated;
                 if (supplyData.id) {
-                    updated = replenishments.map(r => r.id === supplyData.id ? { ...r, amount: Number(supplyData.amount), date: supplyData.date, isScheduled: supplyData.isScheduled } : r);
+                    updated = replenishments.map(r => r.id === supplyData.id ? { ...r, amount, date, isScheduled: supplyData.isScheduled } : r);
                 } else {
-                    updated = [...replenishments, { amount: Number(supplyData.amount), date: supplyData.date || getTodayDateStr(), isScheduled: supplyData.isScheduled, id: Date.now() }];
+                    updated = [...replenishments, { amount, date, isScheduled: supplyData.isScheduled, id: Date.now() }];
                 }
                 setReplenishments(updated);  setShowSupplyModal(false);
                 setSupplyData({ id: null, amount: '', date: '', isScheduled: false });
@@ -484,18 +819,23 @@
             };
 
             const deletePurchase = (id) => {
+                if (!confirmDestructive("Excluir esta compra/agendamento?")) return;
                 const updated = replenishments.filter(r => r.id !== id);
                 setReplenishments(updated); 
                 showToast("Excluído.", "error");
             };
 
             const handleInputChange = (dateStr, field, value) => {
+                if (!isValidDateStr(dateStr)) { showToast("Data inválida.", "error"); return; }
+                const normalized = normalizePositiveNumber(value, 'dose');
+                if (normalized === null) return;
                 const curr = logs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
-                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: value === '' ? '' : Number(value) }};
+                const updatedLogs = {...logs, [dateStr]: { ...curr, [field]: normalized }};
                 setLogs(updatedLogs); 
             };
 
             const handleInsertRow = (targetDate) => {
+                if (!confirmDestructive("Inserir uma linha aqui vai deslocar os próximos lançamentos. Continuar?")) return;
                 const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = calendarDays.length - 1; i > idx; i--) {
@@ -507,6 +847,7 @@
             };
 
             const handleDeleteRow = (targetDate) => {
+                if (!confirmDestructive("Excluir esta linha e puxar os próximos lançamentos para cima?")) return;
                 const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = idx; i < calendarDays.length - 1; i++) {
@@ -518,14 +859,48 @@
             };
 
             const handleClearRow = (dateStr) => {
+                if (!confirmDestructive("Limpar os lançamentos deste dia?")) return;
                 const updated = { ...logs }; delete updated[dateStr]; 
                 setLogs(updated); 
             };
 
             const handleClearAll = () => {
+                if (!confirmDestructive("Limpar todos os lançamentos de hoje e dos próximos dias? Os registros antigos serão mantidos.")) return;
                 const today = getTodayDateStr(); const updated = {};
                 Object.keys(logs).forEach(k => { if (k < today) updated[k] = logs[k]; });
                 setLogs(updated);  showToast("Grade limpa!");
+            };
+
+            const addDaysToDateStr = (dateStr, days) => {
+                const d = new Date(dateStr + 'T12:00:00');
+                d.setDate(d.getDate() + days);
+                return d.toISOString().split('T')[0];
+            };
+
+            const handleDuplicatePlanning = () => {
+                const sourceStart = prompt("Data de origem do planejamento (AAAA-MM-DD):", getTodayDateStr());
+                if (!sourceStart) return;
+                if (!isValidDateStr(sourceStart)) { showToast("Data de origem inválida.", "error"); return; }
+
+                const targetStart = prompt("Data inicial de destino (AAAA-MM-DD):", addDaysToDateStr(sourceStart, 1));
+                if (!targetStart) return;
+                if (!isValidDateStr(targetStart)) { showToast("Data de destino inválida.", "error"); return; }
+
+                const daysText = prompt("Quantos dias deseja duplicar?", "1");
+                if (!daysText) return;
+                const daysCount = Number(daysText);
+                if (!Number.isInteger(daysCount) || daysCount < 1 || daysCount > 60) { showToast("Informe de 1 a 60 dias.", "error"); return; }
+
+                if (!confirmDestructive("Duplicar planejamento pode sobrescrever doses no destino. Continuar?")) return;
+                const updated = { ...logs };
+                for (let i = 0; i < daysCount; i++) {
+                    const sourceDate = addDaysToDateStr(sourceStart, i);
+                    const targetDate = addDaysToDateStr(targetStart, i);
+                    const sourceLog = logs[sourceDate] || { d1: '', d2: '', d3: '', data: sourceDate };
+                    updated[targetDate] = { d1: sourceLog.d1 || '', d2: sourceLog.d2 || '', d3: sourceLog.d3 || '', data: targetDate };
+                }
+                setLogs(updated);
+                showToast("Planejamento duplicado!");
             };
 
             const onInputFocus = () => {
@@ -582,27 +957,36 @@
             };
 
                         const handleMedicationSave = () => {
-                if (!medicationFormData.name || !medicationFormData.estoqueInicial) {
+                if (!medicationFormData.name || medicationFormData.estoqueInicial === '') {
                     showToast("Preencha todos os campos", "error");
                     return;
                 }
-                const newMed = {
-                    id: medicationFormData.id || Date.now(),
-                    name: medicationFormData.name,
-                    estoqueInicial: Number(medicationFormData.estoqueInicial),
-                    logs: medicationFormData.id ? activeMedication.logs : {},
-                    replenishments: medicationFormData.id ? activeMedication.replenishments : []
-                };
+
+                const estoqueInicial = normalizePositiveNumber(medicationFormData.estoqueInicial, 'estoque inicial');
+                if (estoqueInicial === null || estoqueInicial === '') return;
 
                 if (medicationFormData.id) {
-                    setMedications(prev => prev.map(m => m.id === medicationFormData.id ? { ...m, ...newMed } : m));
+                    const updatedMeds = medications.map(m => m.id === medicationFormData.id ? {
+                        ...m,
+                        name: medicationFormData.name.trim(),
+                        estoqueInicial
+                    } : m);
+                    syncData(updatedMeds);
                     showToast("Medicamento atualizado!");
+                    setShowMedicationModal('list');
                 } else {
-                    setMedications(prev => [...prev, newMed]);
+                    const newMed = {
+                        id: Date.now(),
+                        name: medicationFormData.name.trim(),
+                        estoqueInicial,
+                        logs: {},
+                        replenishments: []
+                    };
+                    syncData([...medications, newMed]);
                     setActiveMedicationId(newMed.id);
                     showToast("Medicamento cadastrado!");
+                    setShowMedicationModal('list');
                 }
-                setShowMedicationModal(false);
             };
 
             const deleteMedication = (id) => {
@@ -610,9 +994,9 @@
                     showToast("Você precisa de pelo menos um medicamento", "error");
                     return;
                 }
-                if (confirm("Tem certeza que deseja excluir este medicamento? Todos os dados serão perdidos.")) {
+                if (confirmDestructive("Tem certeza que deseja excluir este medicamento? Todos os dados serão perdidos.")) {
                     const newMeds = medications.filter(m => m.id !== id);
-                    setMedications(newMeds);
+                    syncData(newMeds);
                     if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
                     showToast("Medicamento excluído");
                 }
@@ -641,7 +1025,7 @@
                 if (!user) return;
                 
                 localStorage.setItem('app_med_medications', JSON.stringify(medications));
-            }, [logs, replenishments, user]);
+            }, [medications, user]);
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -764,59 +1148,7 @@
                                 </div>
 
                                 
-                                <div className="glass-card p-5 rounded-3xl space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        Estatísticas Avançadas
-                                    </h3>
-
-                                    <div className="grid grid-cols-2 gap-3">
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Diária</p>
-                                            <p className="text-2xl font-black text-teal-600">
-                                                {advancedStats.mediaDiaria.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
-                                            <p className="text-2xl font-black text-teal-600">
-                                                {advancedStats.mediaFuturaDiaria.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Semanal</p>
-                                            <p className="text-2xl font-black text-violet-600">
-                                                {advancedStats.mediaSemanal.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
-                                            <p className="text-2xl font-black text-violet-600">
-                                                {advancedStats.mediaFuturaSemanal.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Fim Estoque</p>
-                                            <p className="text-xl font-black text-rose-500">
-                                                {advancedStats.fimEstoque || '--'}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 border border-slate-100">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Término</p>
-                                            <p className="text-xl font-black text-rose-500">
-                                                {advancedStats.termino || '--'}
-                                            </p>
-                                        </div>
-
-                                    </div>
-                                </div>
-
-<div className="glass-card p-5 rounded-3xl">
+                                <div className="glass-card p-5 rounded-3xl">
                                     <div className="flex justify-between items-center mb-5">
                                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gráfico de Uso</h3>
                                         <div className="flex bg-white/50 rounded-full p-0.5 border border-slate-100 shadow-sm">
@@ -830,18 +1162,94 @@
                                     </div>
                                     <div className="h-48 w-full"><ManualBarChart data={chartDataCalculated.data} /></div>
                                 </div>
+
+                                <div className="glass-card p-5 rounded-3xl space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                                        Estatísticas Avançadas
+                                    </h3>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Fim Estoque</p>
+                                            <p className="text-xl font-black text-rose-500 mt-1">
+                                                {advancedStats.fimEstoque || '--'}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Término</p>
+                                            <p className="text-xl font-black text-rose-500 mt-1">
+                                                {advancedStats.termino || '--'}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média diária</p>
+                                            <p className="text-2xl font-black text-teal-600 mt-1">
+                                                {advancedStats.mediaDiaria.toFixed(1)}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
+                                            <p className="text-2xl font-black text-teal-600 mt-1">
+                                                {advancedStats.mediaDiariaFutura.toFixed(1)}
+                                            </p>
+                                            <span className="text-[8px] font-black text-slate-300 uppercase">Diária</span>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média semanal</p>
+                                            <p className="text-2xl font-black text-violet-600 mt-1">
+                                                {advancedStats.mediaSemanal.toFixed(1)}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
+                                            <p className="text-2xl font-black text-violet-600 mt-1">
+                                                {advancedStats.mediaSemanalFutura.toFixed(1)}
+                                            </p>
+                                            <span className="text-[8px] font-black text-slate-300 uppercase">Semanal</span>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média mensal</p>
+                                            <p className="text-2xl font-black text-indigo-600 mt-1">
+                                                {advancedStats.mediaMensal.toFixed(1)}
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl p-4 border border-slate-100 text-center flex flex-col items-center justify-center min-h-[92px]">
+                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
+                                            <p className="text-2xl font-black text-indigo-600 mt-1">
+                                                {advancedStats.mediaMensalFutura.toFixed(1)}
+                                            </p>
+                                            <span className="text-[8px] font-black text-slate-300 uppercase">Mensal</span>
+                                        </div>
+                                    </div>
+                                </div>
                                 
                                 <div className="flex space-x-3 mt-2">
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Backup</button>
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Restaurar</button>
                                 </div>
+                                <div className="flex space-x-3 mt-3">
+                                    <button onClick={handleExportCSV} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconDownload /></span> Exportar CSV</button>
+                                    <button onClick={handleExportPDF} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-rose-500"><IconDownload /></span> Exportar PDF</button>
+                                </div>
+                                <div className="flex space-x-3 mt-3">
+                                    <button onClick={handleSelectiveBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Exportar Med.</button>
+                                    <button onClick={() => selectiveFileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Importar Med.</button>
+                                </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
+                                <input type="file" ref={selectiveFileInputRef} className="hidden" accept=".json" onChange={handleSelectiveRestore} />
                             </div>
                         )}
 
                         {activeTab === 'agenda' && (
                             <div className="glass-card rounded-3xl overflow-hidden mt-3">
-                                <div className="p-4 bg-slate-800 text-white flex justify-between items-center"><h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Limpar Tudo</button></div>
+                                <div className="p-4 bg-slate-800 text-white flex justify-between items-center gap-2"><h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><div className="flex items-center gap-3"><button onClick={handleDuplicatePlanning} className="text-[8px] font-black uppercase text-violet-200 transition-colors">Duplicar</button><button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Limpar Tudo</button></div></div>
                                 <div className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
                                     {calendarDays.map((day, dIdx) => {
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
@@ -869,6 +1277,7 @@
                                                             key={num} 
                                                             id={`dose-${day.dateStr}-${num}`}
                                                             type="number" 
+                                                            min="0"
                                                             placeholder="-" 
                                                             className="w-full max-w-[40px] h-10 text-center rounded-xl font-black border border-slate-200 bg-white/60 focus:bg-white focus:border-teal-400 outline-none transition-all" 
                                                             value={log[`d${num}`]} 
@@ -893,31 +1302,58 @@
                         {activeTab === 'history' && (
                             <div className="space-y-4 pt-4 animate-fade">
                                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-2">Histórico de Registros</h2>
-                                <div className="glass-card rounded-2xl p-3">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value={historySearch}
-                                            onChange={(e) => setHistorySearch(e.target.value)}
-                                            placeholder="Buscar por DD/MM/AA, dose ou total"
-                                            className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-[11px] font-bold text-slate-600 outline-none focus:border-teal-400"
-                                        />
-                                        {historySearch && (
-                                            <button onClick={() => setHistorySearch('')} className="px-3 py-3 bg-slate-100 text-slate-500 rounded-2xl text-[9px] font-black uppercase">Limpar</button>
-                                        )}
+                                <div className="glass-card p-3 rounded-3xl space-y-3">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscar no histórico</label>
+                                        <div className="flex gap-2 mt-2">
+                                            <input type="text" className="flex-1 bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="DD/MM/AA, medicamento, dose, compra ou total" />
+                                            {historySearch && <button onClick={() => setHistorySearch('')} className="px-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar</button>}
+                                        </div>
                                     </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <select value={historyPeriodFilter} onChange={e => setHistoryPeriodFilter(e.target.value)} className="bg-white border border-slate-200 rounded-2xl p-3 text-[10px] font-black text-slate-600 outline-none">
+                                            <option value="all">Período: Todos</option>
+                                            <option value="past">Passados</option>
+                                            <option value="today">Hoje</option>
+                                            <option value="future">Futuros</option>
+                                        </select>
+                                        <select value={historyMedicationFilter} onChange={e => setHistoryMedicationFilter(e.target.value)} className="bg-white border border-slate-200 rounded-2xl p-3 text-[10px] font-black text-slate-600 outline-none">
+                                            <option value="active">Medicamento atual</option>
+                                            <option value="all">Todos</option>
+                                        </select>
+                                        <select value={historyTypeFilter} onChange={e => setHistoryTypeFilter(e.target.value)} className="bg-white border border-slate-200 rounded-2xl p-3 text-[10px] font-black text-slate-600 outline-none">
+                                            <option value="doses">Doses</option>
+                                            <option value="purchases">Compras</option>
+                                            <option value="all">Todos</option>
+                                        </select>
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 font-bold ml-1">{historyFilteredItems.filter(item => item.type !== 'empty_group').length} resultado(s)</p>
                                 </div>
                                 <div className="space-y-2 pb-10">
-                                    {filteredHistoryItems.length === 0 && (
-                                        <div className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Nenhum registro encontrado</div>
+                                    {historyFilteredItems.length === 0 && (
+                                        <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhum registro encontrado</div>
                                     )}
-                                    {filteredHistoryItems.map((item) => item.type === 'empty_group' ? (
-                                        <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
+                                    {historyFilteredItems.map((item) => item.type === 'empty_group' ? (
+                                        <div key={`empty-${item.startDate}-${item.endDate}`} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
+                                    ) : item.type === 'purchase' ? (
+                                        <div key={`purchase-${item.medicationId}-${item.purchase.id}`} className={`flex items-center gap-3 p-3 rounded-2xl border shadow-sm ${item.purchase.isScheduled ? 'bg-amber-50/90 border-amber-200' : 'bg-white/90 border-slate-100'}`}>
+                                            <div className={`h-12 w-14 rounded-2xl flex flex-col items-center justify-center border ${item.purchase.isScheduled ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-teal-50 text-teal-700 border-teal-100'}`}>
+                                                <span className="text-[10px] font-black leading-none">{formatDateShortBR(item.purchase.date).slice(0,5)}</span>
+                                                <span className="text-[10px] font-black opacity-70 leading-none mt-0.5">{formatDateShortBR(item.purchase.date).slice(6)}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm font-black ${item.purchase.isScheduled ? 'text-amber-700' : 'text-teal-700'}`}>{item.purchase.isScheduled ? 'Compra agendada' : 'Compra confirmada'} · {item.purchase.amount} cáps.</p>
+                                                <p className="text-[9px] text-slate-400 font-black uppercase truncate">{item.medicationName}</p>
+                                            </div>
+                                        </div>
                                     ) : (
-                                        <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
-                                            <button onClick={() => handleClearRow(item.log.data)} className="bg-rose-50 text-rose-400 rounded-md p-1.5 hover:bg-rose-100 transition"><IconMinus /></button>
-                                            <div className="h-11 w-14 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 border"><span className="text-[12px] font-black leading-none">{formatDateDDMMAA(item.log.data)}</span></div>
-                                            <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-xl font-black border ${item.isEditable ? 'bg-white border-slate-200 focus:border-teal-400' : 'bg-slate-100 text-slate-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                        <div key={`log-${item.medicationId}-${item.log.data}`} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
+                                            <button onClick={() => handleClearRow(item.log.data)} disabled={item.medicationId !== activeMedicationId} className={`rounded-md p-1.5 transition ${item.medicationId === activeMedicationId ? 'bg-rose-50 text-rose-400 hover:bg-rose-100' : 'bg-slate-100 text-slate-300'}`}><IconMinus /></button>
+                                            <div className="h-12 w-14 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border"><span className="text-[10px] font-black leading-none">{formatDateShortBR(item.log.data).slice(0,5)}</span><span className="text-[10px] font-black opacity-70 leading-none mt-0.5">{formatDateShortBR(item.log.data).slice(6)}</span></div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase truncate mb-1">{item.medicationName}</p>
+                                                <div className="flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" min="0" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-xl font-black border ${item.isEditable ? 'bg-white border-slate-200 focus:border-teal-400' : 'bg-slate-100 text-slate-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                            </div>
                                             <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{getDoseTotal(item.log)}</span></div>
                                         </div>
                                     ))}
@@ -925,20 +1361,32 @@
                             </div>
                         )}
 
+
                         {activeTab === 'purchases' && (
                             <div className="space-y-4 pt-4 animate-fade">
                                 <div className="flex justify-between items-center px-2 mb-2">
                                     <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mt-1">Compras e Agendamentos</h2>
                                     <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-teal-100 text-teal-700 px-3 py-1.5 rounded-full text-[9px] font-black flex items-center shadow-sm hover:bg-teal-200 transition"><IconPlus /><span className="ml-1 uppercase">Registrar Compra</span></button>
                                 </div>
+                                <div className="glass-card p-3 rounded-3xl">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscar em compras</label>
+                                    <div className="flex gap-2 mt-2">
+                                        <input type="text" className="flex-1 bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} placeholder="DD/MM/AA, quantidade ou status" />
+                                        {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="px-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar</button>}
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{purchasesFilteredItems.length} resultado(s)</p>
+                                </div>
                                 <div className="space-y-3 pb-10">
-                                    {[...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id).map(compra => {
+                                    {purchasesFilteredItems.length === 0 && (
+                                        <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhuma compra encontrada</div>
+                                    )}
+                                    {purchasesFilteredItems.map(compra => {
                                         const days = calculateDaysAgo(compra.date);
                                         return (
                                         <div key={compra.id} className={`p-3 rounded-2xl shadow-sm border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-white/90 border-slate-100'}`}>
                                             <div className="flex items-center flex-1 min-w-0">
                                                 <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mr-3 hover:bg-rose-100 transition"><IconMinus /></button>
-                                                <div className={`h-12 w-12 rounded-xl flex flex-col items-center justify-center mr-4 font-black border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[10px] uppercase opacity-70 leading-none">{new Date(compra.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short' })}</span><span className="text-lg leading-none">{compra.date.split('-')[2]}</span></div>
+                                                <div className={`h-12 w-14 rounded-xl flex flex-col items-center justify-center mr-4 font-black border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[10px] leading-none">{formatDateShortBR(compra.date).slice(0,5)}</span><span className="text-[10px] leading-none mt-0.5 opacity-70">{formatDateShortBR(compra.date).slice(6)}</span></div>
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <p className={`text-lg font-black leading-none mb-1 ${compra.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase font-bold">Cápsulas</span></p>
                                                     <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-slate-100 text-slate-500')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
@@ -953,6 +1401,7 @@
                                 </div>
                             </div>
                         )}
+
                     </main>
 
                                         {showMedicationModal && (
@@ -967,14 +1416,21 @@
                                         </div>
                                         <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
                                             {medications.map(med => (
-                                                <div key={med.id} className="flex items-center justify-between p-3 bg-white/50 rounded-2xl border border-slate-100">
-                                                    <div className="flex-1 min-w-0 mr-2">
-                                                        <p className="font-black text-slate-700 truncate">{med.name}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Início: {med.estoqueInicial} cáps.</p>
+                                                <div key={med.id} className={`p-3 bg-white/70 rounded-2xl border ${activeMedicationId === med.id ? 'border-teal-300 shadow-sm' : 'border-slate-100'}`}>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <p className="font-black text-slate-700 truncate">{med.name}</p>
+                                                                {activeMedicationId === med.id && <span className="bg-teal-100 text-teal-700 text-[7px] font-black uppercase px-2 py-0.5 rounded-full">Ativo</span>}
+                                                            </div>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Estoque inicial: {med.estoqueInicial} cáps.</p>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Registros: {Object.keys(med.logs || {}).length} dia(s) · Compras: {(med.replenishments || []).length}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="p-2 text-teal-600 hover:bg-teal-50 rounded-xl transition-colors"><IconEdit /></button>
-                                                        <button onClick={() => deleteMedication(med.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"><IconTrash /></button>
+                                                    <div className="grid grid-cols-3 gap-2 mt-3">
+                                                        <button onClick={() => { setActiveMedicationId(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
+                                                        <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="py-2 bg-slate-100 text-slate-600 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconEdit /> Editar</button>
+                                                        <button onClick={() => deleteMedication(med.id)} className="py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconTrash /> Excluir</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -987,6 +1443,9 @@
                                             <h3 className="text-lg font-black text-slate-800">{medicationFormData.id ? 'Editar Medicação' : 'Nova Medicação'}</h3>
                                             <button onClick={() => setShowMedicationModal('list')} className="text-slate-400"><IconX /></button>
                                         </div>
+                                        <p className="text-[10px] text-slate-400 font-bold leading-relaxed mb-4 bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                                            Edite apenas nome e estoque inicial. Os lançamentos, compras e histórico desta medicação serão preservados.
+                                        </p>
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome do Medicamento</label>
@@ -994,7 +1453,7 @@
                                             </div>
                                             <div>
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Estoque Inicial (Cápsulas)</label>
-                                                <input type="number" className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={medicationFormData.estoqueInicial} onChange={e => setMedicationFormData({...medicationFormData, estoqueInicial: e.target.value})} placeholder="Ex: 54" />
+                                                <input type="number" min="0" className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={medicationFormData.estoqueInicial} onChange={e => setMedicationFormData({...medicationFormData, estoqueInicial: e.target.value})} placeholder="Ex: 54" />
                                             </div>
                                             <div className="flex gap-2 pt-2">
                                                 <button onClick={() => setShowMedicationModal('list')} className="flex-1 py-4 bg-slate-100 text-slate-500 text-[10px] font-black rounded-2xl uppercase tracking-widest active:scale-95 transition-all">Voltar</button>
@@ -1012,7 +1471,7 @@
                             <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 shadow-2xl border-t-8 border-teal-500 animate-slide-up">
                                 <h2 className="text-xl font-black text-center italic mb-6 uppercase text-slate-800">{supplyData.id ? (supplyData.isScheduled ? 'Ajustar Agenda' : 'Editar Compra') : (supplyData.isScheduled ? 'Novo Agendamento' : 'Novo Registro')}</h2>
                                 <div className="space-y-5 mb-8">
-                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-teal-50/80 border-teal-100'} p-4 rounded-2xl border`}><label className={`text-[10px] font-black uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>Qtd (Cápsulas)</label><input type="number" placeholder="0" className={`w-full text-4xl font-black text-center bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`} value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} /></div>
+                                    <div className={`${supplyData.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-teal-50/80 border-teal-100'} p-4 rounded-2xl border`}><label className={`text-[10px] font-black uppercase mb-2 block ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>Qtd (Cápsulas)</label><input type="number" min="0" placeholder="0" className={`w-full text-4xl font-black text-center bg-transparent border-none outline-none ${supplyData.isScheduled ? 'text-amber-600' : 'text-teal-600'}`} value={supplyData.amount} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, amount: e.target.value})} /></div>
                                     <input type="date" className={`w-full font-bold bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700 outline-none focus:ring-2 ${supplyData.isScheduled ? 'focus:ring-amber-300' : 'focus:ring-teal-300'}`} value={supplyData.date} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>setSupplyData({...supplyData, date: e.target.value})} />
                                     <button type="button" onClick={() => setSupplyData({...supplyData, isScheduled: !supplyData.isScheduled})} className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center border transition-all active:scale-[0.99] ${supplyData.isScheduled ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                                         <span className="mr-2"><IconClock /></span>{supplyData.isScheduled ? 'Compra agendada' : 'Agendar esta compra'}
