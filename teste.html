@@ -735,7 +735,6 @@
             };
 
             const deletePurchase = (id) => {
-                if (!confirm("Excluir esta compra/agendamento? Esta ação não pode ser desfeita.")) return;
                 const updated = replenishments.filter(r => r.id !== id);
                 setReplenishments(updated); 
                 showToast("Excluído.", "error");
@@ -762,7 +761,6 @@
             };
 
             const handleDeleteRow = (targetDate) => {
-                if (!confirm("Excluir esta linha e puxar os próximos lançamentos para cima?")) return;
                 const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
                 for (let i = idx; i < calendarDays.length - 1; i++) {
@@ -774,7 +772,6 @@
             };
 
             const handleClearRow = (dateStr) => {
-                if (!confirm("Limpar os lançamentos deste dia?")) return;
                 const updated = { ...logs }; delete updated[dateStr]; 
                 setLogs(updated); 
             };
@@ -879,12 +876,10 @@
                     showToast("Você precisa de pelo menos um medicamento", "error");
                     return;
                 }
-                if (confirm("Tem certeza que deseja excluir este medicamento? Todos os dados serão perdidos.")) {
-                    const newMeds = medications.filter(m => m.id !== id);
-                    syncData(newMeds);
-                    if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
-                    showToast("Medicamento excluído");
-                }
+                const newMeds = medications.filter(m => m.id !== id);
+                syncData(newMeds);
+                if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
+                showToast("Medicamento excluído");
             };
 
             const handleInstallApp = async () => { 
@@ -1199,8 +1194,7 @@
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
                                         <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
-                                            <button onClick={() => handleClearRow(item.log.data)} className="bg-rose-50 text-rose-400 rounded-md p-1.5 hover:bg-rose-100 transition"><IconMinus /></button>
-                                            <div className="h-11 w-14 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border"><span className="text-[13px] font-black leading-none">{formatDateShortYear(item.log.data).slice(0, 5)}</span><span className="text-[9px] font-black leading-none mt-0.5">/{formatDateShortYear(item.log.data).slice(-2)}</span></div>
+                                            <div className="h-11 w-20 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 border shrink-0"><span className="text-[13px] font-black leading-none whitespace-nowrap">{formatDateShortYear(item.log.data)}</span></div>
                                             <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" min="0" step="1" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-xl font-black border ${item.isEditable ? 'bg-white border-slate-200 focus:border-teal-400' : 'bg-slate-100 text-slate-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
                                             <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
                                         </div>
@@ -1232,8 +1226,7 @@
                                         return (
                                         <div key={compra.id} className={`p-3 rounded-2xl shadow-sm border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-white/90 border-slate-100'}`}>
                                             <div className="flex items-center flex-1 min-w-0">
-                                                <button onClick={() => deletePurchase(compra.id)} className="h-8 w-8 bg-rose-50 text-rose-400 rounded-full flex items-center justify-center mr-3 hover:bg-rose-100 transition"><IconMinus /></button>
-                                                <div className={`h-12 w-14 rounded-xl flex flex-col items-center justify-center mr-4 font-black border ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[13px] leading-none">{formatDateShortYear(compra.date).slice(0, 5)}</span><span className="text-[9px] leading-none mt-0.5">/{formatDateShortYear(compra.date).slice(-2)}</span></div>
+                                                <div className={`h-12 w-20 rounded-xl flex items-center justify-center mr-3 font-black border shrink-0 ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[13px] leading-none whitespace-nowrap">{formatDateShortYear(compra.date)}</span></div>
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <p className={`text-lg font-black leading-none mb-1 ${compra.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase font-bold">Cápsulas</span></p>
                                                     <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-slate-100 text-slate-500')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
@@ -1242,6 +1235,7 @@
                                             <div className="flex flex-col gap-1">
                                                 {compra.isScheduled && <button onClick={() => confirmPurchase(compra.id)} className="px-4 py-2 bg-teal-500 text-white rounded-xl text-[9px] font-black uppercase shadow-sm hover:bg-teal-600 transition">Confirmar</button>}
                                                 <button onClick={() => { setSupplyData({ id: compra.id, amount: compra.amount, date: compra.date, isScheduled: compra.isScheduled }); setShowSupplyModal(true); }} className="px-4 py-2 bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase shadow-sm hover:bg-slate-800 transition">Editar</button>
+                                                <button onClick={() => deletePurchase(compra.id)} className="px-4 py-2 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase shadow-sm hover:bg-rose-100 transition">Excluir</button>
                                             </div>
                                         </div>
                                     )})}
