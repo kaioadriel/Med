@@ -191,8 +191,8 @@
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showMedicationModal, setShowMedicationModal] = useState(false);
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
-            const [historySearch, setHistorySearch] = useState('');
-            const [purchaseSearch, setPurchaseSearch] = useState('');
+            const [historyPeriod, setHistoryPeriod] = useState({ start: '', end: '' });
+            const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -242,6 +242,26 @@
                 const number = Number(value);
                 if (!Number.isFinite(number) || number < 0) return '';
                 return number;
+            };
+
+            const normalizeDatePeriod = (period) => {
+                const start = isValidDateStr(period?.start) ? period.start : '';
+                const end = isValidDateStr(period?.end) ? period.end : '';
+                if (start && end && start > end) return { start: end, end: start };
+                return { start, end };
+            };
+
+            const isDateInsidePeriod = (dateStr, period) => {
+                if (!isValidDateStr(dateStr)) return false;
+                const { start, end } = normalizeDatePeriod(period);
+                if (start && dateStr < start) return false;
+                if (end && dateStr > end) return false;
+                return true;
+            };
+
+            const hasActivePeriod = (period) => {
+                const { start, end } = normalizeDatePeriod(period);
+                return Boolean(start || end);
             };
 
             const calendarDays = useMemo(() => {
@@ -421,34 +441,21 @@
             }, [logs]);
 
             const historyFilteredItems = useMemo(() => {
-                const query = historySearch.trim().toLowerCase();
-                if (!query) return historyItemsCalculated;
+                if (!hasActivePeriod(historyPeriod)) return historyItemsCalculated;
 
                 return historyItemsCalculated.filter(item => {
                     if (item.type !== 'log') return false;
-                    const log = item.log;
-                    const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                    const searchable = normalizeSearchText(`${formatDateSearchTerms(log.data)} ${log.d1 || ''} ${log.d2 || ''} ${log.d3 || ''} ${total}`);
-                    return searchable.includes(query);
+                    return isDateInsidePeriod(item.log.data, historyPeriod);
                 });
-            }, [historyItemsCalculated, historySearch]);
+            }, [historyItemsCalculated, historyPeriod]);
 
 
             const purchaseFilteredItems = useMemo(() => {
-                const query = normalizeSearchText(purchaseSearch);
                 const sorted = [...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
-                if (!query) return sorted;
+                if (!hasActivePeriod(purchasePeriod)) return sorted;
 
-                return sorted.filter(compra => {
-                    const status = compra.isScheduled ? 'agendado compra agendada' : 'confirmado compra confirmada';
-                    const days = isValidDateStr(compra.date)
-                        ? Math.floor((new Date(getTodayDateStr() + 'T12:00:00') - new Date(compra.date + 'T12:00:00')) / (1000 * 60 * 60 * 24))
-                        : '';
-                    const relativeLabel = days === 0 ? 'hoje' : (days !== '' ? `há ${days} dias` : '');
-                    const searchable = normalizeSearchText(`${formatDateSearchTerms(compra.date)} ${compra.amount || ''} ${status} ${relativeLabel}`);
-                    return searchable.includes(query);
-                });
-            }, [replenishments, purchaseSearch]);
+                return sorted.filter(compra => isDateInsidePeriod(compra.date, purchasePeriod));
+            }, [replenishments, purchasePeriod]);
 
             // --- FUNÇÕES DE UTILIDADE, EXPORTAÇÃO E INTERAÇÃO ---
             const showToast = (message, type = 'success') => {
@@ -1179,11 +1186,18 @@
                             <div className="space-y-4 pt-4 animate-fade">
                                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-2">Histórico de Registros</h2>
                                 <div className="glass-card p-3 rounded-3xl">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscar no histórico</label>
-                                    <div className="flex gap-2 mt-2">
-                                        <input type="text" className="flex-1 bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="DD/MM/AA, DD/MM/AAAA, dose ou total" />
-                                        {historySearch && <button onClick={() => setHistorySearch('')} className="px-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar</button>}
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar registros por período</label>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        <div>
+                                            <span className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Início</span>
+                                            <input type="date" className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={historyPeriod.start} onChange={e => setHistoryPeriod(prev => ({ ...prev, start: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <span className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Fim</span>
+                                            <input type="date" className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={historyPeriod.end} onChange={e => setHistoryPeriod(prev => ({ ...prev, end: e.target.value }))} />
+                                        </div>
                                     </div>
+                                    {hasActivePeriod(historyPeriod) && <button onClick={() => setHistoryPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{historyFilteredItems.filter(item => item.type === 'log').length} resultado(s)</p>
                                 </div>
                                 <div className="space-y-2 pb-10">
@@ -1210,11 +1224,18 @@
                                     <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="bg-teal-100 text-teal-700 px-3 py-1.5 rounded-full text-[9px] font-black flex items-center shadow-sm hover:bg-teal-200 transition"><IconPlus /><span className="ml-1 uppercase">Registrar Compra</span></button>
                                 </div>
                                 <div className="glass-card p-3 rounded-3xl">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Buscar em compras</label>
-                                    <div className="flex gap-2 mt-2">
-                                        <input type="text" className="flex-1 bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={purchaseSearch} onChange={e => setPurchaseSearch(e.target.value)} placeholder="DD/MM/AA, quantidade ou status" />
-                                        {purchaseSearch && <button onClick={() => setPurchaseSearch('')} className="px-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar</button>}
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrar compras por período</label>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        <div>
+                                            <span className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Início</span>
+                                            <input type="date" className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={purchasePeriod.start} onChange={e => setPurchasePeriod(prev => ({ ...prev, start: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <span className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Fim</span>
+                                            <input type="date" className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={purchasePeriod.end} onChange={e => setPurchasePeriod(prev => ({ ...prev, end: e.target.value }))} />
+                                        </div>
                                     </div>
+                                    {hasActivePeriod(purchasePeriod) && <button onClick={() => setPurchasePeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{purchaseFilteredItems.length} resultado(s)</p>
                                 </div>
                                 <div className="space-y-3 pb-10">
