@@ -757,14 +757,34 @@
             };
 
             const handleInsertRow = (targetDate) => {
-                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
-                const newLogs = { ...logs };
-                for (let i = calendarDays.length - 1; i > idx; i--) {
-                    const prev = calendarDays[i-1].dateStr; const curr = calendarDays[i].dateStr;
-                    if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
-                    else delete newLogs[curr];
+                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); 
+                if (idx === -1) return;
+
+                const nextDate = calendarDays[idx + 1]?.dateStr;
+                if (!nextDate) {
+                    showToast("Não há próxima linha disponível para copiar.", "error");
+                    return;
                 }
-                delete newLogs[targetDate]; updateActiveMedication({ logs: newLogs }); 
+
+                const newLogs = { ...logs };
+                const sourceLog = logs[targetDate]
+                    ? { ...logs[targetDate] }
+                    : { d1: '', d2: '', d3: '', data: targetDate };
+
+                for (let i = calendarDays.length - 1; i > idx + 1; i--) {
+                    const prev = calendarDays[i - 1].dateStr;
+                    const curr = calendarDays[i].dateStr;
+
+                    if (newLogs[prev]) {
+                        newLogs[curr] = { ...newLogs[prev], data: curr };
+                    } else {
+                        delete newLogs[curr];
+                    }
+                }
+
+                newLogs[nextDate] = { ...sourceLog, data: nextDate };
+                updateActiveMedication({ logs: newLogs }); 
+                showToast("Card copiado para a próxima linha!");
             };
 
             const handleDeleteRow = (targetDate) => {
