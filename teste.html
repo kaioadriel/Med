@@ -135,6 +135,7 @@
 
         const App = () => {
             // --- CONSTANTES ---
+            const INITIAL_AGENDA_ROWS = 60;
             
 
             // --- ESTADOS ---
@@ -158,7 +159,10 @@
                 ]));
             });
 
-            const [activeMedicationId, setActiveMedicationId] = useState(1);
+            const [activeMedicationId, setActiveMedicationId] = useState(() => {
+                const storedId = Number(localStorage.getItem('app_med_active_medication_id') || 1);
+                return Number.isFinite(storedId) && storedId > 0 ? storedId : 1;
+            });
 
                         const syncData = (updatedMeds) => {
                 setMedications(updatedMeds);
@@ -193,6 +197,10 @@
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
             const [historyPeriod, setHistoryPeriod] = useState({ start: '', end: '' });
             const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
+            const [agendaRowsCount, setAgendaRowsCount] = useState(() => {
+                const storedRows = Number(localStorage.getItem('app_med_agenda_rows_count') || INITIAL_AGENDA_ROWS);
+                return Number.isFinite(storedRows) && storedRows >= INITIAL_AGENDA_ROWS ? Math.floor(storedRows) : INITIAL_AGENDA_ROWS;
+            });
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -226,6 +234,12 @@
                 if (!isValidDateStr(dateStr)) return '--/--/--';
                 const [year, month, day] = dateStr.split('-');
                 return `${day}/${month}/${year.slice(-2)}`;
+            };
+
+            const formatDateDayMonth = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return '--/--';
+                const [, month, day] = dateStr.split('-');
+                return `${day}/${month}`;
             };
 
             const formatDateSearchTerms = (dateStr) => {
@@ -264,21 +278,25 @@
                 return Boolean(start || end);
             };
 
-            const calendarDays = useMemo(() => {
+            const buildCalendarDays = (count = INITIAL_AGENDA_ROWS) => {
+                const safeCount = Math.max(INITIAL_AGENDA_ROWS, Number(count) || INITIAL_AGENDA_ROWS);
                 const days = [];
-                for (let i = -3; i <= 60; i++) {
+                for (let i = 0; i < safeCount; i++) {
                     const d = new Date(); d.setDate(d.getDate() + i);
                     const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                     days.push({ 
                         dateStr, 
-                        label: formatDateShortYear(dateStr), 
+                        label: formatDateShortYear(dateStr),
+                        labelDayMonth: formatDateDayMonth(dateStr),
                         weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3), 
                         isToday: i === 0, 
                         isPast: i < 0 
                     });
                 }
                 return days;
-            }, []);
+            };
+
+            const calendarDays = useMemo(() => buildCalendarDays(agendaRowsCount), [agendaRowsCount]);
 
             const getLogsValue = (dateStr) => {
                 if (dateStr > getTodayDateStr()) return 0;
@@ -757,10 +775,11 @@
             };
 
             const handleInsertRow = (targetDate) => {
-                const idx = calendarDays.findIndex(d => d.dateStr === targetDate); 
+                const expandedDays = buildCalendarDays(agendaRowsCount + 1);
+                const idx = expandedDays.findIndex(d => d.dateStr === targetDate); 
                 if (idx === -1) return;
 
-                const nextDate = calendarDays[idx + 1]?.dateStr;
+                const nextDate = expandedDays[idx + 1]?.dateStr;
                 if (!nextDate) {
                     showToast("Não há próxima linha disponível para copiar.", "error");
                     return;
@@ -771,9 +790,9 @@
                     ? { ...logs[targetDate] }
                     : { d1: '', d2: '', d3: '', data: targetDate };
 
-                for (let i = calendarDays.length - 1; i > idx + 1; i--) {
-                    const prev = calendarDays[i - 1].dateStr;
-                    const curr = calendarDays[i].dateStr;
+                for (let i = expandedDays.length - 1; i > idx + 1; i--) {
+                    const prev = expandedDays[i - 1].dateStr;
+                    const curr = expandedDays[i].dateStr;
 
                     if (newLogs[prev]) {
                         newLogs[curr] = { ...newLogs[prev], data: curr };
@@ -783,6 +802,7 @@
                 }
 
                 newLogs[nextDate] = { ...sourceLog, data: nextDate };
+                setAgendaRowsCount(prev => prev + 1);
                 updateActiveMedication({ logs: newLogs }); 
                 showToast("Card copiado para a próxima linha!");
             };
@@ -909,6 +929,23 @@
                 showToast("Medicamento excluído");
             };
 
+            const selectMedication = (id) => {
+                setActiveMedicationId(id);
+                localStorage.setItem('app_med_active_medication_id', String(id));
+            };
+
+            const moveMedication = (id, direction) => {
+                const currentIndex = medications.findIndex(m => m.id === id);
+                const targetIndex = currentIndex + direction;
+                if (currentIndex === -1 || targetIndex < 0 || targetIndex >= medications.length) return;
+
+                const updatedMeds = [...medications];
+                const [moved] = updatedMeds.splice(currentIndex, 1);
+                updatedMeds.splice(targetIndex, 0, moved);
+                syncData(updatedMeds);
+                showToast("Ordem das medicações atualizada!");
+            };
+
             const handleInstallApp = async () => { 
                 if (deferredPrompt) { 
                     deferredPrompt.prompt(); 
@@ -933,6 +970,20 @@
                 
                 localStorage.setItem('app_med_medications', JSON.stringify(medications));
             }, [medications, user]);
+
+            useEffect(() => {
+                localStorage.setItem('app_med_active_medication_id', String(activeMedicationId));
+            }, [activeMedicationId]);
+
+            useEffect(() => {
+                localStorage.setItem('app_med_agenda_rows_count', String(agendaRowsCount));
+            }, [agendaRowsCount]);
+
+            useEffect(() => {
+                if (!medications.length) return;
+                const activeExists = medications.some(m => m.id === activeMedicationId);
+                if (!activeExists) setActiveMedicationId(medications[0].id);
+            }, [medications, activeMedicationId]);
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -1022,7 +1073,7 @@
                         {medications.map(med => (
                             <button
                                 key={med.id}
-                                onClick={() => setActiveMedicationId(med.id)}
+                                onClick={() => selectMedication(med.id)}
                                 className={`px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap border transition-all ${
                                     activeMedicationId === med.id
                                         ? 'bg-teal-500 text-white border-teal-500'
@@ -1168,12 +1219,11 @@
 
                                         return (
                                             <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-2xl shadow-sm ${rowClass}`}>
-                                                <div className="flex flex-col gap-1 w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                                                <div className={`h-12 w-14 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}>
+                                                    <span className="text-[8px] uppercase leading-none tracking-wide">{day.weekday}</span>
+                                                    <span className="text-[15px] leading-none mt-1 whitespace-nowrap">{day.labelDayMonth}</span>
                                                 </div>
-                                                <div className={`h-11 w-10 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
-                                                <div className="flex-1 flex justify-center gap-1.5">
+                                                <div className="flex-1 flex justify-center gap-1.5 min-w-0">
                                                     {[1,2,3].map(num => (
                                                         <input 
                                                             key={num} 
@@ -1194,7 +1244,11 @@
                                                 <div className="w-8 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
                                                 </div>
-                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                                                <div className="w-6 shrink-0"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                                                <div className="flex flex-col gap-1 w-7 shrink-0">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -1296,7 +1350,7 @@
                                             <button onClick={() => setShowMedicationModal(false)} className="text-slate-400"><IconX /></button>
                                         </div>
                                         <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
-                                            {medications.map(med => (
+                                            {medications.map((med, medIndex) => (
                                                 <div key={med.id} className={`p-3 bg-white/70 rounded-2xl border ${activeMedicationId === med.id ? 'border-teal-300 shadow-sm' : 'border-slate-100'}`}>
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="flex-1 min-w-0">
@@ -1309,9 +1363,13 @@
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2 mt-3">
-                                                        <button onClick={() => { setActiveMedicationId(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
+                                                        <button onClick={() => { selectMedication(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
                                                         <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="py-2 bg-slate-100 text-slate-600 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconEdit /> Editar</button>
                                                         <button onClick={() => deleteMedication(med.id)} className="py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconTrash /> Excluir</button>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <button onClick={() => moveMedication(med.id, -1)} disabled={medIndex === 0} className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${medIndex === 0 ? 'bg-slate-50 text-slate-300' : 'bg-cyan-50 text-cyan-700'}`}>↑ Subir</button>
+                                                        <button onClick={() => moveMedication(med.id, 1)} disabled={medIndex === medications.length - 1} className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${medIndex === medications.length - 1 ? 'bg-slate-50 text-slate-300' : 'bg-cyan-50 text-cyan-700'}`}>↓ Descer</button>
                                                     </div>
                                                 </div>
                                             ))}
