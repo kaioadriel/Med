@@ -8,7 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
     
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231e293b%22%2C%22theme_color%22%3A%22%231e293b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2966%2F2966327.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231e293b%22%2C%22theme_color%22%3A%22%231e293b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png">
+    <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png">
     
     <title>App Med - Gestão Cloud</title>
     
@@ -57,6 +59,42 @@
             box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);
         }
         .btn-teal:active { transform: scale(0.97); }
+
+        .dose-input-field {
+            width: 36px;
+            min-width: 36px;
+            max-width: 36px;
+        }
+        .row-action-stack {
+            width: 29px;
+            min-width: 29px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+        .row-action-btn {
+            width: 29px;
+            height: 29px;
+            min-width: 29px;
+            min-height: 29px;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 0 !important;
+            box-sizing: border-box;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .row-action-btn svg {
+            display: block;
+            margin: auto;
+            flex-shrink: 0;
+            width: 15px;
+            height: 15px;
+        }
     </style>
 </head>
 <body class="text-slate-700">
@@ -158,7 +196,7 @@
                 ]));
             });
 
-            const [activeMedicationId, setActiveMedicationId] = useState(1);
+            const [activeMedicationId, setActiveMedicationId] = useState(() => Number(localStorage.getItem('app_med_active_medication_id')) || 1);
 
                         const syncData = (updatedMeds) => {
                 setMedications(updatedMeds);
@@ -193,6 +231,9 @@
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
             const [historyPeriod, setHistoryPeriod] = useState({ start: '', end: '' });
             const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
+            const [agendaDayCount, setAgendaDayCount] = useState(() => Number(localStorage.getItem('app_med_agenda_day_count')) || 60);
+            const [showCopyModal, setShowCopyModal] = useState(false);
+            const [copyData, setCopyData] = useState({ sourceDate: '', startDate: '', days: 1 });
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -210,6 +251,28 @@
                 }).format(now);
                 const [day, month, year] = spDate.split('/');
                 return `${year}-${month}-${day}`;
+            };
+
+            const addDaysToDateStr = (dateStr, amount) => {
+                const date = new Date(dateStr + 'T12:00:00');
+                date.setDate(date.getDate() + amount);
+                return date.toISOString().split('T')[0];
+            };
+
+            const formatDateDDMM = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return '--/--';
+                const [, month, day] = dateStr.split('-');
+                return `${day}/${month}`;
+            };
+
+            const formatYearFull = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return '----';
+                return dateStr.split('-')[0];
+            };
+
+            const selectMedication = (id) => {
+                setActiveMedicationId(id);
+                localStorage.setItem('app_med_active_medication_id', String(id));
             };
 
             const isValidDateStr = (dateStr) => {
@@ -266,19 +329,22 @@
 
             const calendarDays = useMemo(() => {
                 const days = [];
-                for (let i = -3; i <= 60; i++) {
+                const safeCount = Math.max(60, Number(agendaDayCount) || 60);
+                for (let i = 0; i < safeCount; i++) {
                     const d = new Date(); d.setDate(d.getDate() + i);
                     const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                     days.push({ 
                         dateStr, 
                         label: formatDateShortYear(dateStr), 
+                        labelDDMM: formatDateDDMM(dateStr),
+                        yearFull: formatYearFull(dateStr),
                         weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3), 
                         isToday: i === 0, 
                         isPast: i < 0 
                     });
                 }
                 return days;
-            }, []);
+            }, [agendaDayCount]);
 
             const getLogsValue = (dateStr) => {
                 if (dateStr > getTodayDateStr()) return 0;
@@ -311,11 +377,9 @@
                 };
 
                 const mediaDiaria = averageDaily(pastLogs);
-                const mediaDiariaFutura = averageDaily(futureLogs);
                 const mediaSemanal = mediaDiaria * 7;
-                const mediaSemanalFutura = mediaDiariaFutura * 7;
                 const mediaMensal = mediaDiaria * 30;
-                const mediaMensalFutura = mediaDiariaFutura * 30;
+                const mediaTresMeses = mediaDiaria * 90;
 
                 const pastTotals = pastLogs.map(item => item.total);
                 const tendencia = pastTotals.length >= 14
@@ -333,23 +397,35 @@
 
                 let fimEstoqueData = null;
                 let estoqueProjetado = statsCalculated.estoque;
+                let ultimaDataProjetada = todayStr;
 
                 if (estoqueProjetado <= 0) {
                     fimEstoqueData = formatDateShortYear(todayStr);
                 } else {
-                    const diasFuturos = calendarDays
-                        .filter(day => day.dateStr > todayStr)
-                        .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+                    const diasFuturosComDose = futureLogs
+                        .filter(item => item.data > todayStr)
+                        .sort((a, b) => a.data.localeCompare(b.data));
 
-                    for (const day of diasFuturos) {
-                        const log = logs[day.dateStr];
-                        const totalDoDia = getTotal(log);
-
-                        estoqueProjetado -= totalDoDia;
+                    for (const item of diasFuturosComDose) {
+                        estoqueProjetado -= item.total;
+                        ultimaDataProjetada = item.data;
 
                         if (estoqueProjetado <= 0) {
-                            fimEstoqueData = formatDateShortYear(day.dateStr);
+                            fimEstoqueData = formatDateShortYear(item.data);
                             break;
+                        }
+                    }
+
+                    if (!fimEstoqueData && estoqueProjetado > 0) {
+                        const ultimosSeteRegistros = [...allLogs]
+                            .sort((a, b) => a.data.localeCompare(b.data))
+                            .slice(-7);
+                        const mediaUltimosSete = averageDaily(ultimosSeteRegistros);
+
+                        if (mediaUltimosSete > 0) {
+                            const diasAteZerar = Math.ceil(estoqueProjetado / mediaUltimosSete);
+                            const dataBase = diasFuturosComDose.length ? ultimaDataProjetada : todayStr;
+                            fimEstoqueData = formatDateShortYear(addDaysToDateStr(dataBase, diasAteZerar));
                         }
                     }
                 }
@@ -385,11 +461,9 @@
 
                 return {
                     mediaDiaria,
-                    mediaDiariaFutura,
                     mediaSemanal,
-                    mediaSemanalFutura,
                     mediaMensal,
-                    mediaMensalFutura,
+                    mediaTresMeses,
                     tendencia,
                     fimEstoque: fimEstoqueData,
                     termino: terminoData,
@@ -397,7 +471,7 @@
                     consumoMesAnterior
                 };
 
-            }, [logs, statsCalculated, calendarDays]);
+            }, [logs, statsCalculated]);
 
             const chartDataCalculated = useMemo(() => {
                 let data = []; let totalGeral = 0;
@@ -431,12 +505,12 @@
                 while (currDate >= oldestDateObj) {
                     const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
                     if (total > 0) {
-                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
-                        emptyStreak = []; items.push({ type: 'log', log, isEditable: logCount < 5 }); logCount++;
+                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
+                        emptyStreak = []; items.push({ type: 'log', log, isEditable: true }); logCount++;
                     } else { emptyStreak.push(log); }
                     currDate.setDate(currDate.getDate() - 1);
                 }
-                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: logCount < 5 })); }
+                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
                 return items;
             }, [logs]);
 
@@ -759,12 +833,82 @@
             const handleInsertRow = (targetDate) => {
                 const idx = calendarDays.findIndex(d => d.dateStr === targetDate); if (idx === -1) return;
                 const newLogs = { ...logs };
-                for (let i = calendarDays.length - 1; i > idx; i--) {
-                    const prev = calendarDays[i-1].dateStr; const curr = calendarDays[i].dateStr;
+                const newCount = Math.max(agendaDayCount + 1, calendarDays.length + 1);
+                const extendedDays = [...calendarDays];
+                const lastDate = extendedDays[extendedDays.length - 1]?.dateStr || getTodayDateStr();
+                extendedDays.push({ dateStr: addDaysToDateStr(lastDate, 1) });
+
+                const insertIdx = idx + 1;
+                const insertDate = extendedDays[insertIdx]?.dateStr;
+
+                for (let i = extendedDays.length - 1; i > insertIdx; i--) {
+                    const prev = extendedDays[i-1].dateStr;
+                    const curr = extendedDays[i].dateStr;
                     if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
                     else delete newLogs[curr];
                 }
-                delete newLogs[targetDate]; updateActiveMedication({ logs: newLogs }); 
+
+                if (insertDate) delete newLogs[insertDate];
+                setAgendaDayCount(newCount);
+                localStorage.setItem('app_med_agenda_day_count', String(newCount));
+                updateActiveMedication({ logs: newLogs }); 
+                showToast("Linha zerada inserida abaixo!");
+            };
+
+            const handleCopySchedule = () => {
+                const sourceDate = copyData.sourceDate;
+                const startDate = copyData.startDate;
+                const daysToCopy = Number(copyData.days);
+
+                if (!isValidDateStr(sourceDate) || !isValidDateStr(startDate)) {
+                    showToast("Selecione datas válidas.", "error");
+                    return;
+                }
+
+                if (!Number.isFinite(daysToCopy) || daysToCopy <= 0) {
+                    showToast("Informe uma quantidade de dias válida.", "error");
+                    return;
+                }
+
+                const sourceLog = logs[sourceDate] || { d1: '', d2: '', d3: '', data: sourceDate };
+                const copiedLog = {
+                    d1: sourceLog.d1 || '',
+                    d2: sourceLog.d2 || '',
+                    d3: sourceLog.d3 || ''
+                };
+                const newLogs = {};
+
+                Object.keys(logs)
+                    .sort((a, b) => b.localeCompare(a))
+                    .forEach(dateKey => {
+                        const targetKey = dateKey >= startDate ? addDaysToDateStr(dateKey, daysToCopy) : dateKey;
+                        newLogs[targetKey] = { ...logs[dateKey], data: targetKey };
+                    });
+
+                for (let i = 0; i < daysToCopy; i++) {
+                    const targetDate = addDaysToDateStr(startDate, i);
+                    newLogs[targetDate] = { ...copiedLog, data: targetDate };
+                }
+
+                const todayStr = getTodayDateStr();
+                const lastInsertedDate = addDaysToDateStr(startDate, daysToCopy - 1);
+                const diffDays = Math.ceil((new Date(lastInsertedDate + 'T12:00:00') - new Date(todayStr + 'T12:00:00')) / (1000 * 60 * 60 * 24)) + 1;
+                if (diffDays > agendaDayCount) {
+                    const newCount = Math.max(agendaDayCount, diffDays);
+                    setAgendaDayCount(newCount);
+                    localStorage.setItem('app_med_agenda_day_count', String(newCount));
+                }
+
+                updateActiveMedication({ logs: newLogs });
+                setShowCopyModal(false);
+                showToast("Cópia aplicada!");
+            };
+
+            const handleDeleteHistoryRecord = (dateStr) => {
+                const updated = { ...logs };
+                delete updated[dateStr];
+                setLogs(updated);
+                showToast("Registro excluído.", "error");
             };
 
             const handleDeleteRow = (targetDate) => {
@@ -872,10 +1016,21 @@
                         replenishments: []
                     };
                     syncData([...medications, newMed]);
-                    setActiveMedicationId(newMed.id);
+                    selectMedication(newMed.id);
                     showToast("Medicamento cadastrado!");
                     setShowMedicationModal('list');
                 }
+            };
+
+            const moveMedication = (id, direction) => {
+                const index = medications.findIndex(m => m.id === id);
+                const targetIndex = index + direction;
+                if (index === -1 || targetIndex < 0 || targetIndex >= medications.length) return;
+                const updated = [...medications];
+                const [item] = updated.splice(index, 1);
+                updated.splice(targetIndex, 0, item);
+                syncData(updated);
+                showToast("Ordem atualizada!");
             };
 
             const deleteMedication = (id) => {
@@ -885,7 +1040,7 @@
                 }
                 const newMeds = medications.filter(m => m.id !== id);
                 syncData(newMeds);
-                if (activeMedicationId === id) setActiveMedicationId(newMeds[0].id);
+                if (activeMedicationId === id) selectMedication(newMeds[0].id);
                 showToast("Medicamento excluído");
             };
 
@@ -913,6 +1068,16 @@
                 
                 localStorage.setItem('app_med_medications', JSON.stringify(medications));
             }, [medications, user]);
+
+            useEffect(() => {
+                localStorage.setItem('app_med_agenda_day_count', String(agendaDayCount));
+            }, [agendaDayCount]);
+
+            useEffect(() => {
+                if (!medications.some(m => m.id === activeMedicationId) && medications.length > 0) {
+                    selectMedication(medications[0].id);
+                }
+            }, [medications, activeMedicationId]);
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -959,7 +1124,7 @@
                     <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
                         <ToastComponent toast={toast} />
                         <div className="w-full max-w-xs space-y-8">
-                            <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" alt="Logo" />
+                            <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" alt="Logo" />
                             <h1 className="text-5xl font-black italic tracking-tighter text-white mb-1">APP MED</h1>
                             <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
                             <form onSubmit={handleAuth} className="space-y-4 text-left">
@@ -982,7 +1147,7 @@
                     <header className="glass-card sticky top-0 z-40 rounded-b-3xl shadow-sm mx-0 mt-0 pt-4 pb-5 px-4">
                         <div className="max-w-md mx-auto flex justify-between items-center gap-3">
                             <div className="flex items-center">
-                                <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" className="w-8 h-8 mr-2 drop-shadow-sm" alt="Logo" />
+                                <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-8 h-8 mr-2 drop-shadow-sm" alt="Logo" />
                                 <div>
                                     <h1 className="text-xl font-black italic tracking-tighter leading-none text-slate-800">APP MED</h1>
                                     <div className="flex items-center space-x-1 mt-0.5">
@@ -999,10 +1164,10 @@
                         </div>
                     
                     <div className="max-w-md mx-auto mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                        {medications.map(med => (
+                        {medications.map((med, medIndex) => (
                             <button
                                 key={med.id}
-                                onClick={() => setActiveMedicationId(med.id)}
+                                onClick={() => selectMedication(med.id)}
                                 className={`px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap border transition-all ${
                                     activeMedicationId === med.id
                                         ? 'bg-teal-500 text-white border-teal-500'
@@ -1039,9 +1204,9 @@
                                     <div className="flex justify-between items-center mb-5">
                                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gráfico de Uso</h3>
                                         <div className="flex bg-white/50 rounded-full p-0.5 border border-slate-100 shadow-sm">
-                                            <button onClick={() => setChartType('weekly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'weekly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Semanal</button>
-                                            <button onClick={() => setChartType('monthly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'monthly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Mensal</button>
-                                            <button onClick={() => setChartType('yearly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'yearly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Anual</button>
+                                            <button onClick={() => setChartType('weekly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'weekly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Diário</button>
+                                            <button onClick={() => setChartType('monthly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'monthly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Semanal</button>
+                                            <button onClick={() => setChartType('yearly')} className={`px-3 py-1 text-[8px] font-black uppercase rounded-full transition-all ${chartType === 'yearly' ? 'bg-teal-500 text-white shadow-sm' : 'text-slate-500'}`}>Mensal</button>
                                         </div>
                                     </div>
                                     <div className="bg-teal-50/60 text-teal-700 py-3 rounded-2xl text-center mb-5 border border-teal-100">
@@ -1059,14 +1224,14 @@
                                     <div className="grid grid-cols-2 gap-3">
 
                                         <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Fim Estoque</p>
+                                            <p className="text-[9px] uppercase font-black text-slate-400 leading-tight">Fim do<br />Estoque</p>
                                             <p className="text-xl font-black text-rose-500">
                                                 {advancedStats.fimEstoque || '--'}
                                             </p>
                                         </div>
 
                                         <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Término</p>
+                                            <p className="text-[9px] uppercase font-black text-slate-400 leading-tight">Fim do<br />Tratamento</p>
                                             <p className="text-xl font-black text-rose-500">
                                                 {advancedStats.termino || '--'}
                                             </p>
@@ -1080,23 +1245,9 @@
                                         </div>
 
                                         <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
-                                            <p className="text-2xl font-black text-teal-600">
-                                                {advancedStats.mediaDiariaFutura.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
                                             <p className="text-[9px] uppercase font-black text-slate-400">Média semanal</p>
                                             <p className="text-2xl font-black text-violet-600">
                                                 {advancedStats.mediaSemanal.toFixed(1)}
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
-                                            <p className="text-2xl font-black text-violet-600">
-                                                {advancedStats.mediaSemanalFutura.toFixed(1)}
                                             </p>
                                         </div>
 
@@ -1108,9 +1259,9 @@
                                         </div>
 
                                         <div className="bg-white rounded-2xl p-4 min-h-[92px] border border-slate-100 flex flex-col items-center justify-center text-center">
-                                            <p className="text-[9px] uppercase font-black text-slate-400">Média Futura</p>
-                                            <p className="text-2xl font-black text-sky-600">
-                                                {advancedStats.mediaMensalFutura.toFixed(1)}
+                                            <p className="text-[9px] uppercase font-black text-slate-400 whitespace-nowrap">Média 3 Meses</p>
+                                            <p className="text-2xl font-black text-amber-600">
+                                                {advancedStats.mediaTresMeses.toFixed(1)}
                                             </p>
                                         </div>
 
@@ -1131,7 +1282,13 @@
 
                         {activeTab === 'agenda' && (
                             <div className="glass-card rounded-3xl overflow-hidden mt-3">
-                                <div className="p-4 bg-slate-800 text-white flex justify-between items-center"><h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2><button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Limpar Tudo</button></div>
+                                <div className="p-4 bg-slate-800 text-white flex justify-between items-center gap-3">
+                                    <h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => { setCopyData({ sourceDate: getTodayDateStr(), startDate: getTodayDateStr(), days: 1 }); setShowCopyModal(true); }} className="text-[8px] font-black uppercase text-teal-200 transition-colors">Copiar</button>
+                                        <button onClick={handleClearAll} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Limpar Tudo</button>
+                                    </div>
+                                </div>
                                 <div className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
                                     {calendarDays.map((day, dIdx) => {
                                         const log = logs[day.dateStr] || { d1: '', d2: '', d3: '' };
@@ -1147,13 +1304,9 @@
                                         }
 
                                         return (
-                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-1.5 p-2 rounded-2xl shadow-sm ${rowClass}`}>
-                                                <div className="flex flex-col gap-1 w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
-                                                </div>
-                                                <div className={`h-11 w-10 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[9px] uppercase leading-none">{day.weekday}</span><span className="text-[16px] leading-none">{day.label.split('/')[0]}</span></div>
-                                                <div className="flex-1 flex justify-center gap-1.5">
+                                            <div key={day.dateStr} ref={day.isToday ? todayRowRef : null} className={`flex items-center gap-0.5 p-2 rounded-2xl shadow-sm ${rowClass}`}>
+                                                <div className={`h-11 w-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[8px] uppercase leading-none">{day.weekday}</span><span className="text-[14px] leading-none">{day.labelDDMM}</span></div>
+                                                <div className="flex-1 flex justify-center gap-0.5">
                                                     {[1,2,3].map(num => (
                                                         <input 
                                                             key={num} 
@@ -1162,7 +1315,7 @@
                                                             min="0"
                                                             step="1"
                                                             placeholder="-" 
-                                                            className="w-full max-w-[40px] h-10 text-center rounded-xl font-black border border-slate-200 bg-white/60 focus:bg-white focus:border-teal-400 outline-none transition-all" 
+                                                            className="dose-input-field h-10 text-center rounded-xl font-black border border-slate-200 bg-white/60 focus:bg-white focus:border-teal-400 outline-none transition-all" 
                                                             value={log[`d${num}`]} 
                                                             onFocus={onInputFocus} 
                                                             onBlur={onInputBlur} 
@@ -1171,10 +1324,14 @@
                                                         />
                                                     ))}
                                                 </div>
-                                                <div className="w-8 flex justify-center shrink-0 relative">
+                                                <div className="w-7 flex justify-center shrink-0 relative">
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
                                                 </div>
-                                                <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                                                <div className="w-5 flex justify-center shrink-0"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                                                <div className="row-action-stack shrink-0">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="row-action-btn bg-teal-100 text-teal-600 rounded-md hover:bg-teal-200 transition"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="row-action-btn bg-rose-100 text-rose-500 rounded-md hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -1207,10 +1364,13 @@
                                     {historyFilteredItems.map((item) => item.type === 'empty_group' ? (
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
-                                        <div key={item.log.data} className="flex items-center gap-2 p-2 rounded-2xl border bg-white/90 shadow-sm">
-                                            <div className="h-11 w-20 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 border shrink-0"><span className="text-[13px] font-black leading-none whitespace-nowrap">{formatDateShortYear(item.log.data)}</span></div>
-                                            <div className="flex-1 flex justify-center gap-1.5">{[1,2,3].map(num => (<input key={num} type="number" min="0" step="1" placeholder="-" disabled={!item.isEditable} className={`w-full max-w-[40px] h-10 text-center rounded-xl font-black border ${item.isEditable ? 'bg-white border-slate-200 focus:border-teal-400' : 'bg-slate-100 text-slate-300'}`} value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                        <div key={item.log.data} className="flex items-center gap-1 p-2 rounded-2xl border bg-white/90 shadow-sm">
+                                            <div className="h-11 w-12 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border shrink-0 font-black"><span className="text-[13px] leading-none whitespace-nowrap">{formatDateDDMM(item.log.data)}</span><span className="text-[8px] leading-none mt-0.5">{formatYearFull(item.log.data)}</span></div>
+                                            <div className="flex-1 flex justify-center gap-1">{[1,2,3].map(num => (<input key={num} type="number" min="0" step="1" placeholder="-" className="dose-input-field h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
                                             <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
+                                            <div className="w-6 shrink-0 flex items-center justify-center">
+                                                <button onClick={() => handleClearRow(item.log.data)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -1276,7 +1436,7 @@
                                             <button onClick={() => setShowMedicationModal(false)} className="text-slate-400"><IconX /></button>
                                         </div>
                                         <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
-                                            {medications.map(med => (
+                                            {medications.map((med, medIndex) => (
                                                 <div key={med.id} className={`p-3 bg-white/70 rounded-2xl border ${activeMedicationId === med.id ? 'border-teal-300 shadow-sm' : 'border-slate-100'}`}>
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="flex-1 min-w-0">
@@ -1288,10 +1448,12 @@
                                                             <p className="text-[10px] text-slate-400 font-bold uppercase">Registros: {Object.keys(med.logs || {}).length} dia(s) · Compras: {(med.replenishments || []).length}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="grid grid-cols-3 gap-2 mt-3">
-                                                        <button onClick={() => { setActiveMedicationId(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
+                                                    <div className="grid grid-cols-2 gap-2 mt-3">
+                                                        <button onClick={() => moveMedication(med.id, -1)} disabled={medIndex === 0} className={`py-2 rounded-xl text-[8px] font-black uppercase ${medIndex === 0 ? 'bg-slate-50 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>↑ Subir</button>
+                                                        <button onClick={() => moveMedication(med.id, 1)} disabled={medIndex === medications.length - 1} className={`py-2 rounded-xl text-[8px] font-black uppercase ${medIndex === medications.length - 1 ? 'bg-slate-50 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>↓ Descer</button>
+                                                        <button onClick={() => { selectMedication(med.id); showToast('Medicação selecionada!'); }} className="py-2 bg-teal-50 text-teal-700 rounded-xl text-[8px] font-black uppercase">Selecionar</button>
                                                         <button onClick={() => { setMedicationFormData({ id: med.id, name: med.name, estoqueInicial: med.estoqueInicial }); setShowMedicationModal('form'); }} className="py-2 bg-slate-100 text-slate-600 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconEdit /> Editar</button>
-                                                        <button onClick={() => deleteMedication(med.id)} className="py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconTrash /> Excluir</button>
+                                                        <button onClick={() => deleteMedication(med.id)} className="col-span-2 py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-1"><IconTrash /> Excluir</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -1323,6 +1485,35 @@
                                         </div>
                                     </>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {showCopyModal && (
+                        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 bg-slate-900/60 backdrop-blur-sm animate-fade">
+                            <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 shadow-2xl border-t-8 border-teal-500 animate-slide-up">
+                                <h2 className="text-xl font-black text-center italic mb-6 uppercase text-slate-800">Copiar Registros</h2>
+                                <div className="space-y-4 mb-8">
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data para copiar</label>
+                                        <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.sourceDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, sourceDate: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data inicial da cópia</label>
+                                        <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.startDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, startDate: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantidade de dias</label>
+                                        <input type="number" min="1" step="1" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.days} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, days: e.target.value }))} />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                                        Se houver registros a partir da data inicial, eles serão empurrados para baixo antes da cópia ser aplicada.
+                                    </p>
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button onClick={() => setShowCopyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-500 bg-slate-100 rounded-xl uppercase">Voltar</button>
+                                    <button onClick={handleCopySchedule} className="flex-[2] py-4 text-white text-xs font-black rounded-xl uppercase shadow-lg btn-teal">Copiar</button>
+                                </div>
                             </div>
                         </div>
                     )}
