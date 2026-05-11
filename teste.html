@@ -802,17 +802,21 @@
                 const lastDate = extendedDays[extendedDays.length - 1]?.dateStr || getTodayDateStr();
                 extendedDays.push({ dateStr: addDaysToDateStr(lastDate, 1) });
 
-                for (let i = extendedDays.length - 1; i > idx; i--) {
+                const insertIdx = idx + 1;
+                const insertDate = extendedDays[insertIdx]?.dateStr;
+
+                for (let i = extendedDays.length - 1; i > insertIdx; i--) {
                     const prev = extendedDays[i-1].dateStr;
                     const curr = extendedDays[i].dateStr;
                     if (newLogs[prev]) newLogs[curr] = { ...newLogs[prev], data: curr };
                     else delete newLogs[curr];
                 }
-                delete newLogs[targetDate];
+
+                if (insertDate) delete newLogs[insertDate];
                 setAgendaDayCount(newCount);
                 localStorage.setItem('app_med_agenda_day_count', String(newCount));
                 updateActiveMedication({ logs: newLogs }); 
-                showToast("Linha zerada inserida!");
+                showToast("Linha zerada inserida abaixo!");
             };
 
             const handleCopySchedule = () => {
@@ -1288,9 +1292,9 @@
                                                     <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{total || '-'}</span>
                                                 </div>
                                                 <div className="w-6"><button onClick={() => handleClearRow(day.dateStr)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
-                                                <div className="flex flex-col gap-1 w-6 shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="bg-teal-100 text-teal-600 rounded-md p-1.5 hover:bg-teal-200 transition"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                                                <div className="flex flex-col gap-1 w-9 shrink-0 items-center">
+                                                    <button onClick={() => handleInsertRow(day.dateStr)} className="inline-flex items-center justify-center h-8 w-8 bg-teal-100 text-teal-600 rounded-md p-0 leading-none hover:bg-teal-200 transition"><IconInsertRow /></button>
+                                                    <button onClick={() => handleDeleteRow(day.dateStr)} className="inline-flex items-center justify-center h-8 w-8 bg-rose-100 text-rose-500 rounded-md p-0 leading-none hover:bg-rose-200 transition"><IconDeleteRow /></button>
                                                 </div>
                                             </div>
                                         );
@@ -1328,9 +1332,8 @@
                                             <div className="h-11 w-12 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border shrink-0 font-black"><span className="text-[13px] leading-none whitespace-nowrap">{formatDateDDMM(item.log.data)}</span><span className="text-[8px] leading-none mt-0.5">{formatYearFull(item.log.data)}</span></div>
                                             <div className="flex-1 flex justify-center gap-1">{[1,2,3].map(num => (<input key={num} type="number" min="0" step="1" placeholder="-" className="w-full max-w-[40px] h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
                                             <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
-                                            <div className="flex flex-col gap-1 w-6 shrink-0">
+                                            <div className="w-6 shrink-0 flex items-center justify-center">
                                                 <button onClick={() => handleClearRow(item.log.data)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button>
-                                                <button onClick={() => handleDeleteHistoryRecord(item.log.data)} className="bg-rose-100 text-rose-500 rounded-md p-1.5 hover:bg-rose-200 transition"><IconDeleteRow /></button>
                                             </div>
                                         </div>
                                     ))}
