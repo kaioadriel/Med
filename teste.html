@@ -864,7 +864,7 @@
                 const lastDate = extendedDays[extendedDays.length - 1]?.dateStr || getTodayDateStr();
                 extendedDays.push({ dateStr: addDaysToDateStr(lastDate, 1) });
 
-                const insertIdx = idx + 1;
+                const insertIdx = idx;
                 const insertDate = extendedDays[insertIdx]?.dateStr;
 
                 for (let i = extendedDays.length - 1; i > insertIdx; i--) {
@@ -878,7 +878,7 @@
                 setAgendaDayCount(newCount);
                 localStorage.setItem('app_med_agenda_day_count', String(newCount));
                 updateActiveMedication({ logs: newLogs }); 
-                showToast("Linha zerada inserida abaixo!");
+                showToast("Linha zerada inserida acima!");
             };
 
             const handleCopySchedule = () => {
