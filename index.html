@@ -173,6 +173,97 @@
             );
         };
 
+
+        const AgendaDoseRow = React.memo(({
+            day,
+            dIdx,
+            rowLog,
+            runningStock,
+            medicationName,
+            rowRef,
+            agendaDisplayDays,
+            isSelected,
+            isDropTarget,
+            isDimmed,
+            beginAgendaCardPress,
+            finishAgendaCardPress,
+            handleAgendaDestinationClick,
+            handleInputChange,
+            handleKeyDown,
+            onInputFocus,
+            onInputBlur,
+            handleClearRow,
+            handleInsertRow,
+            handleDeleteRow,
+            hasDoseInLog
+        }) => {
+            const [localLog, setLocalLog] = useState(rowLog || { d1: '', d2: '', d3: '', data: day.dateStr });
+
+            useEffect(() => {
+                setLocalLog(rowLog || { d1: '', d2: '', d3: '', data: day.dateStr });
+            }, [rowLog?.d1, rowLog?.d2, rowLog?.d3, rowLog?.data, day.dateStr]);
+
+            const total = (Number(localLog.d1)||0) + (Number(localLog.d2)||0) + (Number(localLog.d3)||0);
+            const rowClass = day.isPast ? 'bg-slate-50/80' : day.isToday ? 'bg-teal-50/90 shadow-sm' : 'bg-white/90';
+            const dateBoxClass = day.isPast ? 'bg-slate-200 text-slate-500 border-slate-300' : day.isToday ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-100 text-teal-700';
+            const inputClass = 'bg-white/60 focus:bg-white focus:border-teal-400';
+            const hasDoseValue = hasDoseInLog(localLog);
+            let badgeClass = hasDoseValue ? (day.isPast ? 'bg-slate-400 text-white' : 'bg-slate-700 text-white') : 'bg-slate-100 text-slate-400';
+            if (runningStock <= 0 && !day.isPast) {
+                badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse';
+            }
+
+            const commitLocalValue = (field, value, debounced = true) => {
+                setLocalLog(prev => ({ ...prev, [field]: value, data: day.dateStr }));
+                handleInputChange(day.dateStr, field, value, day.medicationId, { debounced });
+            };
+
+            return (
+                <div
+                    ref={rowRef}
+                    data-agenda-row="true"
+                    data-date={day.dateStr}
+                    data-medication-id={day.medicationId}
+                    onPointerDown={(event) => beginAgendaCardPress(event, day)}
+                    onPointerUp={finishAgendaCardPress}
+                    onPointerLeave={finishAgendaCardPress}
+                    onPointerCancel={finishAgendaCardPress}
+                    onClick={(event) => handleAgendaDestinationClick(event, day)}
+                    className={`flex items-center gap-0.5 p-2.5 rounded-2xl shadow-sm touch-pan-y select-none transition-all duration-200 ${rowClass} ${isSelected ? 'ring-2 ring-sky-400 scale-[0.99] bg-sky-50/90' : ''} ${isDropTarget ? 'ring-1 ring-teal-200 bg-teal-50/40 cursor-pointer' : ''} ${isDimmed ? 'opacity-50' : ''}`}>
+                    <div className={`h-11 w-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[8px] uppercase leading-none">{day.weekday}</span><span className="text-[14px] leading-none">{day.labelDDMM}</span></div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-center text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{medicationName}</div>
+                        <div className="flex justify-center gap-0.5">{[1,2,3].map(num => {
+                            const field = `d${num}`;
+                            return (
+                                <input 
+                                    key={num} 
+                                    id={`dose-${day.medicationId}-${day.dateStr}-${num}`}
+                                    type="number" 
+                                    step="1"
+                                    placeholder="-" 
+                                    className={`dose-input-field h-10 text-center rounded-xl font-black border outline-none transition-all ${inputClass}`} 
+                                    value={localLog[field] ?? ''} 
+                                    onFocus={onInputFocus} 
+                                    onBlur={(e) => { onInputBlur(); commitLocalValue(field, e.target.value, false); }} 
+                                    onKeyDown={(e) => handleKeyDown(e, dIdx, num, agendaDisplayDays)}
+                                    onChange={e => commitLocalValue(field, e.target.value, true)} 
+                                />
+                            );
+                        })}</div>
+                    </div>
+                    <div className="w-7 flex justify-center shrink-0 relative">
+                        <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{hasDoseValue ? total : '-'}</span>
+                    </div>
+                    <div className="w-5 flex justify-center shrink-0"><button onClick={() => handleClearRow(day.dateStr, day.medicationId)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
+                    <div className="row-action-stack shrink-0">
+                        <button onClick={() => handleInsertRow(day.dateStr, day.medicationId)} className="row-action-btn bg-teal-100 text-teal-600 rounded-md hover:bg-teal-200 transition"><IconInsertRow /></button>
+                        <button onClick={() => handleDeleteRow(day.dateStr, day.medicationId)} className="row-action-btn bg-rose-100 text-rose-500 rounded-md hover:bg-rose-200 transition"><IconDeleteRow /></button>
+                    </div>
+                </div>
+            );
+        });
+
         const App = () => {
             // --- CONSTANTES ---
             
@@ -203,9 +294,15 @@
                 return savedId === 'all' ? 'all' : (Number(savedId) || 1);
             });
 
-                        const syncData = (updatedMeds) => {
-                setMedications(updatedMeds);
-                localStorage.setItem('app_med_medications', JSON.stringify(updatedMeds));
+            const persistTimeoutRef = useRef(null);
+            const lastPersistedPayloadRef = useRef('');
+
+            const persistAppData = (updatedMeds) => {
+                const payload = JSON.stringify(updatedMeds);
+                if (payload !== lastPersistedPayloadRef.current) {
+                    localStorage.setItem('app_med_medications', payload);
+                    lastPersistedPayloadRef.current = payload;
+                }
                 if (user && db) {
                     db.collection('medicacao_users').doc(user.uid).set({
                         medications: updatedMeds,
@@ -214,6 +311,20 @@
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }).catch(err => console.error("Erro ao sincronizar:", err));
                 }
+            };
+
+            const schedulePersistData = (updatedMeds, immediate = false) => {
+                if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+                if (immediate) {
+                    persistAppData(updatedMeds);
+                    return;
+                }
+                persistTimeoutRef.current = setTimeout(() => persistAppData(updatedMeds), 650);
+            };
+
+            const syncData = (updatedMeds, options = {}) => {
+                setMedications(updatedMeds);
+                schedulePersistData(updatedMeds, Boolean(options.immediate));
             };
 
             const updateMedicationById = (medicationId, updates) => {
@@ -269,6 +380,8 @@
             const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
             const [agendaDayCount, setAgendaDayCount] = useState(() => Number(localStorage.getItem('app_med_agenda_day_count')) || 90);
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
+            const [visibleAgendaCount, setVisibleAgendaCount] = useState(45);
+            const AGENDA_PAGE_SIZE = 45;
             const [agendaEndLimits, setAgendaEndLimits] = useState(() => JSON.parse(localStorage.getItem('app_med_agenda_end_limits') || '{}'));
             const [showCopyModal, setShowCopyModal] = useState(false);
             const [copyData, setCopyData] = useState({ medicationId: '', sourceDate: '', startDate: '', days: 1 });
@@ -506,6 +619,42 @@
             }, [selectedMedications, agendaPeriod, agendaEndLimits]);
 
             const agendaDisplayDays = agendaDisplayRows;
+            const visibleAgendaDays = useMemo(() => agendaDisplayDays.slice(0, visibleAgendaCount), [agendaDisplayDays, visibleAgendaCount]);
+            const hasMoreAgendaDays = visibleAgendaCount < agendaDisplayDays.length;
+
+            const agendaRowDerivedMap = useMemo(() => {
+                const map = {};
+                const rowsByMedication = visibleAgendaDays.reduce((acc, day) => {
+                    const key = String(day.medicationId);
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(day);
+                    return acc;
+                }, {});
+
+                medications.forEach(med => {
+                    const rows = (rowsByMedication[String(med.id)] || []).slice().sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+                    if (!rows.length) return;
+                    const confirmedEntrada = (med.replenishments || []).reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
+                    const sortedLogs = Object.values(med.logs || {})
+                        .filter(log => isValidDateStr(log?.data))
+                        .sort((a, b) => a.data.localeCompare(b.data));
+                    let logIndex = 0;
+                    let totalSaidaAteData = 0;
+                    rows.forEach(day => {
+                        while (logIndex < sortedLogs.length && sortedLogs[logIndex].data <= day.dateStr) {
+                            totalSaidaAteData += getLogTotalInline(sortedLogs[logIndex]);
+                            logIndex += 1;
+                        }
+                        const log = med.logs?.[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
+                        map[`${med.id}|${day.dateStr}`] = {
+                            medicationName: med.name,
+                            log,
+                            runningStock: (Number(med.estoqueInicial) || 0) + confirmedEntrada - totalSaidaAteData
+                        };
+                    });
+                });
+                return map;
+            }, [visibleAgendaDays, medications]);
 
             const getLogsValue = (dateStr) => {
                 if (dateStr > getTodayDateStr()) return 0;
@@ -990,13 +1139,15 @@
                 showToast("Excluído.", "error");
             };
 
-            const handleInputChange = (dateStr, field, value, medicationId = null) => {
+            const doseCommitTimeoutsRef = useRef({});
+
+            const commitDoseInputChange = (dateStr, field, value, medicationId = null) => {
                 if (!isValidDateStr(dateStr)) { showToast("Data inválida.", "error"); return; }
                 const sanitized = sanitizePositiveNumber(value);
                 if (value !== '' && sanitized === '') { showToast("Insira um valor válido.", "error"); return; }
                 const targetMedId = getOperationMedicationId(medicationId);
                 if (!targetMedId) return;
-                if (sanitized !== '' && Number(sanitized) > 0) ensureAgendaLimitForDate(targetMedId, dateStr);
+                if (sanitized !== '' && Number(sanitized) !== 0) ensureAgendaLimitForDate(targetMedId, dateStr);
 
                 updateMedicationLogs(targetMedId, (currentLogs) => {
                     const curr = currentLogs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
@@ -1010,7 +1161,35 @@
                 });
             };
 
+            const handleInputChange = (dateStr, field, value, medicationId = null, options = {}) => {
+                const targetMedId = getOperationMedicationId(medicationId);
+                const debounceKey = `${targetMedId || 'med'}|${dateStr}|${field}`;
+                if (doseCommitTimeoutsRef.current[debounceKey]) clearTimeout(doseCommitTimeoutsRef.current[debounceKey]);
+
+                if (options.debounced) {
+                    doseCommitTimeoutsRef.current[debounceKey] = setTimeout(() => {
+                        commitDoseInputChange(dateStr, field, value, medicationId);
+                        delete doseCommitTimeoutsRef.current[debounceKey];
+                    }, 350);
+                    return;
+                }
+
+                commitDoseInputChange(dateStr, field, value, medicationId);
+            };
+
+            const clearPendingDoseCommitsForRow = (dateStr, medicationId = null) => {
+                const targetMedId = getOperationMedicationId(medicationId);
+                ['d1', 'd2', 'd3'].forEach(field => {
+                    const debounceKey = `${targetMedId || 'med'}|${dateStr}|${field}`;
+                    if (doseCommitTimeoutsRef.current[debounceKey]) {
+                        clearTimeout(doseCommitTimeoutsRef.current[debounceKey]);
+                        delete doseCommitTimeoutsRef.current[debounceKey];
+                    }
+                });
+            };
+
             const handleInsertRow = (targetDate, medicationId = null) => {
+                clearPendingDoseCommitsForRow(targetDate, medicationId);
                 const targetMedId = getOperationMedicationId(medicationId);
                 const med = getMedicationById(targetMedId);
                 if (!med) return;
@@ -1143,6 +1322,7 @@
             };
 
             const handleDeleteRow = (targetDate, medicationId = null) => {
+                clearPendingDoseCommitsForRow(targetDate, medicationId);
                 const targetMedId = getOperationMedicationId(medicationId);
                 const med = getMedicationById(targetMedId);
                 if (!med) return;
@@ -1179,6 +1359,7 @@
 
             const handleClearRow = (dateStr, medicationId = null) => {
                 const targetMedId = getOperationMedicationId(medicationId);
+                clearPendingDoseCommitsForRow(dateStr, medicationId);
                 updateMedicationLogs(targetMedId, (currentLogs) => {
                     delete currentLogs[dateStr];
                     return currentLogs;
@@ -1594,8 +1775,11 @@
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('app_med_medications', JSON.stringify(medications));
-            }, [medications]);
+                return () => {
+                    if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+                    Object.values(doseCommitTimeoutsRef.current || {}).forEach(timeoutId => clearTimeout(timeoutId));
+                };
+            }, []);
 
             useEffect(() => {
                 localStorage.setItem('app_med_agenda_day_count', String(agendaDayCount));
@@ -1650,6 +1834,10 @@
             }, [medications, activeMedicationId]);
 
 
+
+            useEffect(() => {
+                setVisibleAgendaCount(AGENDA_PAGE_SIZE);
+            }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, medications.length]);
 
             useEffect(() => {
                 if (activeTab === 'agenda' && todayRowRef.current) {
@@ -1901,68 +2089,45 @@
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{agendaDisplayDays.length} resultado(s)</p>
                                 </div>
                                 <div ref={agendaScrollContainerRef} data-agenda-scroll="true" className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
-                                    {agendaDisplayDays.map((day, dIdx) => {
+                                    {visibleAgendaDays.map((day, dIdx) => {
+                                        const derived = agendaRowDerivedMap[`${day.medicationId}|${day.dateStr}`] || {};
                                         const rowMed = getMedicationById(day.medicationId) || activeMedication || medications[0];
-                                        const rowLogs = rowMed?.logs || {};
-                                        const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
-                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        const rowRepls = rowMed?.replenishments || [];
-                                        const rowEntrada = rowRepls.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
-                                        const totalSaidaAteData = Object.values(rowLogs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
-                                        const runningStock = (rowMed?.estoqueInicial || 0) + rowEntrada - totalSaidaAteData;
-
-                                        const rowClass = day.isPast ? 'bg-slate-50/80' : day.isToday ? 'bg-teal-50/90 shadow-sm' : 'bg-white/90';
-                                        const dateBoxClass = day.isPast ? 'bg-slate-200 text-slate-500 border-slate-300' : day.isToday ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-100 text-teal-700';
-                                        const inputClass = 'bg-white/60 focus:bg-white focus:border-teal-400';
-                                        const hasDoseValue = hasDoseInLog(log);
-                                        let badgeClass = hasDoseValue ? (day.isPast ? 'bg-slate-400 text-white' : 'bg-slate-700 text-white') : 'bg-slate-100 text-slate-400';
-                                        if (runningStock <= 0 && !day.isPast) {
-                                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse';
-                                        }
-
+                                        const rowLog = derived.log || rowMed?.logs?.[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
                                         return (
-                                            <div
+                                            <AgendaDoseRow
                                                 key={`${day.medicationId || 'med'}-${day.dateStr}`}
-                                                ref={day.isToday ? todayRowRef : null}
-                                                data-agenda-row="true"
-                                                data-date={day.dateStr}
-                                                data-medication-id={day.medicationId}
-                                                onPointerDown={(event) => beginAgendaCardPress(event, day)}
-                                                onPointerUp={finishAgendaCardPress}
-                                                onPointerLeave={finishAgendaCardPress}
-                                                onPointerCancel={finishAgendaCardPress}
-                                                onClick={(event) => handleAgendaDestinationClick(event, day)}
-                                                className={`flex items-center gap-0.5 p-2.5 rounded-2xl shadow-sm touch-pan-y select-none transition-all duration-200 ${rowClass} ${isAgendaSourceSelected(day) ? 'ring-2 ring-sky-400 scale-[0.99] bg-sky-50/90' : ''} ${agendaDrag.active && !isAgendaSourceSelected(day) && agendaDrag.sources[0]?.medicationId === day.medicationId ? 'ring-1 ring-teal-200 bg-teal-50/40 cursor-pointer' : ''} ${agendaDrag.active && agendaDrag.sources[0]?.medicationId !== day.medicationId ? 'opacity-50' : ''}`}>
-                                                <div className={`h-11 w-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[8px] uppercase leading-none">{day.weekday}</span><span className="text-[14px] leading-none">{day.labelDDMM}</span></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-center text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{day.medicationName || rowMed?.name}</div>
-                                                    <div className="flex justify-center gap-0.5">{[1,2,3].map(num => (
-                                                        <input 
-                                                            key={num} 
-                                                            id={`dose-${day.medicationId}-${day.dateStr}-${num}`}
-                                                            type="number" 
-                                                            step="1"
-                                                            placeholder="-" 
-                                                            className={`dose-input-field h-10 text-center rounded-xl font-black border outline-none transition-all ${inputClass}`} 
-                                                            value={log[`d${num}`]} 
-                                                            onFocus={onInputFocus} 
-                                                            onBlur={onInputBlur} 
-                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num, agendaDisplayDays)}
-                                                            onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value, day.medicationId)} 
-                                                        />
-                                                    ))}</div>
-                                                </div>
-                                                <div className="w-7 flex justify-center shrink-0 relative">
-                                                    <span className={`flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl transition-all duration-300 ${badgeClass}`}>{hasDoseValue ? total : '-'}</span>
-                                                </div>
-                                                <div className="w-5 flex justify-center shrink-0"><button onClick={() => handleClearRow(day.dateStr, day.medicationId)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button></div>
-                                                <div className="row-action-stack shrink-0">
-                                                    <button onClick={() => handleInsertRow(day.dateStr, day.medicationId)} className="row-action-btn bg-teal-100 text-teal-600 rounded-md hover:bg-teal-200 transition"><IconInsertRow /></button>
-                                                    <button onClick={() => handleDeleteRow(day.dateStr, day.medicationId)} className="row-action-btn bg-rose-100 text-rose-500 rounded-md hover:bg-rose-200 transition"><IconDeleteRow /></button>
-                                                </div>
-                                            </div>
+                                                day={day}
+                                                dIdx={dIdx}
+                                                rowLog={rowLog}
+                                                runningStock={Number.isFinite(derived.runningStock) ? derived.runningStock : 0}
+                                                medicationName={derived.medicationName || rowMed?.name || day.medicationName}
+                                                rowRef={day.isToday ? todayRowRef : null}
+                                                agendaDisplayDays={agendaDisplayDays}
+                                                isSelected={isAgendaSourceSelected(day)}
+                                                isDropTarget={agendaDrag.active && !isAgendaSourceSelected(day) && agendaDrag.sources[0]?.medicationId === day.medicationId}
+                                                isDimmed={agendaDrag.active && agendaDrag.sources[0]?.medicationId !== day.medicationId}
+                                                beginAgendaCardPress={beginAgendaCardPress}
+                                                finishAgendaCardPress={finishAgendaCardPress}
+                                                handleAgendaDestinationClick={handleAgendaDestinationClick}
+                                                handleInputChange={handleInputChange}
+                                                handleKeyDown={handleKeyDown}
+                                                onInputFocus={onInputFocus}
+                                                onInputBlur={onInputBlur}
+                                                handleClearRow={handleClearRow}
+                                                handleInsertRow={handleInsertRow}
+                                                handleDeleteRow={handleDeleteRow}
+                                                hasDoseInLog={hasDoseInLog}
+                                            />
                                         );
                                     })}
+                                    {hasMoreAgendaDays && (
+                                        <button
+                                            onClick={() => setVisibleAgendaCount(prev => Math.min(prev + AGENDA_PAGE_SIZE, agendaDisplayDays.length))}
+                                            className="w-full py-4 bg-teal-50 text-teal-700 rounded-2xl font-black text-[10px] uppercase border border-teal-100 shadow-sm active:scale-95 transition-all"
+                                        >
+                                            Carregar mais lançamentos ({Math.min(AGENDA_PAGE_SIZE, agendaDisplayDays.length - visibleAgendaCount)} de {agendaDisplayDays.length - visibleAgendaCount})
+                                        </button>
+                                    )}
                                 </div>
                                 </div>
                             </div>
