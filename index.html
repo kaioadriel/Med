@@ -178,7 +178,7 @@
 
         const App = () => {
             // --- CONSTANTES ---
-            const LOAD_BATCH_SIZE = 30;
+            
 
             // --- ESTADOS ---
             const [user, setUser] = useState(null);
@@ -290,9 +290,6 @@
             const [inventorySortBy, setInventorySortBy] = useState('validade');
             const [inventorySortDir, setInventorySortDir] = useState('desc');
             const [reportFilters, setReportFilters] = useState({ medicationId: 'all', start: '', end: '' });
-            const [agendaVisibleCount, setAgendaVisibleCount] = useState(LOAD_BATCH_SIZE);
-            const [historyVisibleCount, setHistoryVisibleCount] = useState(LOAD_BATCH_SIZE);
-            const [purchaseVisibleCount, setPurchaseVisibleCount] = useState(LOAD_BATCH_SIZE);
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -726,14 +723,6 @@
 
                 return sorted.filter(compra => isDateInsidePeriod(compra.date, purchasePeriod));
             }, [replenishments, purchasePeriod]);
-
-            const visibleAgendaDisplayDays = useMemo(() => agendaDisplayDays.slice(0, agendaVisibleCount), [agendaDisplayDays, agendaVisibleCount]);
-            const visibleHistoryItems = useMemo(() => historyFilteredItems.slice(0, historyVisibleCount), [historyFilteredItems, historyVisibleCount]);
-            const visiblePurchaseItems = useMemo(() => purchaseFilteredItems.slice(0, purchaseVisibleCount), [purchaseFilteredItems, purchaseVisibleCount]);
-
-            useEffect(() => { setAgendaVisibleCount(LOAD_BATCH_SIZE); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end]);
-            useEffect(() => { setHistoryVisibleCount(LOAD_BATCH_SIZE); }, [activeMedicationId, historyPeriod.start, historyPeriod.end]);
-            useEffect(() => { setPurchaseVisibleCount(LOAD_BATCH_SIZE); }, [activeMedicationId, purchasePeriod.start, purchasePeriod.end]);
 
             // --- FUNÇÕES DE UTILIDADE, EXPORTAÇÃO E INTERAÇÃO ---
             const showToast = (message, type = 'success') => {
@@ -2216,10 +2205,10 @@
                                         </div>
                                     </div>
                                     {hasActivePeriod(agendaPeriod) && <button onClick={() => setAgendaPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
-                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{visibleAgendaDisplayDays.length} de {agendaDisplayDays.length} resultado(s)</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{agendaDisplayDays.length} resultado(s)</p>
                                 </div>
                                 <div ref={agendaScrollContainerRef} data-agenda-scroll="true" className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
-                                    {visibleAgendaDisplayDays.map((day, dIdx) => {
+                                    {agendaDisplayDays.map((day, dIdx) => {
                                         const rowMed = getMedicationById(day.medicationId) || activeMedication || medications[0];
                                         const rowLogs = rowMed?.logs || {};
                                         const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
@@ -2265,7 +2254,7 @@
                                                             value={log[`d${num}`]} 
                                                             onFocus={onInputFocus} 
                                                             onBlur={onInputBlur} 
-                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num, visibleAgendaDisplayDays)}
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num, agendaDisplayDays)}
                                                             onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value, day.medicationId)} 
                                                         />
                                                     ))}</div>
@@ -2281,9 +2270,6 @@
                                             </div>
                                         );
                                     })}
-                                    {agendaDisplayDays.length > visibleAgendaDisplayDays.length && (
-                                        <button onClick={() => setAgendaVisibleCount(prev => prev + LOAD_BATCH_SIZE)} className="w-full py-3 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all">Carregar Mais 30</button>
-                                    )}
                                 </div>
                                 </div>
                             </div>
@@ -2305,13 +2291,13 @@
                                         </div>
                                     </div>
                                     {hasActivePeriod(historyPeriod) && <button onClick={() => setHistoryPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
-                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{visibleHistoryItems.filter(item => item.type === 'log').length} de {historyFilteredItems.filter(item => item.type === 'log').length} resultado(s)</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{historyFilteredItems.filter(item => item.type === 'log').length} resultado(s)</p>
                                 </div>
                                 <div className="space-y-2 pb-10">
                                     {historyFilteredItems.length === 0 && (
                                         <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhum registro encontrado</div>
                                     )}
-                                    {visibleHistoryItems.map((item) => item.type === 'empty_group' ? (
+                                    {historyFilteredItems.map((item) => item.type === 'empty_group' ? (
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
                                         <div key={`${item.log.medicationId || activeMedicationId || 'med'}-${item.log.data}`} className="flex items-center gap-1 p-2 rounded-2xl border bg-white/90 shadow-sm">
@@ -2326,9 +2312,6 @@
                                             </div>
                                         </div>
                                     ))}
-                                    {historyFilteredItems.length > visibleHistoryItems.length && (
-                                        <button onClick={() => setHistoryVisibleCount(prev => prev + LOAD_BATCH_SIZE)} className="w-full py-3 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all">Carregar Mais 30</button>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -2352,13 +2335,13 @@
                                         </div>
                                     </div>
                                     {hasActivePeriod(purchasePeriod) && <button onClick={() => setPurchasePeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
-                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{visiblePurchaseItems.length} de {purchaseFilteredItems.length} resultado(s)</p>
+                                    <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{purchaseFilteredItems.length} resultado(s)</p>
                                 </div>
                                 <div className="space-y-3 pb-10">
                                     {purchaseFilteredItems.length === 0 && (
                                         <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhuma compra encontrada</div>
                                     )}
-                                    {visiblePurchaseItems.map(compra => {
+                                    {purchaseFilteredItems.map(compra => {
                                         const days = calculateDaysAgo(compra.date);
                                         return (
                                         <div key={compra.id} className={`p-3 rounded-2xl shadow-sm border flex items-center justify-between ${compra.isScheduled ? 'bg-amber-50/80 border-amber-200' : 'bg-white/90 border-slate-100'}`}>
@@ -2377,9 +2360,6 @@
                                             </div>
                                         </div>
                                     )})}
-                                    {purchaseFilteredItems.length > visiblePurchaseItems.length && (
-                                        <button onClick={() => setPurchaseVisibleCount(prev => prev + LOAD_BATCH_SIZE)} className="w-full py-3 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all">Carregar Mais 30</button>
-                                    )}
                                 </div>
                             </div>
                         )}
