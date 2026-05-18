@@ -287,6 +287,8 @@
             const [inventorySearch, setInventorySearch] = useState('');
             const [inventorySortBy, setInventorySortBy] = useState('validade');
             const [inventorySortDir, setInventorySortDir] = useState('asc');
+            const [reportFilters, setReportFilters] = useState({ medicationId: 'all', start: '', end: '' });
+            const [inventoryPdfSort, setInventoryPdfSort] = useState('validade_desc');
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -862,6 +864,88 @@
                 });
             }, [inventoryItems, inventorySearch, inventorySortBy, inventorySortDir]);
 
+            const getInventoryItemsForPdf = () => {
+                const items = [...inventoryItems];
+                if (inventoryPdfSort === 'nome_asc') {
+                    return items.sort((a, b) => String(a.remedio || '').localeCompare(String(b.remedio || ''), 'pt-BR'));
+                }
+                if (inventoryPdfSort === 'nome_desc') {
+                    return items.sort((a, b) => String(b.remedio || '').localeCompare(String(a.remedio || ''), 'pt-BR'));
+                }
+                return items.sort((a, b) => String(b.validade || '').localeCompare(String(a.validade || '')) || String(a.remedio || '').localeCompare(String(b.remedio || ''), 'pt-BR'));
+            };
+
+            const clearInventoryPdfOptions = () => {
+                setInventoryPdfSort('validade_desc');
+                showToast('Filtro do PDF da lista limpo!');
+            };
+
+            const handleInventoryPDF = () => {
+                const items = getInventoryItemsForPdf();
+                const htmlRows = items.map(item => `
+                    <tr>
+                        <td>${htmlCell(item.remedio || '')}</td>
+                        <td>${htmlCell(item.dosagem || '')}</td>
+                        <td>${htmlCell(item.marca || '')}</td>
+                        <td>${htmlCell(item.quantidade || '')}</td>
+                        <td>${htmlCell(formatDateShortYear(item.validade))}</td>
+                        <td>${htmlCell(getExpiryLabel(item.validade))}</td>
+                        <td>${htmlCell(item.observacoes || '')}</td>
+                    </tr>
+                `).join('');
+
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    showToast('Permita pop-ups para gerar PDF.', 'error');
+                    return;
+                }
+
+                const sortLabel = inventoryPdfSort === 'nome_asc' ? 'Ordem alfabética crescente' : inventoryPdfSort === 'nome_desc' ? 'Ordem alfabética decrescente' : 'Data de validade decrescente';
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8" />
+                        <title>App Med - Lista de Validades</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; color: #1e293b; padding: 24px; }
+                            h1 { margin: 0; font-size: 26px; }
+                            p { color: #64748b; margin-top: 4px; }
+                            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
+                            .card { border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; background: #f8fafc; }
+                            .card span { display: block; color: #64748b; font-size: 9px; text-transform: uppercase; font-weight: 700; }
+                            .card strong { display: block; color: #0f766e; font-size: 18px; margin-top: 4px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; }
+                            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
+                            th { background: #0f766e; color: white; }
+                            tr:nth-child(even) { background: #f8fafc; }
+                            button { padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right; }
+                            @media print { button { display: none; } body { padding: 0; } .meta { grid-template-columns: repeat(3, 1fr); } }
+                        </style>
+                    </head>
+                    <body>
+                        <button onclick="window.print()">Salvar como PDF</button>
+                        <h1>APP MED - LISTA DE VALIDADES</h1>
+                        <p>Relatório gerado em ${new Date().toLocaleString('pt-BR')}</p>
+                        <div class="meta">
+                            <div class="card"><span>Total de itens</span><strong>${items.length}</strong></div>
+                            <div class="card"><span>Ordenação</span><strong style="font-size:12px;">${htmlCell(sortLabel)}</strong></div>
+                            <div class="card"><span>Fonte</span><strong style="font-size:12px;">Aba Lista</strong></div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr><th>Remédio</th><th>Dosagem</th><th>Marca</th><th>Quantidade</th><th>Validade</th><th>Situação</th><th>Observações</th></tr>
+                            </thead>
+                            <tbody>${htmlRows || '<tr><td colspan="7">Nenhum remédio cadastrado na lista.</td></tr>'}</tbody>
+                        </table>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.focus();
+                showToast('PDF da lista pronto para salvar!');
+            };
+
             const handleBackup = () => {
                 const data = JSON.stringify({
                     version: 2,
@@ -899,14 +983,34 @@
                 reader.readAsText(file); e.target.value = ''; 
             };
 
+            const getReportFilteredMedications = () => {
+                const selectedId = reportFilters.medicationId;
+                if (selectedId === 'all') return medications;
+                return medications.filter(med => String(med.id) === String(selectedId));
+            };
+
+            const isReportDateAllowed = (dateStr) => {
+                if (!isValidDateStr(dateStr)) return false;
+                const start = isValidDateStr(reportFilters.start) ? reportFilters.start : '';
+                const end = isValidDateStr(reportFilters.end) ? reportFilters.end : '';
+                if (start && dateStr < start) return false;
+                if (end && dateStr > end) return false;
+                return true;
+            };
+
+            const clearReportFilters = () => {
+                setReportFilters({ medicationId: 'all', start: '', end: '' });
+                showToast('Filtro do relatório limpo!');
+            };
+
             const buildExportRows = () => {
                 const rows = [];
-                medications.forEach(med => {
+                getReportFilteredMedications().forEach(med => {
                     Object.values(med.logs || {})
                         .sort((a, b) => (a.data || '').localeCompare(b.data || ''))
                         .forEach(log => {
                             const total = getLogTotal(log);
-                            if (hasDoseInLog(log)) {
+                            if (hasDoseInLog(log) && isReportDateAllowed(log.data)) {
                                 rows.push({
                                     tipo: 'Dose',
                                     medicamento: med.name,
@@ -926,6 +1030,7 @@
                         .slice()
                         .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
                         .forEach(item => {
+                            if (!isReportDateAllowed(item.date)) return;
                             rows.push({
                                 tipo: item.isScheduled ? 'Compra Agendada' : 'Compra Confirmada',
                                 medicamento: med.name,
@@ -945,8 +1050,9 @@
 
             const handleExportCSV = () => {
                 const header = ['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total Doses', 'Quantidade Compra', 'Status'];
+                const rows = buildExportRows();
                 const lines = [header.map(csvCell).join(';')];
-                buildExportRows().forEach(row => {
+                rows.forEach(row => {
                     lines.push([
                         row.tipo,
                         row.medicamento,
@@ -960,35 +1066,38 @@
                     ].map(csvCell).join(';'));
                 });
                 downloadTextFile(lines.join('\n'), `app_med_export_${getTodayDateStr()}.csv`, 'text/csv;charset=utf-8');
-                showToast("CSV gerado!");
+                showToast(rows.length ? "CSV gerado!" : "CSV gerado sem registros no filtro.");
             };
 
             const buildMedicationPdfSummary = () => {
-                return medications.map(med => {
+                return getReportFilteredMedications().map(med => {
                     const logsObj = med.logs || {};
                     const replenishmentsList = med.replenishments || [];
-                    const totalDoses = Object.values(logsObj).reduce((acc, log) => acc + getLogTotal(log), 0);
-                    const comprasConfirmadas = replenishmentsList.reduce((acc, item) => acc + (item.isScheduled ? 0 : (Number(item.amount) || 0)), 0);
-                    const comprasAgendadas = replenishmentsList.reduce((acc, item) => acc + (item.isScheduled ? (Number(item.amount) || 0) : 0), 0);
-                    const totalRegistros = Object.values(logsObj).filter(log => hasDoseInLog(log)).length;
-                    const totalCompras = replenishmentsList.length;
+                    const filteredLogs = Object.values(logsObj).filter(log => hasDoseInLog(log) && isReportDateAllowed(log?.data));
+                    const filteredReplenishments = replenishmentsList.filter(item => isReportDateAllowed(item?.date));
+                    const totalDoses = filteredLogs.reduce((acc, log) => acc + getLogTotal(log), 0);
+                    const comprasConfirmadas = filteredReplenishments.reduce((acc, item) => acc + (item.isScheduled ? 0 : (Number(item.amount) || 0)), 0);
+                    const comprasAgendadas = filteredReplenishments.reduce((acc, item) => acc + (item.isScheduled ? (Number(item.amount) || 0) : 0), 0);
+                    const totalRegistros = filteredLogs.length;
+                    const totalCompras = filteredReplenishments.length;
                     const estoqueInicial = Number(med.estoqueInicial) || 0;
                     const todayStr = getTodayDateStr();
                     const totalDosesAteHoje = Object.values(logsObj).reduce((acc, log) => {
                         const data = log?.data || '';
                         return data && data <= todayStr ? acc + getLogTotal(log) : acc;
                     }, 0);
+                    const totalComprasConfirmadasGeral = replenishmentsList.reduce((acc, item) => acc + (item.isScheduled ? 0 : (Number(item.amount) || 0)), 0);
                     return {
                         medicamento: med.name || 'Sem nome',
                         estoqueInicial,
                         totalDoses,
                         comprasConfirmadas,
                         comprasAgendadas,
-                        estoqueAtual: estoqueInicial + comprasConfirmadas - totalDosesAteHoje,
+                        estoqueAtual: estoqueInicial + totalComprasConfirmadasGeral - totalDosesAteHoje,
                         totalRegistros,
                         totalCompras
                     };
-                });
+                }).filter(row => row.totalDoses || row.comprasConfirmadas || row.comprasAgendadas || reportFilters.medicationId !== 'all');
             };
 
             const handleExportPDF = () => {
@@ -1037,6 +1146,10 @@
                     return;
                 }
 
+                const selectedMedicationLabel = reportFilters.medicationId === 'all' ? 'Todos' : (medications.find(med => String(med.id) === String(reportFilters.medicationId))?.name || 'Selecionado');
+                const startLabel = isValidDateStr(reportFilters.start) ? formatDateShortYear(reportFilters.start) : 'Início';
+                const endLabel = isValidDateStr(reportFilters.end) ? formatDateShortYear(reportFilters.end) : 'Fim';
+
                 printWindow.document.write(`
                     <!DOCTYPE html>
                     <html lang="pt-BR">
@@ -1064,6 +1177,7 @@
                         <button onclick="window.print()" style="padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right;">Salvar como PDF</button>
                         <h1>APP MED</h1>
                         <p>Exportação completa gerada em ${new Date().toLocaleString('pt-BR')}</p>
+                        <p><strong>Medicação:</strong> ${htmlCell(selectedMedicationLabel)} · <strong>Período:</strong> ${htmlCell(startLabel)} até ${htmlCell(endLabel)}</p>
 
                         <div class="cards">
                             <div class="card"><span>Medicamentos</span><strong>${summaryRows.length}</strong></div>
@@ -2033,9 +2147,27 @@
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Backup</button>
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Restaurar</button>
                                 </div>
-                                <div className="flex space-x-3 mt-3">
-                                    <button onClick={handleExportCSV} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconDownload /></span> Gerar CSV</button>
-                                    <button onClick={handleExportPDF} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-rose-500"><IconDownload /></span> Gerar PDF</button>
+                                <div className="glass-card p-4 rounded-3xl mt-3 space-y-3">
+                                    <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Filtro do Relatório</h3>
+                                    <select value={reportFilters.medicationId} onChange={e => setReportFilters(prev => ({ ...prev, medicationId: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-2xl p-3 pr-8 text-[10px] font-black text-slate-600 outline-none uppercase">
+                                        <option value="all">Todos</option>
+                                        {medications.map(med => <option key={med.id} value={med.id}>{med.name}</option>)}
+                                    </select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Data inicial</label>
+                                            <input type="date" value={reportFilters.start} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setReportFilters(prev => ({ ...prev, start: e.target.value }))} className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-3 text-[10px] font-black text-slate-600 outline-none focus:border-teal-400" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Data final</label>
+                                            <input type="date" value={reportFilters.end} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setReportFilters(prev => ({ ...prev, end: e.target.value }))} className="w-full mt-1 bg-white border border-slate-200 rounded-2xl p-3 text-[10px] font-black text-slate-600 outline-none focus:border-teal-400" />
+                                        </div>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button onClick={handleExportCSV} className="flex-1 py-3.5 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-1.5 text-teal-500"><IconDownload /></span> Gerar CSV</button>
+                                        <button onClick={handleExportPDF} className="flex-1 py-3.5 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-1.5 text-rose-500"><IconDownload /></span> Gerar PDF</button>
+                                        <button onClick={clearReportFilters} className="px-3 py-3.5 bg-slate-100 text-slate-500 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">Limpar</button>
+                                    </div>
                                 </div>
                                 <p className="text-center text-[9px] leading-relaxed text-slate-400 font-bold mt-4 mb-1">© 2026 Kaio Adriel<br />Todos os direitos reservados</p>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleRestore} />
@@ -2233,6 +2365,19 @@
                                 </div>
 
                                 <div className="glass-card p-3 rounded-3xl space-y-3">
+                                    <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">PDF da Lista</h3>
+                                    <select value={inventoryPdfSort} onChange={e => setInventoryPdfSort(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl p-3 pr-8 text-[10px] font-black text-slate-600 outline-none uppercase">
+                                        <option value="validade_desc">Validade decrescente</option>
+                                        <option value="nome_asc">Alfabética crescente</option>
+                                        <option value="nome_desc">Alfabética decrescente</option>
+                                    </select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={handleInventoryPDF} className="py-3 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm active:scale-95 transition-all"><span className="mr-1.5 text-rose-500"><IconDownload /></span> Gerar PDF</button>
+                                        <button onClick={clearInventoryPdfOptions} className="py-3 bg-slate-100 text-slate-500 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">Limpar</button>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card p-3 rounded-3xl space-y-3">
                                     <input
                                         type="search"
                                         placeholder="Buscar por nome, marca ou data"
@@ -2305,9 +2450,9 @@
                                     <textarea placeholder="Observações" rows="3" className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 resize-none" value={inventoryForm.observacoes} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setInventoryForm({ ...inventoryForm, observacoes: e.target.value })}></textarea>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2">
-                                    <button onClick={handleSaveInventoryItem} className="py-4 text-white text-[10px] font-black rounded-xl uppercase btn-teal">Salvar</button>
-                                    <button onClick={() => setInventoryForm(emptyInventoryForm)} className="py-4 text-[10px] font-black text-slate-600 bg-slate-100 rounded-xl uppercase">Limpar</button>
                                     <button onClick={resetInventoryForm} className="py-4 text-[10px] font-black text-rose-500 bg-rose-50 rounded-xl uppercase">Cancelar</button>
+                                    <button onClick={() => setInventoryForm(emptyInventoryForm)} className="py-4 text-[10px] font-black text-slate-600 bg-slate-100 rounded-xl uppercase">Limpar</button>
+                                    <button onClick={handleSaveInventoryItem} className="py-4 text-white text-[10px] font-black rounded-xl uppercase btn-teal">Salvar</button>
                                 </div>
                             </div>
                         </div>
