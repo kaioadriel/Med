@@ -252,7 +252,7 @@
             };
 
             const logs = useMemo(() => isAllMedications ? mergeLogs(medications) : (activeMedication?.logs || {}), [isAllMedications, medications, activeMedication]);
-            const replenishments = useMemo(() => isAllMedications ? medications.flatMap(m => (m.replenishments || []).map(r => ({ ...r, medicationId: m.id, medicationName: m.name }))) : (activeMedication?.replenishments || []), [isAllMedications, medications, activeMedication]);
+            const replenishments = useMemo(() => isAllMedications ? medications.flatMap(m => (m.replenishments || []).map(r => ({ ...r, medicationId: m.id, medicationName: m.name }))) : (activeMedication?.replenishments || []).map(r => ({ ...r, medicationId: activeMedication?.id, medicationName: activeMedication?.name })), [isAllMedications, medications, activeMedication]);
 
             const setLogs = (newLogs) => updateActiveMedication({ logs: newLogs });
             const setReplenishments = (newRepls) => updateActiveMedication({ replenishments: newRepls });
@@ -660,23 +660,40 @@
             }, [logs, chartType]);
 
             const historyItemsCalculated = useMemo(() => {
-                const todayStr = getTodayDateStr();
-                const pastLogs = Object.values(logs).filter(l => l.data < todayStr && hasDoseInLog(l));
-                if (pastLogs.length === 0) return [];
-                const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
-                const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
-                const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
-                while (currDate >= oldestDateObj) {
-                    const dStr = currDate.toISOString().split('T')[0]; const log = logs[dStr] || { d1: '', d2: '', d3: '', data: dStr }; const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                    if (hasDoseInLog(log)) {
-                        if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
-                        emptyStreak = []; items.push({ type: 'log', log, isEditable: true }); logCount++;
-                    } else { emptyStreak.push(log); }
-                    currDate.setDate(currDate.getDate() - 1);
+                const buildHistoryItemsForLogs = (logsSource, medMeta = {}) => {
+                    const todayStr = getTodayDateStr();
+                    const pastLogs = Object.values(logsSource || {}).filter(l => l.data < todayStr && hasDoseInLog(l));
+                    if (pastLogs.length === 0) return [];
+                    const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                    const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                    const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                    while (currDate >= oldestDateObj) {
+                        const dStr = currDate.toISOString().split('T')[0];
+                        const sourceLog = logsSource?.[dStr] || { d1: '', d2: '', d3: '', data: dStr };
+                        const log = { ...sourceLog, data: dStr, medicationId: medMeta.id, medicationName: medMeta.name };
+                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                        if (hasDoseInLog(log)) {
+                            if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length, medicationId: medMeta.id, medicationName: medMeta.name }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
+                            emptyStreak = []; items.push({ type: 'log', log, isEditable: true }); logCount++;
+                        } else { emptyStreak.push(log); }
+                        currDate.setDate(currDate.getDate() - 1);
+                    }
+                    if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length, medicationId: medMeta.id, medicationName: medMeta.name }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
+                    return items;
+                };
+
+                if (isAllMedications) {
+                    return medications
+                        .flatMap(med => buildHistoryItemsForLogs(med.logs || {}, { id: med.id, name: med.name }))
+                        .sort((a, b) => {
+                            const dateA = a.type === 'log' ? a.log.data : a.endDate;
+                            const dateB = b.type === 'log' ? b.log.data : b.endDate;
+                            return dateB.localeCompare(dateA) || String(a.medicationName || a.log?.medicationName || '').localeCompare(String(b.medicationName || b.log?.medicationName || ''));
+                        });
                 }
-                if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
-                return items;
-            }, [logs]);
+
+                return buildHistoryItemsForLogs(logs, { id: activeMedication?.id, name: activeMedication?.name });
+            }, [logs, isAllMedications, medications, activeMedication]);
 
             const historyFilteredItems = useMemo(() => {
                 if (!hasActivePeriod(historyPeriod)) return historyItemsCalculated;
@@ -1993,12 +2010,15 @@
                                     {historyFilteredItems.map((item) => item.type === 'empty_group' ? (
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
-                                        <div key={item.log.data} className="flex items-center gap-1 p-2 rounded-2xl border bg-white/90 shadow-sm">
+                                        <div key={`${item.log.medicationId || activeMedicationId || 'med'}-${item.log.data}`} className="flex items-center gap-1 p-2 rounded-2xl border bg-white/90 shadow-sm">
                                             <div className="h-11 w-12 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border shrink-0 font-black"><span className="text-[13px] leading-none whitespace-nowrap">{formatDateDDMM(item.log.data)}</span><span className="text-[8px] leading-none mt-0.5">{formatYearFull(item.log.data)}</span></div>
-                                            <div className="flex-1 flex justify-center gap-1">{[1,2,3].map(num => (<input key={num} type="number" step="1" placeholder="-" className="dose-input-field h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value)} />))}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-center text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{item.log.medicationName || activeMedication?.name}</div>
+                                                <div className="flex justify-center gap-1">{[1,2,3].map(num => (<input key={num} type="number" step="1" placeholder="-" className="dose-input-field h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value, item.log.medicationId)} />))}</div>
+                                            </div>
                                             <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
                                             <div className="w-6 shrink-0 flex items-center justify-center">
-                                                <button onClick={() => handleClearRow(item.log.data)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button>
+                                                <button onClick={() => handleClearRow(item.log.data, item.log.medicationId)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button>
                                             </div>
                                         </div>
                                     ))}
@@ -2038,6 +2058,7 @@
                                             <div className="flex items-center flex-1 min-w-0">
                                                 <div className={`h-12 w-20 rounded-xl flex items-center justify-center mr-3 font-black border shrink-0 ${compra.isScheduled ? 'bg-amber-100 text-amber-600 border-amber-200' : 'bg-teal-50 text-teal-600 border-teal-100'}`}><span className="text-[13px] leading-none whitespace-nowrap">{formatDateShortYear(compra.date)}</span></div>
                                                 <div className="flex-1 min-w-0 pr-2">
+                                                    <div className="text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{compra.medicationName || activeMedication?.name}</div>
                                                     <p className={`text-lg font-black leading-none mb-1 ${compra.isScheduled ? 'text-amber-600' : 'text-teal-600'}`}>{compra.amount} <span className="text-[9px] opacity-70 uppercase font-bold">Cápsulas</span></p>
                                                     <div className="mt-1.5"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${compra.isScheduled ? 'bg-amber-200/60 text-amber-700' : (days === 0 ? 'bg-teal-100/60 text-teal-600' : 'bg-slate-100 text-slate-500')}`}>{compra.isScheduled ? 'Agendado' : (days === 0 ? 'Hoje' : `Há ${days} dias`)}</span></div>
                                                 </div>
