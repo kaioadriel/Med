@@ -286,9 +286,8 @@
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
             const [inventorySearch, setInventorySearch] = useState('');
             const [inventorySortBy, setInventorySortBy] = useState('validade');
-            const [inventorySortDir, setInventorySortDir] = useState('asc');
+            const [inventorySortDir, setInventorySortDir] = useState('desc');
             const [reportFilters, setReportFilters] = useState({ medicationId: 'all', start: '', end: '' });
-            const [inventoryPdfSort, setInventoryPdfSort] = useState('validade_desc');
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -864,24 +863,20 @@
                 });
             }, [inventoryItems, inventorySearch, inventorySortBy, inventorySortDir]);
 
-            const getInventoryItemsForPdf = () => {
-                const items = [...inventoryItems];
-                if (inventoryPdfSort === 'nome_asc') {
-                    return items.sort((a, b) => String(a.remedio || '').localeCompare(String(b.remedio || ''), 'pt-BR'));
-                }
-                if (inventoryPdfSort === 'nome_desc') {
-                    return items.sort((a, b) => String(b.remedio || '').localeCompare(String(a.remedio || ''), 'pt-BR'));
-                }
-                return items.sort((a, b) => String(b.validade || '').localeCompare(String(a.validade || '')) || String(a.remedio || '').localeCompare(String(b.remedio || ''), 'pt-BR'));
+            const clearInventoryFilters = () => {
+                setInventorySearch('');
+                setInventorySortBy('validade');
+                setInventorySortDir('desc');
+                showToast('Filtros da lista limpos!');
             };
 
-            const clearInventoryPdfOptions = () => {
-                setInventoryPdfSort('validade_desc');
-                showToast('Filtro do PDF da lista limpo!');
+            const getInventorySortLabel = () => {
+                if (inventorySortBy === 'nome') return inventorySortDir === 'asc' ? 'Ordem alfabética crescente' : 'Ordem alfabética decrescente';
+                return inventorySortDir === 'asc' ? 'Data de validade crescente' : 'Data de validade decrescente';
             };
 
             const handleInventoryPDF = () => {
-                const items = getInventoryItemsForPdf();
+                const items = filteredInventoryItems;
                 const htmlRows = items.map(item => `
                     <tr>
                         <td>${htmlCell(item.remedio || '')}</td>
@@ -900,7 +895,7 @@
                     return;
                 }
 
-                const sortLabel = inventoryPdfSort === 'nome_asc' ? 'Ordem alfabética crescente' : inventoryPdfSort === 'nome_desc' ? 'Ordem alfabética decrescente' : 'Data de validade decrescente';
+                const sortLabel = getInventorySortLabel();
                 printWindow.document.write(`
                     <!DOCTYPE html>
                     <html lang="pt-BR">
@@ -1978,7 +1973,17 @@
             }, []);
 
             // --- RENDERIZAÇÃO DA INTERFACE ---
-            if (authLoading) return <div className="min-h-screen bg-slate-800 flex items-center justify-center"><div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div></div>;
+            if (authLoading) return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 text-center animate-fade">
+                    <h1 className="text-5xl font-black italic tracking-tighter text-white mb-8">APP MED</h1>
+                    <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-28 h-28 mx-auto drop-shadow-xl animate-pulse" alt="Ícone do App Med" />
+                    <div className="mt-8 w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-10 text-[10px] font-bold text-white/60 leading-relaxed">
+                        © 2026 Kaio Adriel<br />
+                        Todos os direitos reservados
+                    </p>
+                </div>
+            );
 
             if (!user) {
                 return (
@@ -2365,19 +2370,6 @@
                                 </div>
 
                                 <div className="glass-card p-3 rounded-3xl space-y-3">
-                                    <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">PDF da Lista</h3>
-                                    <select value={inventoryPdfSort} onChange={e => setInventoryPdfSort(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl p-3 pr-8 text-[10px] font-black text-slate-600 outline-none uppercase">
-                                        <option value="validade_desc">Validade decrescente</option>
-                                        <option value="nome_asc">Alfabética crescente</option>
-                                        <option value="nome_desc">Alfabética decrescente</option>
-                                    </select>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={handleInventoryPDF} className="py-3 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm active:scale-95 transition-all"><span className="mr-1.5 text-rose-500"><IconDownload /></span> Gerar PDF</button>
-                                        <button onClick={clearInventoryPdfOptions} className="py-3 bg-slate-100 text-slate-500 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">Limpar</button>
-                                    </div>
-                                </div>
-
-                                <div className="glass-card p-3 rounded-3xl space-y-3">
                                     <input
                                         type="search"
                                         placeholder="Buscar por nome, marca ou data"
@@ -2396,6 +2388,10 @@
                                             <option value="asc">Crescente</option>
                                             <option value="desc">Decrescente</option>
                                         </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={handleInventoryPDF} className="py-3 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase flex items-center justify-center shadow-sm active:scale-95 transition-all"><span className="mr-1.5 text-rose-500"><IconDownload /></span> Gerar PDF</button>
+                                        <button onClick={clearInventoryFilters} className="py-3 bg-slate-100 text-slate-500 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">Limpar</button>
                                     </div>
                                     <p className="text-[9px] text-slate-400 font-bold ml-1">{filteredInventoryItems.length} remédio(s) encontrado(s)</p>
                                 </div>
