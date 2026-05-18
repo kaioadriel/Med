@@ -8,9 +8,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
     
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231e293b%22%2C%22theme_color%22%3A%22%231e293b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fmed.kaioadriel.com.br%2Ficone%2Fimages.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
-    <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png">
-    <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png">
+    <link rel="manifest" href='data:application/manifest+json,%7B%22id%22%3A%22/app-med-remedio-2026%22%2C%22name%22%3A%22App%20Med%22%2C%22short_name%22%3A%22App%20Med%22%2C%22start_url%22%3A%22.%22%2C%22scope%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231e293b%22%2C%22theme_color%22%3A%22%231e293b%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A//med.kaioadriel.com.br/icone/images.png%3Fv%3Dapp-med-remedio-2026%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image/png%22%2C%22purpose%22%3A%22any%20maskable%22%7D%2C%7B%22src%22%3A%22https%3A//med.kaioadriel.com.br/icone/images.png%3Fv%3Dapp-med-remedio-2026%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image/png%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
+    <link rel="icon" type="image/png" href="https://med.kaioadriel.com.br/icone/images.png?v=app-med-remedio-2026">
+    <link rel="apple-touch-icon" href="https://med.kaioadriel.com.br/icone/images.png?v=app-med-remedio-2026">
+    <meta name="msapplication-TileImage" content="https://med.kaioadriel.com.br/icone/images.png?v=app-med-remedio-2026">
     
     <title>App Med - Gestão Cloud</title>
     
@@ -102,6 +103,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
+        const APP_ICON_URL = 'https://med.kaioadriel.com.br/icone/images.png';
 
         // --- Configuração do Firebase ---
         const firebaseConfig = {
@@ -1976,7 +1978,7 @@
             if (authLoading) return (
                 <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 text-center animate-fade">
                     <h1 className="text-5xl font-black italic tracking-tighter text-white mb-8">APP MED</h1>
-                    <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-28 h-28 mx-auto drop-shadow-xl animate-pulse" alt="Ícone do App Med" />
+                    <img src={APP_ICON_URL} className="w-28 h-28 mx-auto drop-shadow-xl animate-pulse" alt="Ícone do App Med" />
                     <div className="mt-8 w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
                     <p className="mt-10 text-[10px] font-bold text-white/60 leading-relaxed">
                         © 2026 Kaio Adriel<br />
@@ -1990,7 +1992,7 @@
                     <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
                         <ToastComponent toast={toast} />
                         <div className="w-full max-w-xs space-y-8">
-                            <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" alt="Logo" />
+                            <img src={APP_ICON_URL} className="w-24 h-24 mx-auto mb-6 drop-shadow-xl" alt="Logo" />
                             <h1 className="text-5xl font-black italic tracking-tighter text-white mb-1">APP MED</h1>
                             <p className="text-[10px] font-black text-teal-400 uppercase tracking-[0.3em]">{isRegisterMode ? 'Nova Conta' : 'Acesso Restrito'}</p>
                             <form onSubmit={handleAuth} className="space-y-4 text-left">
@@ -2013,7 +2015,7 @@
                     <header className="glass-card sticky top-0 z-40 rounded-b-3xl shadow-sm mx-0 mt-0 pt-4 pb-5 px-4">
                         <div className="max-w-md mx-auto flex justify-between items-center gap-3">
                             <div className="flex items-center">
-                                <img src="https://med.kaioadriel.com.br/icone/images.png" className="w-8 h-8 mr-2 drop-shadow-sm" alt="Logo" />
+                                <img src={APP_ICON_URL} className="w-8 h-8 mr-2 drop-shadow-sm" alt="Logo" />
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h1 className="text-xl font-black italic tracking-tighter leading-none text-slate-800">APP MED</h1>
