@@ -178,10 +178,49 @@
 
         const App = () => {
             // --- CONSTANTES ---
-            
+            const DEFAULT_MEDICATIONS = [
+                {
+                    id: 1,
+                    name: 'Medicamento Principal',
+                    estoqueInicial: 54,
+                    logs: {},
+                    replenishments: []
+                }
+            ];
+            const guestCacheSuffix = 'guest';
+            const scopedKey = (baseKey, uid = null) => `${baseKey}_${uid || guestCacheSuffix}`;
+            const readScopedJSON = (baseKey, fallback, uid = null) => {
+                try {
+                    const raw = localStorage.getItem(scopedKey(baseKey, uid));
+                    if (!raw) return typeof fallback === 'function' ? fallback() : fallback;
+                    return JSON.parse(raw);
+                } catch (err) {
+                    console.error('Erro ao ler cache local:', baseKey, err);
+                    return typeof fallback === 'function' ? fallback() : fallback;
+                }
+            };
+            const writeScopedJSON = (baseKey, value, uid = null) => {
+                try {
+                    localStorage.setItem(scopedKey(baseKey, uid), JSON.stringify(value));
+                } catch (err) {
+                    console.error('Erro ao salvar cache local:', baseKey, err);
+                }
+            };
+            const readScopedText = (baseKey, fallback = '', uid = null) => {
+                const value = localStorage.getItem(scopedKey(baseKey, uid));
+                return value === null ? fallback : value;
+            };
+            const writeScopedText = (baseKey, value, uid = null) => {
+                try {
+                    localStorage.setItem(scopedKey(baseKey, uid), String(value));
+                } catch (err) {
+                    console.error('Erro ao salvar cache local:', baseKey, err);
+                }
+            };
 
             // --- ESTADOS ---
             const [user, setUser] = useState(null);
+            const [cloudLoaded, setCloudLoaded] = useState(false);
             const [authLoading, setAuthLoading] = useState(true);
             const [emailInput, setEmailInput] = useState('');
             const [passwordInput, setPasswordInput] = useState('');
@@ -189,27 +228,17 @@
             const [authError, setAuthError] = useState('');
             const [activeTab, setActiveTab] = useState('dashboard');
             const [status, setStatus] = useState('Nuvem Segura');
-            const [medications, setMedications] = useState(() => {
-                return JSON.parse(localStorage.getItem('app_med_medications') || JSON.stringify([
-                    {
-                        id: 1,
-                        name: 'Medicamento Principal',
-                        estoqueInicial: 54,
-                        logs: {},
-                        replenishments: []
-                    }
-                ]));
-            });
+            const [medications, setMedications] = useState(() => readScopedJSON('app_med_medications', () => DEFAULT_MEDICATIONS.map(item => ({ ...item }))));
 
             const [activeMedicationId, setActiveMedicationId] = useState(() => {
-                const savedId = localStorage.getItem('app_med_active_medication_id');
+                const savedId = readScopedText('app_med_active_medication_id', '1');
                 return savedId === 'all' ? 'all' : (Number(savedId) || 1);
             });
 
                         const syncData = (updatedMeds) => {
                 setMedications(updatedMeds);
-                localStorage.setItem('app_med_medications', JSON.stringify(updatedMeds));
-                if (user && db) {
+                writeScopedJSON('app_med_medications', updatedMeds, user?.uid);
+                if (user && db && cloudLoaded) {
                     db.collection('medicacao_users').doc(user.uid).set({
                         medications: updatedMeds,
                         agendaEndLimits,
@@ -270,9 +299,9 @@
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
             const [historyPeriod, setHistoryPeriod] = useState({ start: '', end: '' });
             const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
-            const [agendaDayCount, setAgendaDayCount] = useState(() => Number(localStorage.getItem('app_med_agenda_day_count')) || 90);
+            const [agendaDayCount, setAgendaDayCount] = useState(() => Number(readScopedText('app_med_agenda_day_count', '90')) || 90);
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
-            const [agendaEndLimits, setAgendaEndLimits] = useState(() => JSON.parse(localStorage.getItem('app_med_agenda_end_limits') || '{}'));
+            const [agendaEndLimits, setAgendaEndLimits] = useState(() => readScopedJSON('app_med_agenda_end_limits', {}));
             const [showCopyModal, setShowCopyModal] = useState(false);
             const [copyData, setCopyData] = useState({ medicationId: '', sourceDate: '', startDate: '', days: 1 });
             const [showCutModal, setShowCutModal] = useState(false);
@@ -282,7 +311,7 @@
             const [deleteData, setDeleteData] = useState({ startDate: '', endDate: '' });
             const [agendaDrag, setAgendaDrag] = useState({ active: false, sources: [], targetDate: '' });
             const emptyInventoryForm = { id: null, remedio: '', dosagem: '', marca: '', quantidade: '', validade: '', observacoes: '' };
-            const [inventoryItems, setInventoryItems] = useState(() => JSON.parse(localStorage.getItem('app_med_inventory_list') || '[]'));
+            const [inventoryItems, setInventoryItems] = useState(() => readScopedJSON('app_med_inventory_list', []));
             const [inventoryForm, setInventoryForm] = useState(emptyInventoryForm);
             const [showInventoryForm, setShowInventoryForm] = useState(false);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
@@ -332,7 +361,7 @@
 
             const selectMedication = (id) => {
                 setActiveMedicationId(id);
-                localStorage.setItem('app_med_active_medication_id', String(id));
+                writeScopedText('app_med_active_medication_id', String(id), user?.uid);
             };
 
             const isValidDateStr = (dateStr) => {
@@ -798,8 +827,8 @@
 
             const syncInventoryList = (items) => {
                 setInventoryItems(items);
-                localStorage.setItem('app_med_inventory_list', JSON.stringify(items));
-                if (user && db) {
+                writeScopedJSON('app_med_inventory_list', items, user?.uid);
+                if (user && db && cloudLoaded) {
                     db.collection('medicacao_users').doc(user.uid).set({
                         inventoryList: items,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1855,64 +1884,101 @@
 
             // --- SINCRONIZAÇÃO, FIREBASE, PWA E EFEITOS ---
             useEffect(() => {
+                const loadLocalForUid = (uid = null) => {
+                    setMedications(readScopedJSON('app_med_medications', () => DEFAULT_MEDICATIONS.map(item => ({ ...item })), uid));
+                    setInventoryItems(readScopedJSON('app_med_inventory_list', [], uid));
+                    setAgendaEndLimits(readScopedJSON('app_med_agenda_end_limits', {}, uid));
+                    setAgendaDayCount(Number(readScopedText('app_med_agenda_day_count', '90', uid)) || 90);
+                    const savedId = readScopedText('app_med_active_medication_id', '1', uid);
+                    setActiveMedicationId(savedId === 'all' ? 'all' : (Number(savedId) || 1));
+                };
                 const unsub = auth.onAuthStateChanged(u => {
+                    setCloudLoaded(false);
                     setUser(u);
+                    loadLocalForUid(u?.uid || null);
                     setAuthLoading(false);
                 });
                 return () => unsub();
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('app_med_medications', JSON.stringify(medications));
-            }, [medications]);
+                if (user && !cloudLoaded) return;
+                writeScopedJSON('app_med_medications', medications, user?.uid);
+            }, [medications, user, cloudLoaded]);
 
             useEffect(() => {
-                localStorage.setItem('app_med_agenda_day_count', String(agendaDayCount));
-            }, [agendaDayCount]);
+                if (user && !cloudLoaded) return;
+                writeScopedText('app_med_agenda_day_count', String(agendaDayCount), user?.uid);
+            }, [agendaDayCount, user, cloudLoaded]);
 
             useEffect(() => {
-                localStorage.setItem('app_med_inventory_list', JSON.stringify(inventoryItems));
-            }, [inventoryItems]);
+                if (user && !cloudLoaded) return;
+                writeScopedJSON('app_med_inventory_list', inventoryItems, user?.uid);
+            }, [inventoryItems, user, cloudLoaded]);
 
             useEffect(() => {
-                localStorage.setItem('app_med_agenda_end_limits', JSON.stringify(agendaEndLimits));
-                if (user && db) {
+                if (user && !cloudLoaded) return;
+                writeScopedJSON('app_med_agenda_end_limits', agendaEndLimits, user?.uid);
+                if (user && db && cloudLoaded) {
                     db.collection('medicacao_users').doc(user.uid).set({
                         agendaEndLimits,
                         activeMedicationId: String(activeMedicationId),
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }).catch(err => console.error("Erro ao sincronizar limites da agenda:", err));
                 }
-            }, [agendaEndLimits, user, activeMedicationId]);
+            }, [agendaEndLimits, user, activeMedicationId, cloudLoaded]);
 
             useEffect(() => {
                 if (!user || !db) return;
-                const unsub = db.collection('medicacao_users').doc(user.uid).onSnapshot(doc => {
+                const userRef = db.collection('medicacao_users').doc(user.uid);
+                const unsub = userRef.onSnapshot(doc => {
                     if (doc.exists) {
                         const data = doc.data();
                         if (data.medications) {
                             setMedications(data.medications);
-                            localStorage.setItem('app_med_medications', JSON.stringify(data.medications));
+                            writeScopedJSON('app_med_medications', data.medications, user.uid);
                         } else if (data.logs || data.replenishments) {
-                            setMedications(prev => prev.map(m => m.id === 1 ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : m));
+                            const migratedMeds = DEFAULT_MEDICATIONS.map(m => m.id === 1 ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : { ...m });
+                            setMedications(migratedMeds);
+                            writeScopedJSON('app_med_medications', migratedMeds, user.uid);
                         }
                         if (data.agendaEndLimits && typeof data.agendaEndLimits === 'object') {
                             setAgendaEndLimits(data.agendaEndLimits);
-                            localStorage.setItem('app_med_agenda_end_limits', JSON.stringify(data.agendaEndLimits));
+                            writeScopedJSON('app_med_agenda_end_limits', data.agendaEndLimits, user.uid);
+                        } else {
+                            setAgendaEndLimits({});
+                            writeScopedJSON('app_med_agenda_end_limits', {}, user.uid);
                         }
                         if (Array.isArray(data.inventoryList)) {
                             setInventoryItems(data.inventoryList);
-                            localStorage.setItem('app_med_inventory_list', JSON.stringify(data.inventoryList));
+                            writeScopedJSON('app_med_inventory_list', data.inventoryList, user.uid);
+                        } else {
+                            setInventoryItems([]);
+                            writeScopedJSON('app_med_inventory_list', [], user.uid);
                         }
+                        if (data.activeMedicationId) {
+                            const restoredActiveId = data.activeMedicationId === 'all' ? 'all' : (Number(data.activeMedicationId) || 1);
+                            setActiveMedicationId(restoredActiveId);
+                            writeScopedText('app_med_active_medication_id', String(restoredActiveId), user.uid);
+                        }
+                        setCloudLoaded(true);
                     } else {
-                        db.collection('medicacao_users').doc(user.uid).set({
-                            medications,
-                            agendaEndLimits,
-                            inventoryList: inventoryItems,
-                            activeMedicationId: String(activeMedicationId),
+                        const initialMedications = readScopedJSON('app_med_medications', () => DEFAULT_MEDICATIONS.map(item => ({ ...item })), user.uid);
+                        const initialAgendaEndLimits = readScopedJSON('app_med_agenda_end_limits', {}, user.uid);
+                        const initialInventoryList = readScopedJSON('app_med_inventory_list', [], user.uid);
+                        const initialActiveMedicationId = readScopedText('app_med_active_medication_id', '1', user.uid);
+                        setMedications(initialMedications);
+                        setAgendaEndLimits(initialAgendaEndLimits);
+                        setInventoryItems(initialInventoryList);
+                        setActiveMedicationId(initialActiveMedicationId === 'all' ? 'all' : (Number(initialActiveMedicationId) || 1));
+                        userRef.set({
+                            medications: initialMedications,
+                            agendaEndLimits: initialAgendaEndLimits,
+                            inventoryList: initialInventoryList,
+                            activeMedicationId: String(initialActiveMedicationId),
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
+                        }, { merge: true }).then(() => setCloudLoaded(true));
                     }
                 }, (error) => {
                     console.log("Firebase Error:", error);
