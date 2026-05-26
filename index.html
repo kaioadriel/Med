@@ -309,8 +309,12 @@
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
             const [agendaEndLimits, setAgendaEndLimits] = useState(() => readScopedJSON('app_med_agenda_end_limits', {}));
             const PAGE_SIZE = 30;
-            const [agendaVisibleCount, setAgendaVisibleCount] = useState(PAGE_SIZE);
+            const MAX_LOAD_DAYS = 365;
+            const [agendaVisibleCount, setAgendaVisibleCount] = useState(() => Math.min(MAX_LOAD_DAYS, Math.max(1, Number(readScopedText('app_med_agenda_day_count', '30')) || 30)));
             const [historyVisibleCount, setHistoryVisibleCount] = useState(PAGE_SIZE);
+            const getSafeAgendaDayCount = () => Math.min(MAX_LOAD_DAYS, Math.max(1, Number(agendaDayCount) || 30));
+            const getAgendaGenerationCount = () => Math.min(MAX_LOAD_DAYS, Math.max(getSafeAgendaDayCount(), agendaVisibleCount + PAGE_SIZE));
+            const getHistoryGenerationCount = () => Math.min(MAX_LOAD_DAYS, Math.max(PAGE_SIZE, historyVisibleCount + PAGE_SIZE));
             const [showCopyModal, setShowCopyModal] = useState(false);
             const [copyData, setCopyData] = useState({ medicationId: '', startDate: '', endDate: '', pasteDate: '' });
             const [pendingCopy, setPendingCopy] = useState(null);
@@ -462,7 +466,7 @@
             const ensureAgendaLimitForDate = (medicationId, dateStr) => {
                 if (!isValidDateStr(dateStr)) return;
                 const todayStr = getTodayDateStr();
-                const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
+                const safeAgendaDayCount = getSafeAgendaDayCount();
                 const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
                 setAgendaEndLimits(prev => {
                     const key = String(medicationId);
@@ -506,10 +510,10 @@
 
                 // Padrão configurável: hoje + quantidade escolhida pelo usuário.
                 // O padrão inicial do app agora é 30 dias para reduzir renderização e travamentos.
-                const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
+                const safeAgendaDayCount = getAgendaGenerationCount();
                 const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
                 const savedEndLimit = isValidDateStr(agendaEndLimits[String(med.id)]) ? agendaEndLimits[String(med.id)] : '';
-                const baseLastDate = savedEndLimit && savedEndLimit < defaultLastDate ? savedEndLimit : defaultLastDate;
+                const baseLastDate = savedEndLimit && savedEndLimit > defaultLastDate ? savedEndLimit : defaultLastDate;
                 let currBase = todayStr;
                 while (currBase <= baseLastDate) {
                     dateSet.add(currBase);
@@ -557,7 +561,7 @@
                     ? rows.filter(row => isDateInsidePeriod(row.dateStr, agendaPeriod))
                     : rows;
                 return filtered.sort((a, b) => a.dateStr.localeCompare(b.dateStr) || String(a.medicationName || '').localeCompare(String(b.medicationName || '')));
-            }, [selectedMedications, agendaPeriod, agendaEndLimits, agendaDayCount]);
+            }, [selectedMedications, agendaPeriod, agendaEndLimits, agendaDayCount, agendaVisibleCount]);
 
             const agendaDisplayDays = agendaDisplayRows;
 
@@ -717,52 +721,23 @@
                 const buildHistoryItemsForLogs = (logsSource, medMeta = {}) => {
                     const todayStr = getTodayDateStr();
                     const yesterdayStr = addDaysToDateStr(todayStr, -1);
-                    const pastLogs = Object.values(logsSource || {})
-                        .filter(l => l.data < todayStr && hasDoseInLog(l) && isValidDateStr(l.data))
-                        .sort((a, b) => b.data.localeCompare(a.data));
-                    if (pastLogs.length === 0) return [];
-
+                    const generatedDays = getHistoryGenerationCount();
+                    const oldestGeneratedDate = addDaysToDateStr(yesterdayStr, -(generatedDays - 1));
+                    const logMap = logsSource || {};
                     const items = [];
-                    let cursor = yesterdayStr;
+                    let curr = yesterdayStr;
 
-                    const pushEmptyGap = (fromDate, toDate) => {
-                        if (!isValidDateStr(fromDate) || !isValidDateStr(toDate) || fromDate < toDate) return;
-                        const count = dateDiffDays(toDate, fromDate) + 1;
-                        if (count <= 0) return;
-                        if (count > 5) {
-                            items.push({
-                                type: 'empty_group',
-                                startDate: toDate,
-                                endDate: fromDate,
-                                count,
-                                medicationId: medMeta.id,
-                                medicationName: medMeta.name
-                            });
-                            return;
-                        }
-                        let curr = fromDate;
-                        while (curr >= toDate) {
-                            items.push({
-                                type: 'log',
-                                log: { d1: '', d2: '', d3: '', data: curr, medicationId: medMeta.id, medicationName: medMeta.name },
-                                isEditable: true
-                            });
-                            curr = addDaysToDateStr(curr, -1);
-                        }
-                    };
-
-                    pastLogs.forEach(sourceLog => {
-                        const doseDate = sourceLog.data;
-                        const gapEnd = addDaysToDateStr(doseDate, 1);
-                        if (cursor >= gapEnd) pushEmptyGap(cursor, gapEnd);
+                    // O Histórico também deve carregar de 30 em 30 contando dias vazios.
+                    // Por isso cada dia vira um card próprio, mesmo sem dose registrada.
+                    while (curr >= oldestGeneratedDate) {
+                        const sourceLog = logMap[curr] || { d1: '', d2: '', d3: '', data: curr };
                         items.push({
                             type: 'log',
-                            log: { ...sourceLog, data: doseDate, medicationId: medMeta.id, medicationName: medMeta.name },
+                            log: { ...sourceLog, data: curr, medicationId: medMeta.id, medicationName: medMeta.name },
                             isEditable: true
                         });
-                        cursor = addDaysToDateStr(doseDate, -1);
-                    });
-
+                        curr = addDaysToDateStr(curr, -1);
+                    }
                     return items;
                 };
 
@@ -777,7 +752,7 @@
                 }
 
                 return buildHistoryItemsForLogs(logs, { id: activeMedication?.id, name: activeMedication?.name });
-            }, [logs, isAllMedications, medications, activeMedication]);
+            }, [logs, isAllMedications, medications, activeMedication, historyVisibleCount]);
 
             const historyFilteredItems = useMemo(() => {
                 if (!hasActivePeriod(historyPeriod)) return historyItemsCalculated;
@@ -792,7 +767,7 @@
             const visibleAgendaDays = useMemo(() => agendaDisplayDays.slice(0, agendaVisibleCount), [agendaDisplayDays, agendaVisibleCount]);
             const visibleHistoryItems = useMemo(() => historyFilteredItems.slice(0, historyVisibleCount), [historyFilteredItems, historyVisibleCount]);
 
-            useEffect(() => { setAgendaVisibleCount(PAGE_SIZE); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, agendaDayCount]);
+            useEffect(() => { setAgendaVisibleCount(getSafeAgendaDayCount()); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, agendaDayCount]);
             useEffect(() => { setHistoryVisibleCount(PAGE_SIZE); }, [activeMedicationId, historyPeriod.start, historyPeriod.end]);
 
             const agendaStockByMedication = useMemo(() => {
@@ -1926,7 +1901,7 @@
                     const targetEl = document.getElementById(targetId);
                     if (targetEl) {
                         targetEl.focus();
-
+                    }
                 }
             };
 
@@ -2685,7 +2660,7 @@
                                 </div>
                                 <div className="space-y-4">
                                     <div className="bg-white/80 border border-slate-100 rounded-2xl p-4">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Dias exibidos na aba Lançar</label>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Dias iniciais na aba Lançar</label>
                                         <select
                                             value={agendaDayCount}
                                             onChange={e => setAgendaDayCount(Number(e.target.value) || 30)}
@@ -2698,7 +2673,7 @@
                                             <option value="180">180 dias</option>
                                             <option value="365">365 dias</option>
                                         </select>
-                                        <p className="mt-2 text-[10px] font-bold text-slate-400 leading-relaxed">Menos dias deixam a abertura da grade mais rápida. O padrão recomendado é 30 dias.</p>
+                                        <p className="mt-2 text-[10px] font-bold text-slate-400 leading-relaxed">Define quantos cards aparecem primeiro. O botão Carregar Mais continua abrindo novos blocos de 30 dias, mesmo vazios.</p>
                                     </div>
                                     <button onClick={() => { setShowSettingsModal(false); setShowMedicationModal('list'); }} className="w-full py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
                                         Medicações Ativas
