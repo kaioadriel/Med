@@ -242,7 +242,6 @@
                     db.collection('medicacao_users').doc(user.uid).set({
                         medications: updatedMeds,
                         agendaEndLimits,
-                        agendaDayCount,
                         activeMedicationId: String(activeMedicationId),
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }).catch(err => console.error("Erro ao sincronizar:", err));
@@ -297,11 +296,10 @@
             const [toast, setToast] = useState(null);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showMedicationModal, setShowMedicationModal] = useState(false);
-            const [showSettingsModal, setShowSettingsModal] = useState(false);
             const [medicationFormData, setMedicationFormData] = useState({ id: null, name: '', estoqueInicial: '' });
             const [historyPeriod, setHistoryPeriod] = useState({ start: '', end: '' });
             const [purchasePeriod, setPurchasePeriod] = useState({ start: '', end: '' });
-            const [agendaDayCount, setAgendaDayCount] = useState(() => Number(readScopedText('app_med_agenda_day_count', '30')) || 30);
+            const [agendaDayCount, setAgendaDayCount] = useState(() => Number(readScopedText('app_med_agenda_day_count', '90')) || 90);
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
             const [agendaEndLimits, setAgendaEndLimits] = useState(() => readScopedJSON('app_med_agenda_end_limits', {}));
             const PAGE_SIZE = 30;
@@ -458,13 +456,12 @@
             const ensureAgendaLimitForDate = (medicationId, dateStr) => {
                 if (!isValidDateStr(dateStr)) return;
                 const todayStr = getTodayDateStr();
-                const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
-                const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
+                const defaultLastDate = addDaysToDateStr(todayStr, 89);
                 setAgendaEndLimits(prev => {
                     const key = String(medicationId);
                     const currLimit = prev[key];
 
-                    // Não encurta a agenda quando uma dose é digitada dentro do período padrão configurado.
+                    // Não encurta a agenda quando uma dose é digitada dentro dos 90 dias padrão.
                     // Só salva limite quando precisa expandir além do padrão, ou quando já existe
                     // um limite menor definido manualmente pelo botão Excluir e a dose passa dele.
                     if (isValidDateStr(currLimit)) {
@@ -500,12 +497,10 @@
                 dateSet.add(addDaysToDateStr(todayStr, -2));
                 dateSet.add(addDaysToDateStr(todayStr, -1));
 
-                // Padrão configurável: hoje + quantidade escolhida pelo usuário.
-                // O padrão inicial do app agora é 30 dias para reduzir renderização e travamentos.
-                const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
-                const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
+                // Padrão: hoje + 89 dias seguintes = 90 cards futuros/atuais, salvo quando o usuário encurtar a lista pelo botão Excluir.
+                const defaultLastDate = addDaysToDateStr(todayStr, 89);
                 const savedEndLimit = isValidDateStr(agendaEndLimits[String(med.id)]) ? agendaEndLimits[String(med.id)] : '';
-                const baseLastDate = savedEndLimit && savedEndLimit < defaultLastDate ? savedEndLimit : defaultLastDate;
+                const baseLastDate = savedEndLimit || defaultLastDate;
                 let currBase = todayStr;
                 while (currBase <= baseLastDate) {
                     dateSet.add(currBase);
@@ -553,7 +548,7 @@
                     ? rows.filter(row => isDateInsidePeriod(row.dateStr, agendaPeriod))
                     : rows;
                 return filtered.sort((a, b) => a.dateStr.localeCompare(b.dateStr) || String(a.medicationName || '').localeCompare(String(b.medicationName || '')));
-            }, [selectedMedications, agendaPeriod, agendaEndLimits, agendaDayCount]);
+            }, [selectedMedications, agendaPeriod, agendaEndLimits]);
 
             const agendaDisplayDays = agendaDisplayRows;
 
@@ -712,53 +707,23 @@
             const historyItemsCalculated = useMemo(() => {
                 const buildHistoryItemsForLogs = (logsSource, medMeta = {}) => {
                     const todayStr = getTodayDateStr();
-                    const yesterdayStr = addDaysToDateStr(todayStr, -1);
-                    const pastLogs = Object.values(logsSource || {})
-                        .filter(l => l.data < todayStr && hasDoseInLog(l) && isValidDateStr(l.data))
-                        .sort((a, b) => b.data.localeCompare(a.data));
+                    const pastLogs = Object.values(logsSource || {}).filter(l => l.data < todayStr && hasDoseInLog(l));
                     if (pastLogs.length === 0) return [];
-
-                    const items = [];
-                    let cursor = yesterdayStr;
-
-                    const pushEmptyGap = (fromDate, toDate) => {
-                        if (!isValidDateStr(fromDate) || !isValidDateStr(toDate) || fromDate < toDate) return;
-                        const count = dateDiffDays(toDate, fromDate) + 1;
-                        if (count <= 0) return;
-                        if (count > 5) {
-                            items.push({
-                                type: 'empty_group',
-                                startDate: toDate,
-                                endDate: fromDate,
-                                count,
-                                medicationId: medMeta.id,
-                                medicationName: medMeta.name
-                            });
-                            return;
-                        }
-                        let curr = fromDate;
-                        while (curr >= toDate) {
-                            items.push({
-                                type: 'log',
-                                log: { d1: '', d2: '', d3: '', data: curr, medicationId: medMeta.id, medicationName: medMeta.name },
-                                isEditable: true
-                            });
-                            curr = addDaysToDateStr(curr, -1);
-                        }
-                    };
-
-                    pastLogs.forEach(sourceLog => {
-                        const doseDate = sourceLog.data;
-                        const gapEnd = addDaysToDateStr(doseDate, 1);
-                        if (cursor >= gapEnd) pushEmptyGap(cursor, gapEnd);
-                        items.push({
-                            type: 'log',
-                            log: { ...sourceLog, data: doseDate, medicationId: medMeta.id, medicationName: medMeta.name },
-                            isEditable: true
-                        });
-                        cursor = addDaysToDateStr(doseDate, -1);
-                    });
-
+                    const oldestDateStr = pastLogs.reduce((oldest, curr) => curr.data < oldest.data ? curr : oldest).data;
+                    const items = []; let emptyStreak = []; let currDate = new Date(todayStr + 'T12:00:00'); currDate.setDate(currDate.getDate() - 1);
+                    const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
+                    while (currDate >= oldestDateObj) {
+                        const dStr = currDate.toISOString().split('T')[0];
+                        const sourceLog = logsSource?.[dStr] || { d1: '', d2: '', d3: '', data: dStr };
+                        const log = { ...sourceLog, data: dStr, medicationId: medMeta.id, medicationName: medMeta.name };
+                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                        if (hasDoseInLog(log)) {
+                            if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length, medicationId: medMeta.id, medicationName: medMeta.name }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
+                            emptyStreak = []; items.push({ type: 'log', log, isEditable: true }); logCount++;
+                        } else { emptyStreak.push(log); }
+                        currDate.setDate(currDate.getDate() - 1);
+                    }
+                    if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length, medicationId: medMeta.id, medicationName: medMeta.name }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
                     return items;
                 };
 
@@ -788,39 +753,8 @@
             const visibleAgendaDays = useMemo(() => agendaDisplayDays.slice(0, agendaVisibleCount), [agendaDisplayDays, agendaVisibleCount]);
             const visibleHistoryItems = useMemo(() => historyFilteredItems.slice(0, historyVisibleCount), [historyFilteredItems, historyVisibleCount]);
 
-            useEffect(() => { setAgendaVisibleCount(PAGE_SIZE); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, agendaDayCount]);
+            useEffect(() => { setAgendaVisibleCount(PAGE_SIZE); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end]);
             useEffect(() => { setHistoryVisibleCount(PAGE_SIZE); }, [activeMedicationId, historyPeriod.start, historyPeriod.end]);
-
-            const agendaStockByMedication = useMemo(() => {
-                const result = {};
-                const datesByMed = {};
-                agendaDisplayDays.forEach(day => {
-                    if (!day?.medicationId || !isValidDateStr(day.dateStr)) return;
-                    const key = String(day.medicationId);
-                    if (!datesByMed[key]) datesByMed[key] = new Set();
-                    datesByMed[key].add(day.dateStr);
-                });
-
-                selectedMedications.forEach(med => {
-                    const medKey = String(med.id);
-                    const dates = Array.from(datesByMed[medKey] || []).sort();
-                    const logsList = Object.values(med.logs || {})
-                        .filter(log => isValidDateStr(log?.data))
-                        .sort((a, b) => a.data.localeCompare(b.data));
-                    const entrada = (med.replenishments || []).reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
-                    let consumed = 0;
-                    let logIndex = 0;
-                    result[medKey] = {};
-                    dates.forEach(dateStr => {
-                        while (logIndex < logsList.length && logsList[logIndex].data <= dateStr) {
-                            consumed += getLogTotalInline(logsList[logIndex]);
-                            logIndex++;
-                        }
-                        result[medKey][dateStr] = (Number(med.estoqueInicial) || 0) + entrada - consumed;
-                    });
-                });
-                return result;
-            }, [agendaDisplayDays, selectedMedications]);
 
             const purchaseFilteredItems = useMemo(() => {
                 const sorted = [...replenishments].sort((a,b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
@@ -1920,9 +1854,7 @@
                     const targetMedicationId = daysSource[nextDayIdx]?.medicationId || '';
                     const targetId = `dose-${targetMedicationId}-${targetDate}-${nextDoseNum}`;
                     const targetEl = document.getElementById(targetId);
-                    if (targetEl) {
-                        targetEl.focus();
-                    }
+                    if (targetEl) targetEl.focus();
                 }
             };
 
@@ -2008,7 +1940,7 @@
                     setMedications(readScopedJSON('app_med_medications', () => DEFAULT_MEDICATIONS.map(item => ({ ...item })), uid));
                     setInventoryItems(readScopedJSON('app_med_inventory_list', [], uid));
                     setAgendaEndLimits(readScopedJSON('app_med_agenda_end_limits', {}, uid));
-                    setAgendaDayCount(Number(readScopedText('app_med_agenda_day_count', '30', uid)) || 30);
+                    setAgendaDayCount(Number(readScopedText('app_med_agenda_day_count', '90', uid)) || 90);
                     const savedId = readScopedText('app_med_active_medication_id', '1', uid);
                     setActiveMedicationId(savedId === 'all' ? 'all' : (Number(savedId) || 1));
                 };
@@ -2029,12 +1961,6 @@
             useEffect(() => {
                 if (user && !cloudLoaded) return;
                 writeScopedText('app_med_agenda_day_count', String(agendaDayCount), user?.uid);
-                if (user && db && cloudLoaded) {
-                    db.collection('medicacao_users').doc(user.uid).set({
-                        agendaDayCount,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true }).catch(err => console.error("Erro ao sincronizar quantidade de dias da agenda:", err));
-                }
             }, [agendaDayCount, user, cloudLoaded]);
 
             useEffect(() => {
@@ -2087,16 +2013,10 @@
                             setActiveMedicationId(restoredActiveId);
                             writeScopedText('app_med_active_medication_id', String(restoredActiveId), user.uid);
                         }
-                        if (data.agendaDayCount) {
-                            const restoredAgendaDayCount = Math.min(365, Math.max(1, Number(data.agendaDayCount) || 30));
-                            setAgendaDayCount(restoredAgendaDayCount);
-                            writeScopedText('app_med_agenda_day_count', String(restoredAgendaDayCount), user.uid);
-                        }
                         setCloudLoaded(true);
                     } else {
                         const initialMedications = readScopedJSON('app_med_medications', () => DEFAULT_MEDICATIONS.map(item => ({ ...item })), user.uid);
                         const initialAgendaEndLimits = readScopedJSON('app_med_agenda_end_limits', {}, user.uid);
-                        const initialAgendaDayCount = Number(readScopedText('app_med_agenda_day_count', '30', user.uid)) || 30;
                         const initialInventoryList = readScopedJSON('app_med_inventory_list', [], user.uid);
                         const initialActiveMedicationId = readScopedText('app_med_active_medication_id', '1', user.uid);
                         setMedications(initialMedications);
@@ -2106,7 +2026,6 @@
                         userRef.set({
                             medications: initialMedications,
                             agendaEndLimits: initialAgendaEndLimits,
-                            agendaDayCount: initialAgendaDayCount,
                             inventoryList: initialInventoryList,
                             activeMedicationId: String(initialActiveMedicationId),
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2269,8 +2188,11 @@
                                     <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest">Estoque Real</p>
                                     <p className={`text-5xl font-black mt-1 mb-4 drop-shadow-sm ${statsCalculated.estoque < 0 ? 'text-rose-500' : 'text-teal-600'}`}>{statsCalculated.estoque}</p>
                                     <button onClick={() => { setSupplyData({ id: null, amount: '', date: getTodayDateStr(), isScheduled: false }); setShowSupplyModal(true); }} className="btn-teal text-white py-3.5 rounded-2xl text-[11px] font-black flex items-center justify-center w-full mb-3 transition-all"><span className="mr-2 text-teal-200"><IconPlus /></span> REGISTRAR COMPRA</button>
-                                                                        <button onClick={() => setShowSettingsModal(true)} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all mb-3">
-                                        <span className="mr-2 text-teal-500"><IconSettings /></span> CONFIGURAÇÕES
+                                                                        <button onClick={() => { setMedicationFormData({ id: null, name: '', estoqueInicial: '' }); setShowMedicationModal(true); }} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all mb-3">
+                                        <span className="mr-2 text-teal-500"><IconPlus /></span> CADASTRAR MEDICAÇÃO
+                                    </button>
+                                    <button onClick={() => setShowMedicationModal('list')} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all mb-3">
+                                        <span className="mr-2 text-teal-500"><IconSettings /></span> VER MEDICAÇÕES
                                     </button>
                                     <button onClick={handleInstallApp} className="w-full py-3.5 bg-white text-slate-700 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center shadow-sm border border-slate-200 active:scale-95 transition-all">
                                         <span className="mr-2 text-teal-500"><IconDevice /></span> INSTALAR APLICATIVO
@@ -2403,13 +2325,16 @@
                                     {hasActivePeriod(agendaPeriod) && <button onClick={() => setAgendaPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{agendaDisplayDays.length} resultado(s)</p>
                                 </div>
-                                <div className="space-y-2 pb-10">
+                                <div ref={agendaScrollContainerRef} data-agenda-scroll="true" className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
                                     {visibleAgendaDays.map((day, dIdx) => {
                                         const rowMed = getMedicationById(day.medicationId) || activeMedication || medications[0];
                                         const rowLogs = rowMed?.logs || {};
                                         const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
                                         const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
-                                        const runningStock = agendaStockByMedication[String(day.medicationId)]?.[day.dateStr] ?? (Number(rowMed?.estoqueInicial) || 0);
+                                        const rowRepls = rowMed?.replenishments || [];
+                                        const rowEntrada = rowRepls.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
+                                        const totalSaidaAteData = Object.values(rowLogs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                                        const runningStock = (rowMed?.estoqueInicial || 0) + rowEntrada - totalSaidaAteData;
 
                                         const rowClass = day.isPast ? 'bg-slate-50/80' : day.isToday ? 'bg-teal-50/90 shadow-sm' : 'bg-white/90';
                                         const dateBoxClass = day.isPast ? 'bg-slate-200 text-slate-500 border-slate-300' : day.isToday ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-100 text-teal-700';
@@ -2464,10 +2389,7 @@
                                         );
                                     })}
                                     {agendaVisibleCount < agendaDisplayDays.length && (
-                                        <button
-                                            onClick={() => setAgendaVisibleCount(prev => Math.min(prev + PAGE_SIZE, agendaDisplayDays.length))}
-                                            className="w-full mt-3 py-3 bg-white text-teal-700 border border-teal-100 rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all"
-                                        >
+                                        <button onClick={() => setAgendaVisibleCount(prev => prev + PAGE_SIZE)} className="w-full py-3 bg-white border border-teal-100 text-teal-700 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-teal-50 active:scale-95 transition-all">
                                             Carregar Mais ({Math.min(PAGE_SIZE, agendaDisplayDays.length - agendaVisibleCount)} de {agendaDisplayDays.length - agendaVisibleCount})
                                         </button>
                                     )}
@@ -2514,10 +2436,7 @@
                                         </div>
                                     ))}
                                     {historyVisibleCount < historyFilteredItems.length && (
-                                        <button
-                                            onClick={() => setHistoryVisibleCount(prev => Math.min(prev + PAGE_SIZE, historyFilteredItems.length))}
-                                            className="w-full mt-3 py-3 bg-white text-teal-700 border border-teal-100 rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all"
-                                        >
+                                        <button onClick={() => setHistoryVisibleCount(prev => prev + PAGE_SIZE)} className="w-full py-3 bg-white border border-teal-100 text-teal-700 rounded-2xl text-[10px] font-black uppercase shadow-sm hover:bg-teal-50 active:scale-95 transition-all">
                                             Carregar Mais ({Math.min(PAGE_SIZE, historyFilteredItems.length - historyVisibleCount)} de {historyFilteredItems.length - historyVisibleCount})
                                         </button>
                                     )}
@@ -2665,39 +2584,6 @@
                         </div>
                     )}
 
-                                        {showSettingsModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade">
-                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)}></div>
-                            <div className="glass-card w-full max-w-xs rounded-3xl p-6 relative animate-slide-up overflow-hidden">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-black text-slate-800">Configurações</h3>
-                                    <button onClick={() => setShowSettingsModal(false)} className="text-slate-400"><IconX /></button>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="bg-white/80 border border-slate-100 rounded-2xl p-4">
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Dias exibidos na aba Lançar</label>
-                                        <select
-                                            value={agendaDayCount}
-                                            onChange={e => setAgendaDayCount(Number(e.target.value) || 30)}
-                                            className="w-full mt-2 bg-white border border-slate-200 rounded-2xl p-4 pr-8 text-sm font-black text-slate-700 outline-none focus:border-teal-400 transition-colors"
-                                        >
-                                            <option value="30">30 dias</option>
-                                            <option value="60">60 dias</option>
-                                            <option value="90">90 dias</option>
-                                            <option value="120">120 dias</option>
-                                            <option value="180">180 dias</option>
-                                            <option value="365">365 dias</option>
-                                        </select>
-                                        <p className="mt-2 text-[10px] font-bold text-slate-400 leading-relaxed">Menos dias deixam a abertura da grade mais rápida. O padrão recomendado é 30 dias.</p>
-                                    </div>
-                                    <button onClick={() => { setShowSettingsModal(false); setShowMedicationModal('list'); }} className="w-full py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
-                                        Medicações Ativas
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                                         {showMedicationModal && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade">
                             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowMedicationModal(false)}></div>
@@ -2705,7 +2591,7 @@
                                 {showMedicationModal === 'list' ? (
                                     <>
                                         <div className="flex justify-between items-center mb-6">
-                                            <h3 className="text-lg font-black text-slate-800">Medicações Ativas</h3>
+                                            <h3 className="text-lg font-black text-slate-800">Minhas Medicações</h3>
                                             <button onClick={() => setShowMedicationModal(false)} className="text-slate-400"><IconX /></button>
                                         </div>
                                         <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
@@ -2731,7 +2617,7 @@
                                                 </div>
                                             ))}
                                         </div>
-                                        <button onClick={() => { setMedicationFormData({ id: null, name: '', estoqueInicial: '' }); setShowMedicationModal('form'); }} className="w-full mt-6 py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">Cadastrar Nova Medicação</button>
+                                        <button onClick={() => { setMedicationFormData({ id: null, name: '', estoqueInicial: '' }); setShowMedicationModal('form'); }} className="w-full mt-6 py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">Novo Medicamento</button>
                                     </>
                                 ) : (
                                     <>
@@ -2868,7 +2754,7 @@
                                     </div>
                                     <button onClick={applyAgendaFilterToDelete} className="w-full py-3 rounded-2xl bg-slate-100 text-slate-500 text-[10px] font-black uppercase">Limpar Período</button>
                                     <p className="text-[10px] text-slate-400 font-bold leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-3">
-                                        Apagar limpa doses e mantém as datas. Excluir remove somente os últimos cards depois da data final. Limpar Tudo remove doses futuras e volta ao padrão de dias configurado.
+                                        Apagar limpa doses e mantém as datas. Excluir remove somente os últimos cards depois da data final. Limpar Tudo remove doses futuras e volta ao padrão de 90 dias.
                                     </p>
                                 </div>
                                 {(() => {
