@@ -305,11 +305,8 @@
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
             const [agendaEndLimits, setAgendaEndLimits] = useState(() => readScopedJSON('app_med_agenda_end_limits', {}));
             const PAGE_SIZE = 30;
-            const VIRTUAL_OVERSCAN = 8;
-            const AGENDA_ROW_HEIGHT = 64;
-            const HISTORY_ROW_HEIGHT = 62;
-            const [agendaVirtual, setAgendaVirtual] = useState({ scrollTop: 0, height: 520 });
-            const [historyVirtual, setHistoryVirtual] = useState({ scrollTop: 0, height: 560 });
+            const [agendaVisibleCount, setAgendaVisibleCount] = useState(PAGE_SIZE);
+            const [historyVisibleCount, setHistoryVisibleCount] = useState(PAGE_SIZE);
             const [showCopyModal, setShowCopyModal] = useState(false);
             const [copyData, setCopyData] = useState({ medicationId: '', startDate: '', endDate: '', pasteDate: '' });
             const [pendingCopy, setPendingCopy] = useState(null);
@@ -337,7 +334,6 @@
             const agendaLongPressTriggeredRef = useRef(false);
             const agendaOriginDoubleTapRef = useRef({ key: '', time: 0 });
             const agendaScrollContainerRef = useRef(null);
-            const historyScrollContainerRef = useRef(null);
 
             // --- DATAS, BUSCAS E CÁLCULOS ---
                         const getTodayDateStr = () => {
@@ -462,12 +458,13 @@
             const ensureAgendaLimitForDate = (medicationId, dateStr) => {
                 if (!isValidDateStr(dateStr)) return;
                 const todayStr = getTodayDateStr();
-                const defaultLastDate = addDaysToDateStr(todayStr, 89);
+                const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
+                const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
                 setAgendaEndLimits(prev => {
                     const key = String(medicationId);
                     const currLimit = prev[key];
 
-                    // Não encurta a agenda quando uma dose é digitada dentro dos 90 dias padrão.
+                    // Não encurta a agenda quando uma dose é digitada dentro do período padrão configurado.
                     // Só salva limite quando precisa expandir além do padrão, ou quando já existe
                     // um limite menor definido manualmente pelo botão Excluir e a dose passa dele.
                     if (isValidDateStr(currLimit)) {
@@ -508,7 +505,7 @@
                 const safeAgendaDayCount = Math.min(365, Math.max(1, Number(agendaDayCount) || 30));
                 const defaultLastDate = addDaysToDateStr(todayStr, safeAgendaDayCount - 1);
                 const savedEndLimit = isValidDateStr(agendaEndLimits[String(med.id)]) ? agendaEndLimits[String(med.id)] : '';
-                const baseLastDate = savedEndLimit || defaultLastDate;
+                const baseLastDate = savedEndLimit && savedEndLimit < defaultLastDate ? savedEndLimit : defaultLastDate;
                 let currBase = todayStr;
                 while (currBase <= baseLastDate) {
                     dateSet.add(currBase);
@@ -788,46 +785,11 @@
             }, [historyItemsCalculated, historyPeriod]);
 
 
-            const getVirtualWindow = (items, virtualState, rowHeight) => {
-                const total = items.length;
-                const height = virtualState.height || 520;
-                const startIndex = Math.max(0, Math.floor((virtualState.scrollTop || 0) / rowHeight) - VIRTUAL_OVERSCAN);
-                const visibleCount = Math.ceil(height / rowHeight) + (VIRTUAL_OVERSCAN * 2);
-                const endIndex = Math.min(total, startIndex + visibleCount);
-                return {
-                    items: items.slice(startIndex, endIndex),
-                    startIndex,
-                    endIndex,
-                    topSpacer: startIndex * rowHeight,
-                    bottomSpacer: Math.max(0, (total - endIndex) * rowHeight),
-                    total
-                };
-            };
+            const visibleAgendaDays = useMemo(() => agendaDisplayDays.slice(0, agendaVisibleCount), [agendaDisplayDays, agendaVisibleCount]);
+            const visibleHistoryItems = useMemo(() => historyFilteredItems.slice(0, historyVisibleCount), [historyFilteredItems, historyVisibleCount]);
 
-            const visibleAgendaWindow = useMemo(() => getVirtualWindow(agendaDisplayDays, agendaVirtual, AGENDA_ROW_HEIGHT), [agendaDisplayDays, agendaVirtual]);
-            const visibleHistoryWindow = useMemo(() => getVirtualWindow(historyFilteredItems, historyVirtual, HISTORY_ROW_HEIGHT), [historyFilteredItems, historyVirtual]);
-            const visibleAgendaDays = visibleAgendaWindow.items;
-            const visibleHistoryItems = visibleHistoryWindow.items;
-
-            const handleAgendaScroll = (event) => {
-                const el = event.currentTarget;
-                setAgendaVirtual(prev => (prev.scrollTop === el.scrollTop && prev.height === el.clientHeight) ? prev : { scrollTop: el.scrollTop, height: el.clientHeight });
-            };
-
-            const handleHistoryScroll = (event) => {
-                const el = event.currentTarget;
-                setHistoryVirtual(prev => (prev.scrollTop === el.scrollTop && prev.height === el.clientHeight) ? prev : { scrollTop: el.scrollTop, height: el.clientHeight });
-            };
-
-            useEffect(() => {
-                setAgendaVirtual(prev => ({ ...prev, scrollTop: 0 }));
-                if (agendaScrollContainerRef.current) agendaScrollContainerRef.current.scrollTop = 0;
-            }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, agendaDayCount]);
-
-            useEffect(() => {
-                setHistoryVirtual(prev => ({ ...prev, scrollTop: 0 }));
-                if (historyScrollContainerRef.current) historyScrollContainerRef.current.scrollTop = 0;
-            }, [activeMedicationId, historyPeriod.start, historyPeriod.end]);
+            useEffect(() => { setAgendaVisibleCount(PAGE_SIZE); }, [activeMedicationId, agendaPeriod.start, agendaPeriod.end, agendaDayCount]);
+            useEffect(() => { setHistoryVisibleCount(PAGE_SIZE); }, [activeMedicationId, historyPeriod.start, historyPeriod.end]);
 
             const agendaStockByMedication = useMemo(() => {
                 const result = {};
@@ -1960,10 +1922,7 @@
                     const targetEl = document.getElementById(targetId);
                     if (targetEl) {
                         targetEl.focus();
-                    } else if (agendaScrollContainerRef.current) {
-                        agendaScrollContainerRef.current.scrollTop = nextDayIdx * AGENDA_ROW_HEIGHT;
-                        setTimeout(() => document.getElementById(targetId)?.focus(), 40);
-                    }
+
                 }
             };
 
@@ -2444,10 +2403,8 @@
                                     {hasActivePeriod(agendaPeriod) && <button onClick={() => setAgendaPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{agendaDisplayDays.length} resultado(s)</p>
                                 </div>
-                                <div ref={agendaScrollContainerRef} data-agenda-scroll="true" onScroll={handleAgendaScroll} className="space-y-2 max-h-[62vh] overflow-y-auto px-2 pt-3 pb-10 scrollbar-hide">
-                                    {visibleAgendaWindow.topSpacer > 0 && <div style={{ height: `${visibleAgendaWindow.topSpacer}px` }} aria-hidden="true"></div>}
-                                    {visibleAgendaDays.map((day, localIdx) => {
-                                        const dIdx = visibleAgendaWindow.startIndex + localIdx;
+                                <div className="space-y-2 pb-10">
+                                    {visibleAgendaDays.map((day, dIdx) => {
                                         const rowMed = getMedicationById(day.medicationId) || activeMedication || medications[0];
                                         const rowLogs = rowMed?.logs || {};
                                         const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
@@ -2490,7 +2447,7 @@
                                                             value={log[`d${num}`]} 
                                                             onFocus={onInputFocus} 
                                                             onBlur={onInputBlur} 
-                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num, agendaDisplayDays)}
+                                                            onKeyDown={(e) => handleKeyDown(e, dIdx, num, visibleAgendaDays)}
                                                             onChange={e=>handleInputChange(day.dateStr, `d${num}`, e.target.value, day.medicationId)} 
                                                         />
                                                     ))}</div>
@@ -2506,7 +2463,14 @@
                                             </div>
                                         );
                                     })}
-                                    {visibleAgendaWindow.bottomSpacer > 0 && <div style={{ height: `${visibleAgendaWindow.bottomSpacer}px` }} aria-hidden="true"></div>}
+                                    {agendaVisibleCount < agendaDisplayDays.length && (
+                                        <button
+                                            onClick={() => setAgendaVisibleCount(prev => Math.min(prev + PAGE_SIZE, agendaDisplayDays.length))}
+                                            className="w-full mt-3 py-3 bg-white text-teal-700 border border-teal-100 rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all"
+                                        >
+                                            Carregar Mais ({Math.min(PAGE_SIZE, agendaDisplayDays.length - agendaVisibleCount)} de {agendaDisplayDays.length - agendaVisibleCount})
+                                        </button>
+                                    )}
                                 </div>
                                 </div>
                             </div>
@@ -2530,11 +2494,10 @@
                                     {hasActivePeriod(historyPeriod) && <button onClick={() => setHistoryPeriod({ start: '', end: '' })} className="w-full mt-2 py-3 bg-rose-50 text-rose-500 rounded-2xl font-black text-[10px] uppercase">Limpar período</button>}
                                     <p className="text-[9px] text-slate-400 font-bold mt-2 ml-1">{historyFilteredItems.filter(item => item.type === 'log').length} resultado(s)</p>
                                 </div>
-                                <div ref={historyScrollContainerRef} onScroll={handleHistoryScroll} className="space-y-2 max-h-[68vh] overflow-y-auto pb-10 scrollbar-hide">
+                                <div className="space-y-2 pb-10">
                                     {historyFilteredItems.length === 0 && (
                                         <div className="p-5 rounded-2xl border bg-white/80 text-slate-400 text-[10px] font-black uppercase text-center">Nenhum registro encontrado</div>
                                     )}
-                                    {visibleHistoryWindow.topSpacer > 0 && <div style={{ height: `${visibleHistoryWindow.topSpacer}px` }} aria-hidden="true"></div>}
                                     {visibleHistoryItems.map((item) => item.type === 'empty_group' ? (
                                         <div key={item.startDate} className="p-4 rounded-2xl border bg-slate-50/60 text-slate-400 text-[9px] font-black uppercase text-center my-2">Vazio: {item.count} dias</div>
                                     ) : (
@@ -2550,7 +2513,14 @@
                                             </div>
                                         </div>
                                     ))}
-                                    {visibleHistoryWindow.bottomSpacer > 0 && <div style={{ height: `${visibleHistoryWindow.bottomSpacer}px` }} aria-hidden="true"></div>}
+                                    {historyVisibleCount < historyFilteredItems.length && (
+                                        <button
+                                            onClick={() => setHistoryVisibleCount(prev => Math.min(prev + PAGE_SIZE, historyFilteredItems.length))}
+                                            className="w-full mt-3 py-3 bg-white text-teal-700 border border-teal-100 rounded-2xl text-[10px] font-black uppercase shadow-sm active:scale-95 transition-all"
+                                        >
+                                            Carregar Mais ({Math.min(PAGE_SIZE, historyFilteredItems.length - historyVisibleCount)} de {historyFilteredItems.length - historyVisibleCount})
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -2722,9 +2692,6 @@
                                     </div>
                                     <button onClick={() => { setShowSettingsModal(false); setShowMedicationModal('list'); }} className="w-full py-4 bg-teal-500 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest shadow-lg shadow-teal-500/20 active:scale-95 transition-all">
                                         Medicações Ativas
-                                    </button>
-                                    <button onClick={handleInstallApp} className="w-full py-4 bg-white text-slate-700 text-[10px] font-black rounded-2xl uppercase tracking-widest border border-slate-200 active:scale-95 transition-all">
-                                        Instalar Aplicativo
                                     </button>
                                 </div>
                             </div>
@@ -2901,7 +2868,7 @@
                                     </div>
                                     <button onClick={applyAgendaFilterToDelete} className="w-full py-3 rounded-2xl bg-slate-100 text-slate-500 text-[10px] font-black uppercase">Limpar Período</button>
                                     <p className="text-[10px] text-slate-400 font-bold leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-3">
-                                        Apagar limpa doses e mantém as datas. Excluir remove somente os últimos cards depois da data final. Limpar Tudo remove doses futuras e volta ao padrão de 90 dias.
+                                        Apagar limpa doses e mantém as datas. Excluir remove somente os últimos cards depois da data final. Limpar Tudo remove doses futuras e volta ao padrão de dias configurado.
                                     </p>
                                 </div>
                                 {(() => {
