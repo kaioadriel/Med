@@ -232,7 +232,7 @@
 
             const [activeMedicationId, setActiveMedicationId] = useState(() => {
                 const savedId = readScopedText('app_med_active_medication_id', '1');
-                return savedId === 'all' ? 'all' : (Number(savedId) || 1);
+                return Number(savedId) || 1;
             });
 
                         const syncData = (updatedMeds) => {
@@ -255,36 +255,19 @@
             };
 
             const updateActiveMedication = (updates) => {
-                if (activeMedicationId === 'all') return;
                 updateMedicationById(activeMedicationId, updates);
             };
 
-            const isAllMedications = activeMedicationId === 'all';
-
             const activeMedication = useMemo(() => {
-                if (isAllMedications) return null;
-                return medications.find(m => m.id === activeMedicationId);
-            }, [medications, activeMedicationId, isAllMedications]);
+                return medications.find(m => m.id === activeMedicationId) || medications[0] || null;
+            }, [medications, activeMedicationId]);
 
             const selectedMedications = useMemo(() => {
-                return isAllMedications ? medications : medications.filter(m => m.id === activeMedicationId);
-            }, [medications, activeMedicationId, isAllMedications]);
+                return activeMedication ? [activeMedication] : [];
+            }, [activeMedication]);
 
-            const mergeLogs = (meds) => {
-                const merged = {};
-                meds.forEach(med => {
-                    Object.entries(med.logs || {}).forEach(([dateStr, log]) => {
-                        if (!merged[dateStr]) merged[dateStr] = { data: dateStr, d1: 0, d2: 0, d3: 0 };
-                        merged[dateStr].d1 = (Number(merged[dateStr].d1) || 0) + (Number(log.d1) || 0);
-                        merged[dateStr].d2 = (Number(merged[dateStr].d2) || 0) + (Number(log.d2) || 0);
-                        merged[dateStr].d3 = (Number(merged[dateStr].d3) || 0) + (Number(log.d3) || 0);
-                    });
-                });
-                return merged;
-            };
-
-            const logs = useMemo(() => isAllMedications ? mergeLogs(medications) : (activeMedication?.logs || {}), [isAllMedications, medications, activeMedication]);
-            const replenishments = useMemo(() => isAllMedications ? medications.flatMap(m => (m.replenishments || []).map(r => ({ ...r, medicationId: m.id, medicationName: m.name }))) : (activeMedication?.replenishments || []).map(r => ({ ...r, medicationId: activeMedication?.id, medicationName: activeMedication?.name })), [isAllMedications, medications, activeMedication]);
+            const logs = useMemo(() => activeMedication?.logs || {}, [activeMedication]);
+            const replenishments = useMemo(() => (activeMedication?.replenishments || []).map(r => ({ ...r, medicationId: activeMedication?.id, medicationName: activeMedication?.name })), [activeMedication]);
 
             const setLogs = (newLogs) => updateActiveMedication({ logs: newLogs });
             const setReplenishments = (newRepls) => updateActiveMedication({ replenishments: newRepls });
@@ -303,8 +286,7 @@
             const [agendaPeriod, setAgendaPeriod] = useState({ start: '', end: '' });
             const [agendaEndLimits, setAgendaEndLimits] = useState(() => readScopedJSON('app_med_agenda_end_limits', {}));
             const [showCopyModal, setShowCopyModal] = useState(false);
-            const [copyData, setCopyData] = useState({ medicationId: '', startDate: '', endDate: '', pasteDate: '' });
-            const [pendingCopy, setPendingCopy] = useState(null);
+            const [copyData, setCopyData] = useState({ medicationId: '', sourceDate: '', startDate: '', days: 1 });
             const [showCutModal, setShowCutModal] = useState(false);
             const [cutData, setCutData] = useState({ medicationId: '', startDate: '', endDate: '', pasteDate: '' });
             const [pendingCut, setPendingCut] = useState(null);
@@ -319,7 +301,7 @@
             const [inventorySearch, setInventorySearch] = useState('');
             const [inventorySortBy, setInventorySortBy] = useState('validade');
             const [inventorySortDir, setInventorySortDir] = useState('desc');
-            const [reportFilters, setReportFilters] = useState({ medicationId: 'all', start: '', end: '' });
+            const [reportFilters, setReportFilters] = useState({ medicationId: '', start: '', end: '' });
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -421,7 +403,7 @@
             const hasDoseInLog = (log) => [log?.d1, log?.d2, log?.d3].some(value => Number(value) !== 0);
             const getMedicationById = (medicationId) => medications.find(m => m.id === Number(medicationId));
             const getOperationMedicationId = (candidateId) => {
-                const selected = candidateId || (isAllMedications ? medications[0]?.id : activeMedicationId);
+                const selected = candidateId || activeMedicationId || medications[0]?.id;
                 return Number(selected);
             };
             const dateDiffDays = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / (1000 * 60 * 60 * 24));
@@ -561,11 +543,9 @@
                 const todayStr = getTodayDateStr();
                 const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
-                const estoqueInicialTotal = isAllMedications
-                    ? medications.reduce((acc, med) => acc + (Number(med.estoqueInicial) || 0), 0)
-                    : (activeMedication?.estoqueInicial || 0);
+                const estoqueInicialTotal = activeMedication?.estoqueInicial || 0;
                 return { previsao: estoqueInicialTotal + totalEntrada - totalSaidaGeral, estoque: estoqueInicialTotal + totalEntrada - totalSaidaAteHoje, totalEntrada };
-            }, [logs, replenishments, activeMedication, isAllMedications, medications]);
+            }, [logs, replenishments, activeMedication]);
 
             const advancedStats = useMemo(() => {
                 const todayStr = getTodayDateStr();
@@ -724,18 +704,8 @@
                     return items;
                 };
 
-                if (isAllMedications) {
-                    return medications
-                        .flatMap(med => buildHistoryItemsForLogs(med.logs || {}, { id: med.id, name: med.name }))
-                        .sort((a, b) => {
-                            const dateA = a.type === 'log' ? a.log.data : a.endDate;
-                            const dateB = b.type === 'log' ? b.log.data : b.endDate;
-                            return dateB.localeCompare(dateA) || String(a.medicationName || a.log?.medicationName || '').localeCompare(String(b.medicationName || b.log?.medicationName || ''));
-                        });
-                }
-
                 return buildHistoryItemsForLogs(logs, { id: activeMedication?.id, name: activeMedication?.name });
-            }, [logs, isAllMedications, medications, activeMedication]);
+            }, [logs, activeMedication]);
 
             const historyFilteredItems = useMemo(() => {
                 if (!hasActivePeriod(historyPeriod)) return historyItemsCalculated;
@@ -1011,8 +981,7 @@
             };
 
             const getReportFilteredMedications = () => {
-                const selectedId = reportFilters.medicationId;
-                if (selectedId === 'all') return medications;
+                const selectedId = reportFilters.medicationId || activeMedicationId;
                 return medications.filter(med => String(med.id) === String(selectedId));
             };
 
@@ -1026,7 +995,7 @@
             };
 
             const clearReportFilters = () => {
-                setReportFilters({ medicationId: 'all', start: '', end: '' });
+                setReportFilters({ medicationId: String(activeMedicationId || medications[0]?.id || ''), start: '', end: '' });
                 showToast('Filtro do relatório limpo!');
             };
 
@@ -1124,7 +1093,7 @@
                         totalRegistros,
                         totalCompras
                     };
-                }).filter(row => row.totalDoses || row.comprasConfirmadas || row.comprasAgendadas || reportFilters.medicationId !== 'all');
+                }).filter(row => row.totalDoses || row.comprasConfirmadas || row.comprasAgendadas);
             };
 
             const handleExportPDF = () => {
@@ -1173,7 +1142,7 @@
                     return;
                 }
 
-                const selectedMedicationLabel = reportFilters.medicationId === 'all' ? 'Todos' : (medications.find(med => String(med.id) === String(reportFilters.medicationId))?.name || 'Selecionado');
+                const selectedMedicationLabel = medications.find(med => String(med.id) === String(reportFilters.medicationId || activeMedicationId))?.name || 'Selecionado';
                 const startLabel = isValidDateStr(reportFilters.start) ? formatDateShortYear(reportFilters.start) : 'Início';
                 const endLabel = isValidDateStr(reportFilters.end) ? formatDateShortYear(reportFilters.end) : 'Fim';
 
@@ -1333,64 +1302,43 @@
                 showToast("Linha zerada inserida acima!");
             };
 
-            const executeCopySchedule = (mode = 'replace', savedPayload = null) => {
-                const payload = savedPayload || pendingCopy;
-                if (!payload) return;
-                const { medicationId, pasteDate, copyDates, copyLogs } = payload;
-                const copyLength = copyDates.length;
-                const sourceDateSet = new Set(copyDates);
+            const handleCopySchedule = () => {
+                const targetMedId = getOperationMedicationId(copyData.medicationId);
+                const med = getMedicationById(targetMedId);
+                const sourceDate = copyData.sourceDate;
+                const startDate = copyData.startDate;
+                const daysToCopy = Number(copyData.days);
 
-                updateMedicationLogs(medicationId, (currentLogs) => {
-                    const newLogs = { ...currentLogs };
+                if (!med) { showToast("Selecione uma medicação.", "error"); return; }
+                if (!isValidDateStr(sourceDate) || !isValidDateStr(startDate)) {
+                    showToast("Selecione datas válidas.", "error");
+                    return;
+                }
 
-                    if (mode === 'push') {
-                        Object.keys(newLogs)
-                            .filter(dateKey => dateKey >= pasteDate && !sourceDateSet.has(dateKey))
-                            .sort((a, b) => b.localeCompare(a))
-                            .forEach(dateKey => {
-                                const targetKey = addDaysToDateStr(dateKey, copyLength);
-                                newLogs[targetKey] = { ...newLogs[dateKey], data: targetKey };
-                                delete newLogs[dateKey];
-                            });
+                if (!Number.isFinite(daysToCopy) || daysToCopy <= 0) {
+                    showToast("Informe uma quantidade de dias válida.", "error");
+                    return;
+                }
+
+                updateMedicationLogs(targetMedId, (currentLogs) => {
+                    const sourceLog = currentLogs[sourceDate] || { d1: '', d2: '', d3: '', data: sourceDate };
+                    const copiedLog = { d1: sourceLog.d1 || '', d2: sourceLog.d2 || '', d3: sourceLog.d3 || '' };
+                    const newLogs = {};
+                    Object.keys(currentLogs)
+                        .sort((a, b) => b.localeCompare(a))
+                        .forEach(dateKey => {
+                            const targetKey = dateKey >= startDate ? addDaysToDateStr(dateKey, daysToCopy) : dateKey;
+                            newLogs[targetKey] = { ...currentLogs[dateKey], data: targetKey };
+                        });
+                    for (let i = 0; i < daysToCopy; i++) {
+                        const targetDate = addDaysToDateStr(startDate, i);
+                        newLogs[targetDate] = { ...copiedLog, data: targetDate };
                     }
-
-                    copyLogs.forEach((log, idx) => {
-                        const targetDate = addDaysToDateStr(pasteDate, idx);
-                        if (hasDoseInLog(log)) newLogs[targetDate] = { ...log, data: targetDate };
-                        else delete newLogs[targetDate];
-                    });
                     return newLogs;
                 });
-
-                ensureAgendaLimitForDate(medicationId, addDaysToDateStr(pasteDate, copyLength - 1));
-                setPendingCopy(null);
+                ensureAgendaLimitForDate(targetMedId, addDaysToDateStr(startDate, daysToCopy - 1));
                 setShowCopyModal(false);
-                showToast(mode === 'push' ? "Cópia aplicada e doses deslocadas!" : "Cópia aplicada!");
-            };
-
-            const handleCopySchedule = () => {
-                const medicationId = getOperationMedicationId(copyData.medicationId);
-                const med = getMedicationById(medicationId);
-                const { startDate, endDate, pasteDate } = copyData;
-                if (!med) { showToast("Selecione uma medicação.", "error"); return; }
-                if (!isValidDateStr(startDate) || !isValidDateStr(endDate) || !isValidDateStr(pasteDate)) {
-                    showToast("Preencha as datas da cópia.", "error");
-                    return;
-                }
-                const normalized = normalizeDatePeriod({ start: startDate, end: endDate });
-                const copyDates = eachDateInPeriod(normalized.start, normalized.end);
-                if (!copyDates.length) { showToast("Período inválido.", "error"); return; }
-                const currentLogs = med.logs || {};
-                const copyLogs = copyDates.map(dateStr => ({ ...(currentLogs[dateStr] || { d1: '', d2: '', d3: '' }), data: dateStr }));
-                const destinationDates = copyDates.map((_, idx) => addDaysToDateStr(pasteDate, idx));
-                const hasConflict = destinationDates.some(dateStr => hasDoseInLog(currentLogs[dateStr]));
-                const payload = { medicationId, startDate: normalized.start, endDate: normalized.end, pasteDate, copyDates, copyLogs };
-                if (hasConflict) {
-                    setPendingCopy(payload);
-                    return;
-                }
-                setPendingCopy(payload);
-                executeCopySchedule('replace', payload);
+                showToast("Cópia aplicada!");
             };
 
             const executeCutSchedule = (mode = 'replace', savedPayload = null) => {
@@ -1912,7 +1860,7 @@
                     setAgendaEndLimits(readScopedJSON('app_med_agenda_end_limits', {}, uid));
                     setAgendaDayCount(Number(readScopedText('app_med_agenda_day_count', '90', uid)) || 90);
                     const savedId = readScopedText('app_med_active_medication_id', '1', uid);
-                    setActiveMedicationId(savedId === 'all' ? 'all' : (Number(savedId) || 1));
+                    setActiveMedicationId(Number(savedId) || 1);
                 };
                 const unsub = auth.onAuthStateChanged(u => {
                     setCloudLoaded(false);
@@ -1979,7 +1927,7 @@
                             writeScopedJSON('app_med_inventory_list', [], user.uid);
                         }
                         if (data.activeMedicationId) {
-                            const restoredActiveId = data.activeMedicationId === 'all' ? 'all' : (Number(data.activeMedicationId) || 1);
+                            const restoredActiveId = Number(data.activeMedicationId) || (data.medications?.[0]?.id || 1);
                             setActiveMedicationId(restoredActiveId);
                             writeScopedText('app_med_active_medication_id', String(restoredActiveId), user.uid);
                         }
@@ -1992,7 +1940,7 @@
                         setMedications(initialMedications);
                         setAgendaEndLimits(initialAgendaEndLimits);
                         setInventoryItems(initialInventoryList);
-                        setActiveMedicationId(initialActiveMedicationId === 'all' ? 'all' : (Number(initialActiveMedicationId) || 1));
+                        setActiveMedicationId(Number(initialActiveMedicationId) || 1);
                         userRef.set({
                             medications: initialMedications,
                             agendaEndLimits: initialAgendaEndLimits,
@@ -2010,10 +1958,18 @@
             }, [user]);
 
             useEffect(() => {
-                if (activeMedicationId !== 'all' && !medications.some(m => m.id === activeMedicationId) && medications.length > 0) {
+                if (!medications.some(m => m.id === activeMedicationId) && medications.length > 0) {
                     selectMedication(medications[0].id);
                 }
             }, [medications, activeMedicationId]);
+
+            useEffect(() => {
+                const selectedReportId = reportFilters.medicationId;
+                const validReportMedication = medications.some(med => String(med.id) === String(selectedReportId));
+                if ((!selectedReportId || selectedReportId === 'all' || !validReportMedication) && activeMedicationId) {
+                    setReportFilters(prev => ({ ...prev, medicationId: String(activeMedicationId) }));
+                }
+            }, [medications, activeMedicationId, reportFilters.medicationId]);
 
 
 
@@ -2124,16 +2080,6 @@
                         </div>
                     
                     <div className="max-w-md mx-auto mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                        <button
-                            onClick={() => selectMedication('all')}
-                            className={`px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap border transition-all ${
-                                activeMedicationId === 'all'
-                                    ? 'bg-teal-500 text-white border-teal-500'
-                                    : 'bg-white text-slate-600 border-slate-200'
-                            }`}
-                        >
-                            Todos
-                        </button>
                         {medications.map((med, medIndex) => (
                             <button
                                 key={med.id}
@@ -2245,7 +2191,6 @@
                                 <div className="glass-card p-4 rounded-3xl mt-3 space-y-3">
                                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Filtro do Relatório</h3>
                                     <select value={reportFilters.medicationId} onChange={e => setReportFilters(prev => ({ ...prev, medicationId: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-2xl p-3 pr-8 text-[10px] font-black text-slate-600 outline-none uppercase">
-                                        <option value="all">Todos</option>
                                         {medications.map(med => <option key={med.id} value={med.id}>{med.name}</option>)}
                                     </select>
                                     <div className="grid grid-cols-2 gap-2">
@@ -2275,8 +2220,8 @@
                                 <div className="p-4 bg-slate-800 text-white flex justify-between items-center gap-3">
                                     <h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2>
                                     <div className="flex items-center gap-3">
-                                        <button onClick={() => { setCopyData({ medicationId: isAllMedications ? (medications[0]?.id || '') : activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setPendingCopy(null); setShowCopyModal(true); }} className="text-[8px] font-black uppercase text-teal-200 transition-colors">Copiar</button>
-                                        <button onClick={() => { setCutData({ medicationId: isAllMedications ? (medications[0]?.id || '') : activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setShowCutModal(true); }} className="text-[8px] font-black uppercase text-sky-200 transition-colors">Recortar</button>
+                                        <button onClick={() => { setCopyData({ medicationId: activeMedicationId, sourceDate: getTodayDateStr(), startDate: getTodayDateStr(), days: 1 }); setShowCopyModal(true); }} className="text-[8px] font-black uppercase text-teal-200 transition-colors">Copiar</button>
+                                        <button onClick={() => { setCutData({ medicationId: activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setShowCutModal(true); }} className="text-[8px] font-black uppercase text-sky-200 transition-colors">Recortar</button>
                                         <button onClick={() => { setDeleteData({ startDate: '', endDate: '' }); setShowDeleteModal(true); }} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Excluir</button>
                                     </div>
                                 </div>
@@ -2619,32 +2564,24 @@
                                             {medications.map(med => <option key={med.id} value={med.id}>{med.name}</option>)}
                                         </select>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data inicial</label>
-                                            <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.startDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, startDate: e.target.value }))} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data final</label>
-                                            <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.endDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, endDate: e.target.value }))} />
-                                        </div>
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data para copiar</label>
+                                        <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.sourceDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, sourceDate: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data para colar</label>
-                                        <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.pasteDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, pasteDate: e.target.value }))} />
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Data inicial da cópia</label>
+                                        <input type="date" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.startDate} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, startDate: e.target.value }))} />
                                     </div>
-                                    {pendingCopy && (
-                                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
-                                            <p className="text-[10px] text-amber-700 font-black uppercase text-center mb-3">Existem doses registradas nestes campos</p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button onClick={() => executeCopySchedule('replace')} className="py-3 rounded-xl bg-rose-500 text-white text-[10px] font-black uppercase">Substituir</button>
-                                                <button onClick={() => executeCopySchedule('push')} className="py-3 rounded-xl bg-teal-500 text-white text-[10px] font-black uppercase">Descer</button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantidade de dias</label>
+                                        <input type="number" min="1" step="1" className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-teal-400 transition-colors" value={copyData.days} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e => setCopyData(prev => ({ ...prev, days: e.target.value }))} />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                                        Se houver registros a partir da data inicial, eles serão empurrados para baixo antes da cópia ser aplicada.
+                                    </p>
                                 </div>
                                 <div className="flex space-x-3">
-                                    <button onClick={() => { setPendingCopy(null); setShowCopyModal(false); }} className="flex-1 py-4 text-xs font-black text-slate-500 bg-slate-100 rounded-xl uppercase">Voltar</button>
+                                    <button onClick={() => setShowCopyModal(false)} className="flex-1 py-4 text-xs font-black text-slate-500 bg-slate-100 rounded-xl uppercase">Voltar</button>
                                     <button onClick={handleCopySchedule} className="flex-[2] py-4 text-white text-xs font-black rounded-xl uppercase shadow-lg btn-teal">Copiar</button>
                                 </div>
                             </div>
