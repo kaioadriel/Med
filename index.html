@@ -2019,18 +2019,9 @@
             }, []);
 
             // --- RENDERIZAÇÃO DA INTERFACE ---
-            if (authLoading) return (
-                <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 text-center animate-fade">
-                    <h1 className="text-5xl font-black italic tracking-tighter text-white mb-8">APP MED</h1>
-                    <img src={APP_ICON_URL} className="w-28 h-28 mx-auto object-contain p-2 drop-shadow-xl animate-pulse" alt="Ícone do App Med" />
-                    <div className="mt-8 w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-10 text-[10px] font-bold text-white/60 leading-relaxed">
-                        © 2026 Kaio Adriel<br />
-                        Todos os direitos reservados
-                    </p>
-                </div>
-            );
-
+            // Tela de carregamento inicial removida para evitar duas telas de abertura.
+            // Enquanto o Firebase Auth confirma a sessão, o app já exibe a tela principal de login
+            // com ícone e nome do aplicativo.
             if (!user) {
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 animate-fade relative text-center">
