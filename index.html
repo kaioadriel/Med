@@ -66,6 +66,13 @@
             min-width: 36px;
             max-width: 36px;
         }
+        @media (max-width: 359px) {
+            .dose-input-field {
+                width: 31px;
+                min-width: 31px;
+                max-width: 31px;
+            }
+        }
         .row-action-stack {
             width: 29px;
             min-width: 29px;
@@ -391,8 +398,8 @@ const auth = firebase.auth();
                 return Boolean(start || end);
             };
 
-            const getLogTotalInline = (log) => (Number(log?.d1) || 0) + (Number(log?.d2) || 0) + (Number(log?.d3) || 0);
-            const hasDoseInLog = (log) => [log?.d1, log?.d2, log?.d3].some(value => Number(value) !== 0);
+            const getLogTotalInline = (log) => (Number(log?.d1) || 0) + (Number(log?.d2) || 0) + (Number(log?.d3) || 0) + (Number(log?.d4) || 0);
+            const hasDoseInLog = (log) => [log?.d1, log?.d2, log?.d3, log?.d4].some(value => Number(value) !== 0);
             const getMedicationById = (medicationId) => medications.find(m => m.id === Number(medicationId));
             const getOperationMedicationId = (candidateId) => {
                 const selected = candidateId || activeMedicationId || medications[0]?.id;
@@ -447,10 +454,13 @@ const auth = firebase.auth();
 
             const buildDayMeta = (dateStr, med = null) => {
                 const todayStr = getTodayDateStr();
+                const [, monthNumber, dayNumber] = dateStr.split('-');
                 return {
                     dateStr,
                     label: formatDateShortYear(dateStr),
                     labelDDMM: formatDateDDMM(dateStr),
+                    dayNumber,
+                    monthNumber,
                     yearFull: formatYearFull(dateStr),
                     weekday: new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').slice(0,3),
                     isToday: dateStr === todayStr,
@@ -526,14 +536,14 @@ const auth = firebase.auth();
             const getLogsValue = (dateStr) => {
                 if (dateStr > getTodayDateStr()) return 0;
                 const log = logs[dateStr];
-                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) : 0;
+                return log ? (Number(log.d1) || 0) + (Number(log.d2) || 0) + (Number(log.d3) || 0) + (Number(log.d4) || 0) : 0;
             };
 
             const statsCalculated = useMemo(() => {
                 const allEntries = Object.values(logs);
-                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0), 0);
+                const totalSaidaGeral = allEntries.reduce((acc, curr) => acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) + (Number(curr.d4) || 0), 0);
                 const todayStr = getTodayDateStr();
-                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                const totalSaidaAteHoje = allEntries.reduce((acc, curr) => curr.data <= todayStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) + (Number(curr.d4) || 0) : acc, 0);
                 const totalEntrada = replenishments.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
                 const estoqueInicialTotal = activeMedication?.estoqueInicial || 0;
                 return { previsao: estoqueInicialTotal + totalEntrada - totalSaidaGeral, estoque: estoqueInicialTotal + totalEntrada - totalSaidaAteHoje, totalEntrada };
@@ -541,7 +551,7 @@ const auth = firebase.auth();
 
             const advancedStats = useMemo(() => {
                 const todayStr = getTodayDateStr();
-                const getTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0);
+                const getTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0) + (Number(log?.d4)||0);
                 const allLogs = Object.entries(logs)
                     .map(([dateStr, log]) => ({ data: log.data || dateStr, total: getTotal(log) }))
                     .filter(item => item.total !== 0 && isValidDateStr(item.data));
@@ -683,9 +693,9 @@ const auth = firebase.auth();
                     const oldestDateObj = new Date(oldestDateStr + 'T12:00:00'); let logCount = 0;
                     while (currDate >= oldestDateObj) {
                         const dStr = currDate.toISOString().split('T')[0];
-                        const sourceLog = logsSource?.[dStr] || { d1: '', d2: '', d3: '', data: dStr };
+                        const sourceLog = logsSource?.[dStr] || { d1: '', d2: '', d3: '', d4: '', data: dStr };
                         const log = { ...sourceLog, data: dStr, medicationId: medMeta.id, medicationName: medMeta.name };
-                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0) + (Number(log.d4)||0);
                         if (hasDoseInLog(log)) {
                             if (emptyStreak.length > 5) { items.push({ type: 'empty_group', startDate: emptyStreak[emptyStreak.length - 1].data, endDate: emptyStreak[0].data, count: emptyStreak.length, medicationId: medMeta.id, medicationName: medMeta.name }); } else if (emptyStreak.length > 0) { emptyStreak.forEach(emptyLog => items.push({ type: 'log', log: emptyLog, isEditable: true })); }
                             emptyStreak = []; items.push({ type: 'log', log, isEditable: true }); logCount++;
@@ -755,7 +765,7 @@ const auth = firebase.auth();
 
             const formatDateBR = (dateStr) => formatDateShortYear(dateStr);
 
-            const getLogTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0);
+            const getLogTotal = (log) => (Number(log?.d1)||0) + (Number(log?.d2)||0) + (Number(log?.d3)||0) + (Number(log?.d4)||0);
 
             const getInventorySearchText = (item) => [
                 item.remedio,
@@ -1001,6 +1011,7 @@ const auth = firebase.auth();
                                     d1: log.d1 || '',
                                     d2: log.d2 || '',
                                     d3: log.d3 || '',
+                                    d4: log.d4 || '',
                                     total,
                                     quantidade: '',
                                     status: ''
@@ -1021,6 +1032,7 @@ const auth = firebase.auth();
                                 d1: '',
                                 d2: '',
                                 d3: '',
+                                d4: '',
                                 total: '',
                                 quantidade: item.amount || '',
                                 status: item.isScheduled ? 'Agendado' : 'Confirmado'
@@ -1031,7 +1043,7 @@ const auth = firebase.auth();
             };
 
             const handleExportCSV = () => {
-                const header = ['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total Doses', 'Quantidade Compra', 'Status'];
+                const header = ['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Dose 4', 'Total Doses', 'Quantidade Compra', 'Status'];
                 const rows = buildExportRows();
                 const lines = [header.map(csvCell).join(';')];
                 rows.forEach(row => {
@@ -1042,6 +1054,7 @@ const auth = firebase.auth();
                         row.d1,
                         row.d2,
                         row.d3,
+                        row.d4,
                         row.total,
                         row.quantidade,
                         row.status
@@ -1116,6 +1129,7 @@ const auth = firebase.auth();
                         <td>${htmlCell(row.d1)}</td>
                         <td>${htmlCell(row.d2)}</td>
                         <td>${htmlCell(row.d3)}</td>
+                        <td>${htmlCell(row.d4)}</td>
                         <td>${htmlCell(row.total)}</td>
                         <td>${htmlCell(row.quantidade)}</td>
                         <td>${htmlCell(row.status)}</td>
@@ -1180,9 +1194,9 @@ const auth = firebase.auth();
                         <h2>Detalhamento completo</h2>
                         <table>
                             <thead>
-                                <tr><th>Tipo</th><th>Medicamento</th><th>Data</th><th>Dose 1</th><th>Dose 2</th><th>Dose 3</th><th>Total</th><th>Compra</th><th>Status</th></tr>
+                                <tr><th>Tipo</th><th>Medicamento</th><th>Data</th><th>Dose 1</th><th>Dose 2</th><th>Dose 3</th><th>Dose 4</th><th>Total</th><th>Compra</th><th>Status</th></tr>
                             </thead>
-                            <tbody>${htmlRows || '<tr><td colspan="9">Nenhum registro encontrado.</td></tr>'}</tbody>
+                            <tbody>${htmlRows || '<tr><td colspan="10">Nenhum registro encontrado.</td></tr>'}</tbody>
                         </table>
                     </body>
                     </html>
@@ -1253,7 +1267,7 @@ const auth = firebase.auth();
                 if (sanitized !== '' && Number(sanitized) > 0) ensureAgendaLimitForDate(targetMedId, dateStr);
 
                 updateMedicationLogs(targetMedId, (currentLogs) => {
-                    const curr = currentLogs[dateStr] || { d1: '', d2: '', d3: '', data: dateStr };
+                    const curr = currentLogs[dateStr] || { d1: '', d2: '', d3: '', d4: '', data: dateStr };
                     const updatedLog = { ...curr, [field]: sanitized, data: dateStr };
                     if (!hasDoseInLog(updatedLog)) {
                         delete currentLogs[dateStr];
@@ -1307,8 +1321,8 @@ const auth = firebase.auth();
                 }
 
                 updateMedicationLogs(targetMedId, (currentLogs) => {
-                    const sourceLog = currentLogs[sourceDate] || { d1: '', d2: '', d3: '', data: sourceDate };
-                    const copiedLog = { d1: sourceLog.d1 || '', d2: sourceLog.d2 || '', d3: sourceLog.d3 || '' };
+                    const sourceLog = currentLogs[sourceDate] || { d1: '', d2: '', d3: '', d4: '', data: sourceDate };
+                    const copiedLog = { d1: sourceLog.d1 || '', d2: sourceLog.d2 || '', d3: sourceLog.d3 || '', d4: sourceLog.d4 || '' };
                     const newLogs = {};
                     Object.keys(currentLogs)
                         .sort((a, b) => b.localeCompare(a))
@@ -1375,7 +1389,7 @@ const auth = firebase.auth();
                 const cutDates = eachDateInPeriod(normalized.start, normalized.end);
                 if (!cutDates.length) { showToast("Período inválido.", "error"); return; }
                 const currentLogs = med.logs || {};
-                const cutLogs = cutDates.map(dateStr => ({ ...(currentLogs[dateStr] || { d1: '', d2: '', d3: '' }), data: dateStr }));
+                const cutLogs = cutDates.map(dateStr => ({ ...(currentLogs[dateStr] || { d1: '', d2: '', d3: '', d4: '' }), data: dateStr }));
                 const destinationDates = cutDates.map((_, idx) => addDaysToDateStr(pasteDate, idx));
                 const hasConflict = destinationDates.some(dateStr => !cutDates.includes(dateStr) && hasDoseInLog(currentLogs[dateStr]));
                 const payload = { medicationId, startDate: normalized.start, endDate: normalized.end, pasteDate, cutDates, cutLogs };
@@ -1670,8 +1684,8 @@ const auth = firebase.auth();
 
                 const sourceDateSet = new Set(uniqueSources.map(source => source.dateStr));
                 const movingLogs = uniqueSources.map(source => {
-                    const log = targetMed.logs?.[source.dateStr] || { d1: '', d2: '', d3: '', data: source.dateStr };
-                    return { d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '' };
+                    const log = targetMed.logs?.[source.dateStr] || { d1: '', d2: '', d3: '', d4: '', data: source.dateStr };
+                    return { d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '', d4: log.d4 || '' };
                 });
 
                 if (movingLogs.some(log => !hasDoseInLog(log))) {
@@ -1688,7 +1702,7 @@ const auth = firebase.auth();
                     const targetDate = dateKey >= destination.dateStr
                         ? addDaysToDateStr(dateKey, shiftCount)
                         : dateKey;
-                    newLogs[targetDate] = { d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '', data: targetDate };
+                    newLogs[targetDate] = { d1: log.d1 || '', d2: log.d2 || '', d3: log.d3 || '', d4: log.d4 || '', data: targetDate };
                 });
 
                 movingLogs.forEach((log, index) => {
@@ -1729,7 +1743,7 @@ const auth = firebase.auth();
                 let nextDoseNum = doseNum;
 
                 if (e.key === 'ArrowRight') {
-                    if (doseNum < 3) {
+                    if (doseNum < 4) {
                         nextDoseNum++;
                     } else if (dayIdx < daysSource.length - 1) {
                         nextDayIdx++;
@@ -1740,7 +1754,7 @@ const auth = firebase.auth();
                         nextDoseNum--;
                     } else if (dayIdx > 0) {
                         nextDayIdx--;
-                        nextDoseNum = 3;
+                        nextDoseNum = 4;
                     }
                 } else if (e.key === 'ArrowDown') {
                     if (dayIdx < daysSource.length - 1) {
@@ -2196,11 +2210,11 @@ const auth = firebase.auth();
                                     {agendaDisplayDays.map((day, dIdx) => {
                                         const rowMed = getMedicationById(day.medicationId) || activeMedication || medications[0];
                                         const rowLogs = rowMed?.logs || {};
-                                        const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', data: day.dateStr };
-                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0);
+                                        const log = rowLogs[day.dateStr] || { d1: '', d2: '', d3: '', d4: '', data: day.dateStr };
+                                        const total = (Number(log.d1)||0) + (Number(log.d2)||0) + (Number(log.d3)||0) + (Number(log.d4)||0);
                                         const rowRepls = rowMed?.replenishments || [];
                                         const rowEntrada = rowRepls.reduce((acc, curr) => acc + (curr.isScheduled ? 0 : (Number(curr.amount) || 0)), 0);
-                                        const totalSaidaAteData = Object.values(rowLogs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) : acc, 0);
+                                        const totalSaidaAteData = Object.values(rowLogs).reduce((acc, curr) => curr.data <= day.dateStr ? acc + (Number(curr.d1) || 0) + (Number(curr.d2) || 0) + (Number(curr.d3) || 0) + (Number(curr.d4) || 0) : acc, 0);
                                         const runningStock = (rowMed?.estoqueInicial || 0) + rowEntrada - totalSaidaAteData;
 
                                         const rowClass = day.isPast ? 'bg-slate-50/80' : day.isToday ? 'bg-teal-50/90 shadow-sm' : 'bg-white/90';
@@ -2225,10 +2239,14 @@ const auth = firebase.auth();
                                                 onPointerCancel={finishAgendaCardPress}
                                                 onClick={(event) => handleAgendaDestinationClick(event, day)}
                                                 className={`flex items-center gap-0.5 p-2.5 rounded-2xl shadow-sm touch-pan-y select-none transition-all duration-200 ${rowClass} ${isAgendaSourceSelected(day) ? 'ring-2 ring-sky-400 scale-[0.99] bg-sky-50/90' : ''} ${agendaDrag.active && !isAgendaSourceSelected(day) && agendaDrag.sources[0]?.medicationId === day.medicationId ? 'ring-1 ring-teal-200 bg-teal-50/40 cursor-pointer' : ''} ${agendaDrag.active && agendaDrag.sources[0]?.medicationId !== day.medicationId ? 'opacity-50' : ''}`}>
-                                                <div className={`h-11 w-12 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}><span className="text-[8px] uppercase leading-none">{day.weekday}</span><span className="text-[14px] leading-none">{day.labelDDMM}</span></div>
+                                                <div className={`h-12 w-10 rounded-2xl flex flex-col items-center justify-center shrink-0 font-black border ${dateBoxClass}`}>
+                                                    <span className="text-[7px] uppercase leading-none mb-0.5">{day.weekday}</span>
+                                                    <span className="text-[14px] leading-[13px]">{day.dayNumber}</span>
+                                                    <span className="text-[9px] leading-none opacity-80">{day.monthNumber}</span>
+                                                </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-center text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{day.medicationName || rowMed?.name}</div>
-                                                    <div className="flex justify-center gap-0.5">{[1,2,3].map(num => (
+                                                    <div className="flex justify-center gap-0.5">{[1,2,3,4].map(num => (
                                                         <input 
                                                             key={num} 
                                                             id={`dose-${day.medicationId}-${day.dateStr}-${num}`}
@@ -2236,7 +2254,7 @@ const auth = firebase.auth();
                                                             step="1"
                                                             placeholder="-" 
                                                             className={`dose-input-field h-10 text-center rounded-xl font-black border outline-none transition-all ${inputClass}`} 
-                                                            value={log[`d${num}`]} 
+                                                            value={log[`d${num}`] ?? ''} 
                                                             onFocus={onInputFocus} 
                                                             onBlur={onInputBlur} 
                                                             onKeyDown={(e) => handleKeyDown(e, dIdx, num, agendaDisplayDays)}
@@ -2289,9 +2307,9 @@ const auth = firebase.auth();
                                             <div className="h-11 w-12 rounded-2xl flex flex-col items-center justify-center bg-slate-200 text-slate-600 border shrink-0 font-black"><span className="text-[13px] leading-none whitespace-nowrap">{formatDateDDMM(item.log.data)}</span><span className="text-[8px] leading-none mt-0.5">{formatYearFull(item.log.data)}</span></div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-center text-[8px] font-black uppercase text-slate-400 truncate leading-none mb-1">{item.log.medicationName || activeMedication?.name}</div>
-                                                <div className="flex justify-center gap-1">{[1,2,3].map(num => (<input key={num} type="number" step="1" placeholder="-" className="dose-input-field h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`]} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value, item.log.medicationId)} />))}</div>
+                                                <div className="flex justify-center gap-1">{[1,2,3,4].map(num => (<input key={num} type="number" step="1" placeholder="-" className="dose-input-field h-10 text-center rounded-xl font-black border bg-white border-slate-200 focus:border-teal-400 outline-none transition-all" value={item.log[`d${num}`] ?? ''} onFocus={onInputFocus} onBlur={onInputBlur} onChange={e=>handleInputChange(item.log.data, `d${num}`, e.target.value, item.log.medicationId)} />))}</div>
                                             </div>
-                                            <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)}</span></div>
+                                            <div className="w-8 flex justify-center"><span className="flex items-center justify-center h-8 w-8 text-[13px] font-black rounded-xl bg-slate-500 text-white">{(Number(item.log.d1)||0)+(Number(item.log.d2)||0)+(Number(item.log.d3)||0)+(Number(item.log.d4)||0)}</span></div>
                                             <div className="w-6 shrink-0 flex items-center justify-center">
                                                 <button onClick={() => handleClearRow(item.log.data, item.log.medicationId)} className="text-rose-300 p-1 hover:text-rose-500 transition"><IconX /></button>
                                             </div>
