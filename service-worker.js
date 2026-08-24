@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'dosecerta-static-v2';
-const RUNTIME_CACHE = 'dosecerta-runtime-v2';
+const STATIC_CACHE = 'dosecerta-static-v3';
+const RUNTIME_CACHE = 'dosecerta-runtime-v3';
 
 const LOCAL_ASSETS = [
     './',
