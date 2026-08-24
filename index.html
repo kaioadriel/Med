@@ -104,6 +104,70 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         const APP_ICON_URL = './icon-512.png';
+        const AUTO_BACKUP_FILE_NAME = 'backup-dosecerta-automatico.json';
+        const BACKUP_SETTINGS_DB_NAME = 'dosecerta-backup-settings';
+        const BACKUP_SETTINGS_STORE_NAME = 'settings';
+
+        const openBackupSettingsDb = () => new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) {
+                reject(new Error('IndexedDB indisponível.'));
+                return;
+            }
+            const request = window.indexedDB.open(BACKUP_SETTINGS_DB_NAME, 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains(BACKUP_SETTINGS_STORE_NAME)) {
+                    db.createObjectStore(BACKUP_SETTINGS_STORE_NAME);
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('Não foi possível abrir as configurações de backup.'));
+        });
+
+        const readBackupSetting = async (key) => {
+            const db = await openBackupSettingsDb();
+            try {
+                return await new Promise((resolve, reject) => {
+                    const request = db.transaction(BACKUP_SETTINGS_STORE_NAME, 'readonly')
+                        .objectStore(BACKUP_SETTINGS_STORE_NAME)
+                        .get(key);
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => reject(request.error || new Error('Não foi possível ler a pasta de backup.'));
+                });
+            } finally {
+                db.close();
+            }
+        };
+
+        const writeBackupSetting = async (key, value) => {
+            const db = await openBackupSettingsDb();
+            try {
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(BACKUP_SETTINGS_STORE_NAME, 'readwrite');
+                    transaction.objectStore(BACKUP_SETTINGS_STORE_NAME).put(value, key);
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error || new Error('Não foi possível memorizar a pasta de backup.'));
+                    transaction.onabort = () => reject(transaction.error || new Error('A gravação da pasta foi cancelada.'));
+                });
+            } finally {
+                db.close();
+            }
+        };
+
+        const deleteBackupSetting = async (key) => {
+            const db = await openBackupSettingsDb();
+            try {
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(BACKUP_SETTINGS_STORE_NAME, 'readwrite');
+                    transaction.objectStore(BACKUP_SETTINGS_STORE_NAME).delete(key);
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error || new Error('Não foi possível remover a pasta de backup.'));
+                    transaction.onabort = () => reject(transaction.error || new Error('A remoção da pasta foi cancelada.'));
+                });
+            } finally {
+                db.close();
+            }
+        };
 
 // --- Configuração do Firebase ---
 const firebaseConfig = {
@@ -235,15 +299,19 @@ const auth = firebase.auth();
                 return Number(savedId) || 1;
             });
 
-            const syncData = (updatedMeds) => {
-                setMedications(updatedMeds);
-                writeScopedJSON('app_med_medications', updatedMeds, user?.uid);
+            const syncData = (updatedMedsOrUpdater) => {
+                setMedications(previousMeds => {
+                    const updatedMeds = typeof updatedMedsOrUpdater === 'function'
+                        ? updatedMedsOrUpdater(previousMeds)
+                        : updatedMedsOrUpdater;
+                    writeScopedJSON('app_med_medications', updatedMeds, user?.uid);
+                    return updatedMeds;
+                });
             };
 
             const updateMedicationById = (medicationId, updates) => {
                 const targetId = Number(medicationId);
-                const updatedMeds = medications.map(m => m.id === targetId ? { ...m, ...updates } : m);
-                syncData(updatedMeds);
+                syncData(previousMeds => previousMeds.map(m => m.id === targetId ? { ...m, ...updates } : m));
             };
 
             const updateActiveMedication = (updates) => {
@@ -294,6 +362,10 @@ const auth = firebase.auth();
             const [inventorySortBy, setInventorySortBy] = useState('validade');
             const [inventorySortDir, setInventorySortDir] = useState('desc');
             const [reportFilters, setReportFilters] = useState({ medicationId: '', start: '', end: '' });
+            const folderBackupSupported = typeof window.showDirectoryPicker === 'function' && window.isSecureContext && 'indexedDB' in window;
+            const [backupDirectoryHandle, setBackupDirectoryHandle] = useState(null);
+            const [folderBackupStatus, setFolderBackupStatus] = useState(folderBackupSupported ? 'not-configured' : 'unsupported');
+            const [lastFolderBackupAt, setLastFolderBackupAt] = useState('');
 
             const keyboardTimeoutRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -303,6 +375,8 @@ const auth = firebase.auth();
             const agendaLongPressTriggeredRef = useRef(false);
             const agendaOriginDoubleTapRef = useRef({ key: '', time: 0 });
             const agendaScrollContainerRef = useRef(null);
+            const folderBackupTimerRef = useRef(null);
+            const folderBackupWriteChainRef = useRef(Promise.resolve());
 
             // --- DATAS, BUSCAS E CÁLCULOS ---
                         const getTodayDateStr = () => {
@@ -393,6 +467,13 @@ const auth = firebase.auth();
 
             const getLogTotalInline = (log) => (Number(log?.d1) || 0) + (Number(log?.d2) || 0) + (Number(log?.d3) || 0);
             const hasDoseInLog = (log) => [log?.d1, log?.d2, log?.d3].some(value => Number(value) !== 0);
+            const cloneDoseLogForDate = (log, dateStr) => ({
+                ...log,
+                d1: log?.d1 ?? '',
+                d2: log?.d2 ?? '',
+                d3: log?.d3 ?? '',
+                data: dateStr
+            });
             const getMedicationById = (medicationId) => medications.find(m => m.id === Number(medicationId));
             const getOperationMedicationId = (candidateId) => {
                 const selected = candidateId || activeMedicationId || medications[0]?.id;
@@ -419,10 +500,49 @@ const auth = firebase.auth();
             };
             const updateMedicationLogs = (medicationId, updater) => {
                 const targetId = Number(medicationId);
-                const med = medications.find(m => m.id === targetId);
-                if (!med) return;
-                const updatedLogs = updater({ ...(med.logs || {}) }, med) || {};
-                updateMedicationById(targetId, { logs: trimEmptyFutureLogs(updatedLogs) });
+                syncData(previousMeds => previousMeds.map(med => {
+                    if (med.id !== targetId) return med;
+                    const updatedLogs = updater({ ...(med.logs || {}) }, med) || {};
+                    return { ...med, logs: trimEmptyFutureLogs(updatedLogs) };
+                }));
+            };
+
+            const insertBlankAgendaRow = (logsObj, medDays, targetIndex) => {
+                const sourceLogs = { ...(logsObj || {}) };
+                const nextLogs = { ...sourceLogs };
+                const lastDate = medDays[medDays.length - 1] || getTodayDateStr();
+                const extendedDays = [...medDays, addDaysToDateStr(lastDate, 1)];
+
+                // Limpa primeiro todas as posições afetadas. Depois recria cada lançamento
+                // uma única vez a partir da fotografia original, evitando cópias residuais.
+                extendedDays.slice(targetIndex).forEach(dateStr => { delete nextLogs[dateStr]; });
+                for (let sourceIndex = targetIndex; sourceIndex < medDays.length; sourceIndex++) {
+                    const sourceDate = medDays[sourceIndex];
+                    const destinationDate = extendedDays[sourceIndex + 1];
+                    const sourceLog = sourceLogs[sourceDate];
+                    if (hasDoseInLog(sourceLog)) {
+                        nextLogs[destinationDate] = cloneDoseLogForDate(sourceLog, destinationDate);
+                    }
+                }
+
+                return nextLogs;
+            };
+
+            const deleteAgendaRow = (logsObj, medDays, targetIndex) => {
+                const sourceLogs = { ...(logsObj || {}) };
+                const nextLogs = { ...sourceLogs };
+
+                medDays.slice(targetIndex).forEach(dateStr => { delete nextLogs[dateStr]; });
+                for (let sourceIndex = targetIndex + 1; sourceIndex < medDays.length; sourceIndex++) {
+                    const sourceDate = medDays[sourceIndex];
+                    const destinationDate = medDays[sourceIndex - 1];
+                    const sourceLog = sourceLogs[sourceDate];
+                    if (hasDoseInLog(sourceLog)) {
+                        nextLogs[destinationDate] = cloneDoseLogForDate(sourceLog, destinationDate);
+                    }
+                }
+
+                return nextLogs;
             };
             const ensureAgendaLimitForDate = (medicationId, dateStr) => {
                 if (!isValidDateStr(dateStr)) return;
@@ -929,9 +1049,8 @@ const auth = firebase.auth();
                 showToast('PDF da lista pronto para salvar!');
             };
 
-            const handleBackup = () => {
-                const data = JSON.stringify({
-                    version: 2,
+            const buildBackupData = () => ({
+                    version: 3,
                     app: 'DoseCerta',
                     exportedAt: new Date().toISOString(),
                     activeMedicationId,
@@ -939,8 +1058,118 @@ const auth = firebase.auth();
                     // Mantém compatibilidade com backups antigos do medicamento ativo
                     logs,
                     replenishments,
-                    inventoryList: inventoryItems
-                }, null, 2);
+                    inventoryList: inventoryItems,
+                    agendaEndLimits,
+                    agendaDayCount
+                });
+
+            const buildBackupJson = () => JSON.stringify(buildBackupData(), null, 2);
+            const getBackupDirectorySettingKey = () => `auto_backup_directory_${user?.uid || guestCacheSuffix}`;
+
+            const getDirectoryWritePermission = async (directoryHandle, requestIfNeeded = false) => {
+                if (!directoryHandle) return false;
+                if (typeof directoryHandle.queryPermission !== 'function') return true;
+                const options = { mode: 'readwrite' };
+                let permission = await directoryHandle.queryPermission(options);
+                if (permission === 'granted') return true;
+                if (requestIfNeeded && typeof directoryHandle.requestPermission === 'function') {
+                    permission = await directoryHandle.requestPermission(options);
+                }
+                return permission === 'granted';
+            };
+
+            const queueFolderBackupWrite = (directoryHandle, backupJson, notifyUser = false) => {
+                const writeTask = async () => {
+                    try {
+                        setFolderBackupStatus('saving');
+                        const fileHandle = await directoryHandle.getFileHandle(AUTO_BACKUP_FILE_NAME, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(backupJson);
+                        await writable.close();
+                        const savedAt = new Date().toISOString();
+                        setLastFolderBackupAt(savedAt);
+                        setFolderBackupStatus('saved');
+                        if (notifyUser) showToast('Backup salvo na pasta selecionada!');
+                        return true;
+                    } catch (err) {
+                        console.error('Erro no backup automático em pasta:', err);
+                        setFolderBackupStatus(err?.name === 'NotAllowedError' ? 'permission-needed' : 'error');
+                        if (notifyUser) showToast('Não foi possível gravar na pasta selecionada.', 'error');
+                        return false;
+                    }
+                };
+
+                const queuedTask = folderBackupWriteChainRef.current
+                    .catch(() => false)
+                    .then(writeTask);
+                folderBackupWriteChainRef.current = queuedTask;
+                return queuedTask;
+            };
+
+            const saveFolderBackup = async ({ directoryHandle = backupDirectoryHandle, requestPermission = false, notifyUser = false } = {}) => {
+                if (!directoryHandle) {
+                    if (notifyUser) showToast('Selecione primeiro uma pasta de backup.', 'error');
+                    return false;
+                }
+                try {
+                    const granted = await getDirectoryWritePermission(directoryHandle, requestPermission);
+                    if (!granted) {
+                        setFolderBackupStatus('permission-needed');
+                        if (notifyUser) showToast('Autorize o acesso à pasta para continuar.', 'error');
+                        return false;
+                    }
+                    return queueFolderBackupWrite(directoryHandle, buildBackupJson(), notifyUser);
+                } catch (err) {
+                    console.error('Erro ao verificar a pasta de backup:', err);
+                    setFolderBackupStatus('error');
+                    if (notifyUser) showToast('Não foi possível acessar a pasta selecionada.', 'error');
+                    return false;
+                }
+            };
+
+            const handleSelectBackupDirectory = async () => {
+                if (!folderBackupSupported) {
+                    showToast('A seleção de pasta exige Chrome/Edge atualizado e o app aberto por HTTPS.', 'error');
+                    return;
+                }
+                try {
+                    const directoryHandle = await window.showDirectoryPicker({
+                        id: 'dosecerta-auto-backup',
+                        mode: 'readwrite'
+                    });
+                    const granted = await getDirectoryWritePermission(directoryHandle, true);
+                    if (!granted) {
+                        setFolderBackupStatus('permission-needed');
+                        showToast('A pasta foi selecionada, mas a gravação não foi autorizada.', 'error');
+                        return;
+                    }
+                    await writeBackupSetting(getBackupDirectorySettingKey(), directoryHandle);
+                    setBackupDirectoryHandle(directoryHandle);
+                    setFolderBackupStatus('ready');
+                    await saveFolderBackup({ directoryHandle, notifyUser: true });
+                } catch (err) {
+                    if (err?.name === 'AbortError') return;
+                    console.error('Erro ao selecionar pasta de backup:', err);
+                    setFolderBackupStatus('error');
+                    showToast('Não foi possível selecionar a pasta.', 'error');
+                }
+            };
+
+            const handleDisableFolderBackup = async () => {
+                try {
+                    await deleteBackupSetting(getBackupDirectorySettingKey());
+                } catch (err) {
+                    console.error('Erro ao remover configuração de backup:', err);
+                }
+                if (folderBackupTimerRef.current) clearTimeout(folderBackupTimerRef.current);
+                setBackupDirectoryHandle(null);
+                setLastFolderBackupAt('');
+                setFolderBackupStatus(folderBackupSupported ? 'not-configured' : 'unsupported');
+                showToast('Backup automático em pasta desativado.');
+            };
+
+            const handleBackup = () => {
+                const data = buildBackupJson();
                 downloadTextFile(data, `backup_med_completo_${getTodayDateStr()}.json`, 'application/json;charset=utf-8');
                 showToast("Backup completo salvo!");
             };
@@ -954,11 +1183,20 @@ const auth = firebase.auth();
                         if (Array.isArray(data.inventoryList)) {
                             syncInventoryList(data.inventoryList);
                         }
+                        if (data.agendaEndLimits && typeof data.agendaEndLimits === 'object') {
+                            setAgendaEndLimits(data.agendaEndLimits);
+                        }
+                        if (Number.isFinite(Number(data.agendaDayCount)) && Number(data.agendaDayCount) > 0) {
+                            setAgendaDayCount(Number(data.agendaDayCount));
+                        }
                         if (data.medications) {
                             syncData(data.medications);
                         } else if (data.logs || data.replenishments) {
                             const updatedMeds = medications.map(m => m.id === activeMedicationId ? { ...m, logs: data.logs || {}, replenishments: data.replenishments || [] } : m);
                             syncData(updatedMeds);
+                        }
+                        if (data.activeMedicationId) {
+                            setActiveMedicationId(Number(data.activeMedicationId));
                         }
                         showToast("Restauração concluída!", "success");
                     } catch (err) { showToast("Erro no arquivo.", "error"); }
@@ -1272,20 +1510,9 @@ const auth = firebase.auth();
                 const idx = medDays.findIndex(d => d === targetDate);
                 if (idx === -1) return;
 
-                updateMedicationLogs(targetMedId, (currentLogs) => {
-                    const lastDate = medDays[medDays.length - 1] || getTodayDateStr();
-                    const extendedDays = [...medDays, addDaysToDateStr(lastDate, 1)];
-                    for (let i = extendedDays.length - 1; i > idx; i--) {
-                        const prev = extendedDays[i - 1];
-                        const curr = extendedDays[i];
-                        if (currentLogs[prev]) currentLogs[curr] = { ...currentLogs[prev], data: curr };
-                        else delete currentLogs[curr];
-                    }
-                    delete currentLogs[targetDate];
-                    return currentLogs;
-                });
+                updateMedicationLogs(targetMedId, (currentLogs) => insertBlankAgendaRow(currentLogs, medDays, idx));
                 ensureAgendaLimitForDate(targetMedId, addDaysToDateStr(medDays[medDays.length - 1] || getTodayDateStr(), 1));
-                showToast("Linha zerada inserida acima!");
+                showToast("Linha inserida; lançamentos posteriores movidos uma única vez.");
             };
 
             const handleCopySchedule = () => {
@@ -1404,22 +1631,9 @@ const auth = firebase.auth();
                 const idx = medDays.findIndex(d => d === targetDate);
                 if (idx === -1) return;
 
-                // Excluir linha na aba Lançar não pode criar buraco de data.
-                // Por isso, os conteúdos dos dias seguintes sobem uma posição e apenas o último card some.
-                updateMedicationLogs(targetMedId, (currentLogs) => {
-                    for (let i = idx; i < medDays.length - 1; i++) {
-                        const currDate = medDays[i];
-                        const nextDate = medDays[i + 1];
-                        const nextLog = currentLogs[nextDate];
-                        if (hasDoseInLog(nextLog)) {
-                            currentLogs[currDate] = { ...nextLog, data: currDate };
-                        } else {
-                            delete currentLogs[currDate];
-                        }
-                    }
-                    delete currentLogs[medDays[medDays.length - 1]];
-                    return currentLogs;
-                });
+                // A reorganização usa uma fotografia imutável. Assim, um valor que acabou
+                // de subir não volta a ser lido na mesma operação e não reaparece no fim.
+                updateMedicationLogs(targetMedId, (currentLogs) => deleteAgendaRow(currentLogs, medDays, idx));
 
                 setAgendaEndLimits(prev => {
                     const key = String(targetMedId);
@@ -1428,7 +1642,7 @@ const auth = firebase.auth();
                     if (!isValidDateStr(newLast) || newLast < getTodayDateStr()) return prev;
                     return { ...prev, [key]: newLast };
                 });
-                showToast("Card excluído e datas reorganizadas.");
+                showToast("Card excluído; lançamentos posteriores reorganizados sem cópias.");
             };
 
             const handleClearRow = (dateStr, medicationId = null) => {
@@ -1885,6 +2099,51 @@ const auth = firebase.auth();
 
             useEffect(() => {
                 if (!localDataReady) return;
+                let cancelled = false;
+
+                if (!folderBackupSupported) {
+                    setBackupDirectoryHandle(null);
+                    setFolderBackupStatus('unsupported');
+                    return;
+                }
+
+                setBackupDirectoryHandle(null);
+                setLastFolderBackupAt('');
+                setFolderBackupStatus('loading');
+
+                (async () => {
+                    try {
+                        const savedHandle = await readBackupSetting(getBackupDirectorySettingKey());
+                        if (cancelled) return;
+                        if (!savedHandle) {
+                            setFolderBackupStatus('not-configured');
+                            return;
+                        }
+                        setBackupDirectoryHandle(savedHandle);
+                        const granted = await getDirectoryWritePermission(savedHandle, false);
+                        if (!cancelled) setFolderBackupStatus(granted ? 'ready' : 'permission-needed');
+                    } catch (err) {
+                        console.error('Erro ao recuperar pasta de backup:', err);
+                        if (!cancelled) setFolderBackupStatus('error');
+                    }
+                })();
+
+                return () => { cancelled = true; };
+            }, [user?.uid, localDataReady]);
+
+            useEffect(() => {
+                if (!localDataReady || !backupDirectoryHandle || !folderBackupSupported) return;
+                if (folderBackupTimerRef.current) clearTimeout(folderBackupTimerRef.current);
+                folderBackupTimerRef.current = setTimeout(() => {
+                    saveFolderBackup({ directoryHandle: backupDirectoryHandle, requestPermission: false, notifyUser: false });
+                }, 700);
+                return () => {
+                    if (folderBackupTimerRef.current) clearTimeout(folderBackupTimerRef.current);
+                };
+            }, [medications, inventoryItems, agendaEndLimits, agendaDayCount, activeMedicationId, backupDirectoryHandle, localDataReady]);
+
+            useEffect(() => {
+                if (!localDataReady) return;
 
                 const persistLocalSnapshot = () => {
                     writeScopedJSON('app_med_medications', medications, user?.uid);
@@ -1971,6 +2230,26 @@ const auth = firebase.auth();
             }, []);
 
             // --- RENDERIZAÇÃO DA INTERFACE ---
+            const folderBackupStatusText = {
+                unsupported: 'Indisponível neste navegador ou fora de HTTPS',
+                loading: 'Verificando pasta salva...',
+                'not-configured': 'Nenhuma pasta selecionada',
+                'permission-needed': 'Toque em “Salvar agora” para autorizar novamente',
+                ready: 'Pasta pronta para backup automático',
+                saving: 'Salvando backup...',
+                saved: lastFolderBackupAt
+                    ? `Último backup: ${new Date(lastFolderBackupAt).toLocaleString('pt-BR')}`
+                    : 'Backup automático atualizado',
+                error: 'Não foi possível acessar a pasta'
+            }[folderBackupStatus] || 'Nenhuma pasta selecionada';
+            const folderBackupStatusColor = ['ready', 'saving', 'saved'].includes(folderBackupStatus)
+                ? 'text-teal-600'
+                : folderBackupStatus === 'permission-needed'
+                    ? 'text-amber-600'
+                    : ['error', 'unsupported'].includes(folderBackupStatus)
+                        ? 'text-rose-500'
+                        : 'text-slate-400';
+
             if (authLoading) return (
                 <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 text-center animate-fade">
                     <h1 className="text-5xl font-black italic tracking-tighter text-white mb-8">DOSECERTA</h1>
@@ -2139,6 +2418,37 @@ const auth = firebase.auth();
                                 <div className="flex space-x-3 mt-2">
                                     <button onClick={handleBackup} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-violet-500"><IconDownload /></span> Backup</button>
                                     <button onClick={() => fileInputRef.current.click()} className="flex-1 py-4 bg-white/90 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center shadow-sm hover:bg-slate-50 active:scale-95 transition-all"><span className="mr-2 text-teal-500"><IconUpload /></span> Restaurar</button>
+                                </div>
+                                <div className="glass-card p-4 rounded-3xl mt-3 space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-500">Backup automático em pasta</h3>
+                                            <p className={`text-[9px] font-bold mt-1 leading-relaxed ${folderBackupStatusColor}`}>{folderBackupStatusText}</p>
+                                        </div>
+                                        <span className={`mt-1 h-2.5 w-2.5 rounded-full shrink-0 ${['ready', 'saving', 'saved'].includes(folderBackupStatus) ? 'bg-teal-500' : folderBackupStatus === 'permission-needed' ? 'bg-amber-400' : 'bg-slate-300'}`}></span>
+                                    </div>
+                                    {backupDirectoryHandle && (
+                                        <div className="bg-white/80 border border-slate-100 rounded-2xl px-3 py-2">
+                                            <p className="text-[8px] font-black uppercase text-slate-400">Pasta selecionada</p>
+                                            <p className="text-[10px] font-black text-slate-600 truncate">{backupDirectoryHandle.name}</p>
+                                        </div>
+                                    )}
+                                    <div className={`grid gap-2 ${backupDirectoryHandle ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                        <button onClick={handleSelectBackupDirectory} className="py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">
+                                            {backupDirectoryHandle ? 'Trocar pasta' : 'Selecionar pasta'}
+                                        </button>
+                                        {backupDirectoryHandle && (
+                                            <button onClick={() => saveFolderBackup({ requestPermission: true, notifyUser: true })} className="py-3.5 bg-teal-50 border border-teal-100 text-teal-700 rounded-2xl text-[9px] font-black uppercase shadow-sm active:scale-95 transition-all">
+                                                Salvar agora
+                                            </button>
+                                        )}
+                                    </div>
+                                    {backupDirectoryHandle && (
+                                        <button onClick={handleDisableFolderBackup} className="w-full text-[8px] font-black uppercase text-rose-400 py-1">Desativar pasta automática</button>
+                                    )}
+                                    <p className="text-[8px] leading-relaxed text-slate-400 font-bold text-center">
+                                        O arquivo “{AUTO_BACKUP_FILE_NAME}” será atualizado automaticamente após cada alteração. O backup manual continua disponível acima.
+                                    </p>
                                 </div>
                                 <div className="glass-card p-4 rounded-3xl mt-3 space-y-3">
                                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Filtro do Relatório</h3>
