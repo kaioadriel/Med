@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'dosecerta-static-v3';
-const RUNTIME_CACHE = 'dosecerta-runtime-v3';
+const STATIC_CACHE = 'dosecerta-static-v4';
+const RUNTIME_CACHE = 'dosecerta-runtime-v4';
 
 const LOCAL_ASSETS = [
     './',
@@ -14,6 +14,8 @@ const REMOTE_ASSETS = [
     'https://unpkg.com/react@18/umd/react.production.min.js',
     'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
     'https://unpkg.com/@babel/standalone@7.29.7/babel.min.js',
+    'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js',
+    'https://unpkg.com/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
     'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
     'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
     'https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700;14..32,800;14..32,900&display=swap'

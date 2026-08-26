@@ -20,6 +20,8 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
+    <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -859,23 +861,52 @@ const auth = firebase.auth();
 
 
 
-            const downloadTextFile = (content, filename, type = 'text/plain;charset=utf-8') => {
-                const blob = new Blob([content], { type });
+            const downloadBlobFile = (blob, filename) => {
+                const objectUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
+                a.href = objectUrl;
                 a.download = filename;
+                a.rel = 'noopener';
+                a.style.display = 'none';
+                document.body.appendChild(a);
                 a.click();
-                URL.revokeObjectURL(a.href);
+                window.setTimeout(() => {
+                    a.remove();
+                    URL.revokeObjectURL(objectUrl);
+                }, 2000);
+            };
+
+            const downloadTextFile = (content, filename, type = 'text/plain;charset=utf-8') => {
+                const prefix = type.startsWith('text/csv') ? '\uFEFF' : '';
+                downloadBlobFile(new Blob([prefix, content], { type }), filename);
+            };
+
+            const createPdfDocument = (orientation = 'landscape') => {
+                const JsPdfConstructor = window.jspdf?.jsPDF;
+                if (!JsPdfConstructor) throw new Error('O gerador de PDF não foi carregado. Verifique a conexão e tente novamente.');
+                const doc = new JsPdfConstructor({ orientation, unit: 'mm', format: 'a4', compress: true });
+                if (typeof doc.autoTable !== 'function') throw new Error('O componente de tabelas do PDF não foi carregado.');
+                return doc;
+            };
+
+            const addPdfPageNumbers = (doc) => {
+                const totalPages = doc.getNumberOfPages();
+                for (let page = 1; page <= totalPages; page += 1) {
+                    doc.setPage(page);
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Página ${page} de ${totalPages}`, doc.internal.pageSize.getWidth() - 12, doc.internal.pageSize.getHeight() - 7, { align: 'right' });
+                }
+            };
+
+            const savePdfDocument = (doc, filename) => {
+                addPdfPageNumbers(doc);
+                downloadBlobFile(doc.output('blob'), filename);
             };
 
             const csvCell = (value) => {
                 const text = value === null || value === undefined ? '' : String(value);
                 return `"${text.replace(/"/g, '""')}"`;
-            };
-
-            const htmlCell = (value) => {
-                const text = value === null || value === undefined ? '' : String(value);
-                return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
             };
 
             const formatDateBR = (dateStr) => formatDateShortYear(dateStr);
@@ -989,69 +1020,57 @@ const auth = firebase.auth();
             };
 
             const handleInventoryPDF = () => {
-                const items = filteredInventoryItems;
-                const htmlRows = items.map(item => `
-                    <tr>
-                        <td>${htmlCell(item.remedio || '')}</td>
-                        <td>${htmlCell(item.dosagem || '')}</td>
-                        <td>${htmlCell(item.marca || '')}</td>
-                        <td>${htmlCell(item.quantidade || '')}</td>
-                        <td>${htmlCell(formatDateShortYear(item.validade))}</td>
-                        <td>${htmlCell(getExpiryLabel(item.validade))}</td>
-                        <td>${htmlCell(item.observacoes || '')}</td>
-                    </tr>
-                `).join('');
+                try {
+                    const items = filteredInventoryItems;
+                    const doc = createPdfDocument('landscape');
+                    const generatedAt = new Date().toLocaleString('pt-BR');
 
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                    showToast('Permita pop-ups para gerar PDF.', 'error');
-                    return;
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(18);
+                    doc.text('DOSECERTA - LISTA DE VALIDADES', 14, 15);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Gerado em ${generatedAt}`, 14, 21);
+                    doc.text(`Itens: ${items.length}  |  Ordenação: ${getInventorySortLabel()}  |  Fonte: Aba Lista`, 14, 27);
+
+                    const body = items.length ? items.map(item => [
+                        item.remedio || '',
+                        item.dosagem || '',
+                        item.marca || '',
+                        String(item.quantidade ?? ''),
+                        formatDateShortYear(item.validade),
+                        getExpiryLabel(item.validade),
+                        item.observacoes || ''
+                    ]) : [['Nenhum remédio cadastrado na lista.', '', '', '', '', '', '']];
+
+                    doc.autoTable({
+                        startY: 33,
+                        head: [['Remédio', 'Dosagem', 'Marca', 'Quantidade', 'Validade', 'Situação', 'Observações']],
+                        body,
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2, textColor: [30, 41, 59], overflow: 'linebreak' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        columnStyles: {
+                            0: { cellWidth: 42 },
+                            1: { cellWidth: 27 },
+                            2: { cellWidth: 34 },
+                            3: { cellWidth: 21, halign: 'right' },
+                            4: { cellWidth: 23 },
+                            5: { cellWidth: 38 },
+                            6: { cellWidth: 'auto' }
+                        },
+                        margin: { top: 14, right: 14, bottom: 13, left: 14 }
+                    });
+
+                    savePdfDocument(doc, `dosecerta-lista-validades-${getTodayDateStr()}.pdf`);
+                    showToast('PDF baixado!');
+                } catch (error) {
+                    console.error('Falha ao gerar PDF da lista:', error);
+                    showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
                 }
-
-                const sortLabel = getInventorySortLabel();
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="pt-BR">
-                    <head>
-                        <meta charset="UTF-8" />
-                        <title>DoseCerta - Lista de Validades</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; color: #1e293b; padding: 24px; }
-                            h1 { margin: 0; font-size: 26px; }
-                            p { color: #64748b; margin-top: 4px; }
-                            .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0; }
-                            .card { border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; background: #f8fafc; }
-                            .card span { display: block; color: #64748b; font-size: 9px; text-transform: uppercase; font-weight: 700; }
-                            .card strong { display: block; color: #0f766e; font-size: 18px; margin-top: 4px; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; }
-                            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
-                            th { background: #0f766e; color: white; }
-                            tr:nth-child(even) { background: #f8fafc; }
-                            button { padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right; }
-                            @media print { button { display: none; } body { padding: 0; } .meta { grid-template-columns: repeat(3, 1fr); } }
-                        </style>
-                    </head>
-                    <body>
-                        <button onclick="window.print()">Salvar como PDF</button>
-                        <h1>DOSECERTA - LISTA DE VALIDADES</h1>
-                        <p>Relatório gerado em ${new Date().toLocaleString('pt-BR')}</p>
-                        <div class="meta">
-                            <div class="card"><span>Total de itens</span><strong>${items.length}</strong></div>
-                            <div class="card"><span>Ordenação</span><strong style="font-size:12px;">${htmlCell(sortLabel)}</strong></div>
-                            <div class="card"><span>Fonte</span><strong style="font-size:12px;">Aba Lista</strong></div>
-                        </div>
-                        <table>
-                            <thead>
-                                <tr><th>Remédio</th><th>Dosagem</th><th>Marca</th><th>Quantidade</th><th>Validade</th><th>Situação</th><th>Observações</th></tr>
-                            </thead>
-                            <tbody>${htmlRows || '<tr><td colspan="7">Nenhum remédio cadastrado na lista.</td></tr>'}</tbody>
-                        </table>
-                    </body>
-                    </html>
-                `);
-                printWindow.document.close();
-                printWindow.focus();
-                showToast('PDF da lista pronto para salvar!');
             };
 
             const buildBackupData = () => ({
@@ -1365,9 +1384,10 @@ const auth = firebase.auth();
             };
 
             const handleExportPDF = () => {
-                const rows = buildExportRows();
-                const summaryRows = buildMedicationPdfSummary();
-                const totals = summaryRows.reduce((acc, row) => ({
+                try {
+                    const rows = buildExportRows();
+                    const summaryRows = buildMedicationPdfSummary();
+                    const totals = summaryRows.reduce((acc, row) => ({
                     estoqueInicial: acc.estoqueInicial + row.estoqueInicial,
                     totalDoses: acc.totalDoses + row.totalDoses,
                     comprasConfirmadas: acc.comprasConfirmadas + row.comprasConfirmadas,
@@ -1377,101 +1397,98 @@ const auth = firebase.auth();
                     totalCompras: acc.totalCompras + row.totalCompras
                 }), { estoqueInicial: 0, totalDoses: 0, comprasConfirmadas: 0, comprasAgendadas: 0, estoqueAtual: 0, totalRegistros: 0, totalCompras: 0 });
 
-                const htmlSummaryRows = summaryRows.map(row => `
-                    <tr>
-                        <td>${htmlCell(row.medicamento)}</td>
-                        <td>${htmlCell(row.estoqueInicial)}</td>
-                        <td>${htmlCell(row.comprasConfirmadas)}</td>
-                        <td>${htmlCell(row.comprasAgendadas)}</td>
-                        <td>${htmlCell(row.totalDoses)}</td>
-                        <td>${htmlCell(row.estoqueAtual)}</td>
-                        <td>${htmlCell(row.totalRegistros)}</td>
-                        <td>${htmlCell(row.totalCompras)}</td>
-                    </tr>
-                `).join('');
+                    const selectedMedicationLabel = medications.find(med => String(med.id) === String(reportFilters.medicationId || activeMedicationId))?.name || 'Selecionado';
+                    const startLabel = isValidDateStr(reportFilters.start) ? formatDateShortYear(reportFilters.start) : 'Início';
+                    const endLabel = isValidDateStr(reportFilters.end) ? formatDateShortYear(reportFilters.end) : 'Fim';
+                    const doc = createPdfDocument('landscape');
 
-                const htmlRows = rows.map(row => `
-                    <tr>
-                        <td>${htmlCell(row.tipo)}</td>
-                        <td>${htmlCell(row.medicamento)}</td>
-                        <td>${htmlCell(row.dataBR)}</td>
-                        <td>${htmlCell(row.d1)}</td>
-                        <td>${htmlCell(row.d2)}</td>
-                        <td>${htmlCell(row.d3)}</td>
-                        <td>${htmlCell(row.total)}</td>
-                        <td>${htmlCell(row.quantidade)}</td>
-                        <td>${htmlCell(row.status)}</td>
-                    </tr>
-                `).join('');
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(19);
+                    doc.text('DOSECERTA', 14, 15);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Exportação completa gerada em ${new Date().toLocaleString('pt-BR')}`, 14, 21);
+                    doc.text(`Medicação: ${selectedMedicationLabel}  |  Período: ${startLabel} até ${endLabel}`, 14, 27);
+                    doc.setTextColor(15, 118, 110);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`Medicamentos: ${summaryRows.length}    Total de doses: ${totals.totalDoses}    Compras confirmadas: ${totals.comprasConfirmadas}    Estoque atual estimado: ${totals.estoqueAtual}`, 14, 34);
 
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                    showToast("Permita pop-ups para gerar PDF.", "error");
-                    return;
+                    const summaryBody = summaryRows.length ? summaryRows.map(row => [
+                        row.medicamento,
+                        String(row.estoqueInicial),
+                        String(row.comprasConfirmadas),
+                        String(row.comprasAgendadas),
+                        String(row.totalDoses),
+                        String(row.estoqueAtual),
+                        String(row.totalRegistros),
+                        String(row.totalCompras)
+                    ]) : [['Nenhum medicamento encontrado.', '', '', '', '', '', '', '']];
+
+                    doc.autoTable({
+                        startY: 40,
+                        head: [['Medicamento', 'Estoque inicial', 'Compras confirmadas', 'Compras agendadas', 'Total doses', 'Estoque atual', 'Dias registrados', 'Compras']],
+                        body: summaryBody,
+                        foot: [['Total', totals.estoqueInicial, totals.comprasConfirmadas, totals.comprasAgendadas, totals.totalDoses, totals.estoqueAtual, totals.totalRegistros, totals.totalCompras]],
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 7.2, cellPadding: 1.8, textColor: [30, 41, 59], overflow: 'linebreak' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold' },
+                        footStyles: { fillColor: [236, 254, 255], textColor: [15, 118, 110], fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        margin: { top: 14, right: 14, bottom: 13, left: 14 }
+                    });
+
+                    let detailStartY = doc.lastAutoTable.finalY + 10;
+                    if (detailStartY > doc.internal.pageSize.getHeight() - 34) {
+                        doc.addPage();
+                        detailStartY = 20;
+                    }
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.setTextColor(15, 118, 110);
+                    doc.text('DETALHAMENTO COMPLETO', 14, detailStartY - 3);
+
+                    const detailBody = rows.length ? rows.map(row => [
+                        row.tipo,
+                        row.medicamento,
+                        row.dataBR,
+                        String(row.d1 ?? ''),
+                        String(row.d2 ?? ''),
+                        String(row.d3 ?? ''),
+                        String(row.total ?? ''),
+                        String(row.quantidade ?? ''),
+                        row.status
+                    ]) : [['Nenhum registro encontrado.', '', '', '', '', '', '', '', '']];
+
+                    doc.autoTable({
+                        startY: detailStartY,
+                        head: [['Tipo', 'Medicamento', 'Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total', 'Compra', 'Status']],
+                        body: detailBody,
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 7, cellPadding: 1.7, textColor: [30, 41, 59], overflow: 'linebreak' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        columnStyles: {
+                            0: { cellWidth: 34 },
+                            1: { cellWidth: 42 },
+                            2: { cellWidth: 22 },
+                            3: { cellWidth: 17, halign: 'right' },
+                            4: { cellWidth: 17, halign: 'right' },
+                            5: { cellWidth: 17, halign: 'right' },
+                            6: { cellWidth: 17, halign: 'right' },
+                            7: { cellWidth: 22, halign: 'right' },
+                            8: { cellWidth: 'auto' }
+                        },
+                        margin: { top: 14, right: 14, bottom: 13, left: 14 }
+                    });
+
+                    savePdfDocument(doc, `dosecerta-relatorio-${getTodayDateStr()}.pdf`);
+                    showToast('PDF baixado!');
+                } catch (error) {
+                    console.error('Falha ao gerar PDF do relatório:', error);
+                    showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
                 }
-
-                const selectedMedicationLabel = medications.find(med => String(med.id) === String(reportFilters.medicationId || activeMedicationId))?.name || 'Selecionado';
-                const startLabel = isValidDateStr(reportFilters.start) ? formatDateShortYear(reportFilters.start) : 'Início';
-                const endLabel = isValidDateStr(reportFilters.end) ? formatDateShortYear(reportFilters.end) : 'Fim';
-
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="pt-BR">
-                    <head>
-                        <meta charset="UTF-8" />
-                        <title>DoseCerta - Exportação PDF</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; color: #1e293b; padding: 24px; }
-                            h1 { margin: 0; font-size: 26px; }
-                            h2 { margin: 28px 0 8px; font-size: 16px; color: #0f766e; }
-                            p { color: #64748b; margin-top: 4px; }
-                            .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
-                            .card { border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px; background: #f8fafc; }
-                            .card span { display: block; color: #64748b; font-size: 9px; text-transform: uppercase; font-weight: 700; }
-                            .card strong { display: block; color: #0f766e; font-size: 18px; margin-top: 4px; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; }
-                            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
-                            th { background: #0f766e; color: white; }
-                            tr:nth-child(even) { background: #f8fafc; }
-                            tfoot td { font-weight: 700; background: #ecfeff; }
-                            @media print { button { display: none; } body { padding: 0; } .cards { grid-template-columns: repeat(4, 1fr); } }
-                        </style>
-                    </head>
-                    <body>
-                        <button onclick="window.print()" style="padding:10px 14px;border:0;border-radius:10px;background:#0f766e;color:white;font-weight:700;float:right;">Salvar como PDF</button>
-                        <h1>DOSECERTA</h1>
-                        <p>Exportação completa gerada em ${new Date().toLocaleString('pt-BR')}</p>
-                        <p><strong>Medicação:</strong> ${htmlCell(selectedMedicationLabel)} · <strong>Período:</strong> ${htmlCell(startLabel)} até ${htmlCell(endLabel)}</p>
-
-                        <div class="cards">
-                            <div class="card"><span>Medicamentos</span><strong>${summaryRows.length}</strong></div>
-                            <div class="card"><span>Total de doses</span><strong>${totals.totalDoses}</strong></div>
-                            <div class="card"><span>Compras confirmadas</span><strong>${totals.comprasConfirmadas}</strong></div>
-                            <div class="card"><span>Estoque atual estimado</span><strong>${totals.estoqueAtual}</strong></div>
-                        </div>
-
-                        <h2>Resumo por medicamento</h2>
-                        <table>
-                            <thead>
-                                <tr><th>Medicamento</th><th>Estoque Inicial</th><th>Compras Confirmadas</th><th>Compras Agendadas</th><th>Total Doses</th><th>Estoque Atual</th><th>Dias com Registro</th><th>Compras</th></tr>
-                            </thead>
-                            <tbody>${htmlSummaryRows || '<tr><td colspan="8">Nenhum medicamento encontrado.</td></tr>'}</tbody>
-                            <tfoot><tr><td>Total</td><td>${totals.estoqueInicial}</td><td>${totals.comprasConfirmadas}</td><td>${totals.comprasAgendadas}</td><td>${totals.totalDoses}</td><td>${totals.estoqueAtual}</td><td>${totals.totalRegistros}</td><td>${totals.totalCompras}</td></tr></tfoot>
-                        </table>
-
-                        <h2>Detalhamento completo</h2>
-                        <table>
-                            <thead>
-                                <tr><th>Tipo</th><th>Medicamento</th><th>Data</th><th>Dose 1</th><th>Dose 2</th><th>Dose 3</th><th>Total</th><th>Compra</th><th>Status</th></tr>
-                            </thead>
-                            <tbody>${htmlRows || '<tr><td colspan="9">Nenhum registro encontrado.</td></tr>'}</tbody>
-                        </table>
-                    </body>
-                    </html>
-                `);
-                printWindow.document.close();
-                printWindow.focus();
-                showToast("PDF pronto para salvar!");
             };
 
             const handleAuth = async (e) => {
