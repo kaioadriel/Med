@@ -907,48 +907,81 @@ const auth = firebase.auth();
             const printAgendaPdf = () => {
                 const rows = agendaDisplayDays.map(day => {
                     const med = getMedicationById(day.medicationId) || activeMedication;
-                    const log = med?.logs?.[day.dateStr];
-                    return { day, log, med };
+                    return { day, log: med?.logs?.[day.dateStr] };
                 }).filter(({ log }) => hasDoseInLog(log));
                 if (!rows.length) {
                     showToast('Não há doses preenchidas para imprimir neste período.', 'error');
                     return;
                 }
                 try {
-                    const doc = createPdfDocument('portrait');
-                    const medName = activeMedication?.name || 'Medicamento';
-                    const fmt = value => Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-                    const dateLabel = date => date.split('-').reverse().join('/');
-                    const total = rows.reduce((sum, { log }) => sum + getLogTotalInline(log), 0);
-                    doc.setFillColor(15, 118, 110);
-                    doc.rect(0, 0, 210, 37, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(19);
-                    doc.text('DoseCerta | Lançamentos', 14, 17);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(10);
-                    doc.text(`Medicamento: ${medName}`, 14, 26, { maxWidth: 180 });
-                    doc.setTextColor(71, 85, 105);
-                    doc.setFontSize(9);
-                    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}  |  ${rows.length} dias preenchidos`, 14, 45);
-                    doc.autoTable({
-                        startY: 52,
-                        head: [['Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total']],
-                        body: rows.map(({ day, log }) => [dateLabel(day.dateStr), ...['d1','d2','d3'].map(key => log[key] === '' || log[key] == null ? '—' : fmt(log[key])), fmt(getLogTotalInline(log))]),
-                        foot: [['TOTAL', '', '', '', fmt(total)]],
-                        theme: 'grid',
-                        styles: { font: 'helvetica', fontSize: 10, cellPadding: 3.2, textColor: [30, 41, 59], halign: 'center' },
-                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold' },
-                        footStyles: { fillColor: [204, 251, 241], textColor: [15, 118, 110], fontStyle: 'bold' },
-                        alternateRowStyles: { fillColor: [241, 245, 249] },
-                        columnStyles: { 0: { fontStyle: 'bold' } },
-                        margin: { left: 14, right: 14, bottom: 17 }
+                    const Constructor = window.jspdf?.jsPDF;
+                    if (!Constructor) throw new Error('Biblioteca de PDF indisponível. Conecte-se à internet e tente novamente.');
+                    const doc = new Constructor({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                    const number = v => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+                    const dateLabel = d => d.split('-').reverse().join('/');
+                    const width = 210, left = 14, right = 196;
+                    let y = 0, page = 0;
+                    const header = () => {
+                        page++;
+                        doc.setFillColor(15, 118, 110);
+                        doc.rect(0, 0, width, 34, 'F');
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(18);
+                        doc.text('DOSECERTA | LANCAMENTOS', left, 15);
+                        doc.setFontSize(10);
+                        const name = String(activeMedication?.name || 'Medicamento');
+                        doc.text(doc.splitTextToSize('Medicamento: ' + name, 180).slice(0, 1), left, 25);
+                        doc.setTextColor(71, 85, 105);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(9);
+                        doc.text('Gerado em ' + new Date().toLocaleString('pt-BR') + '  |  ' + rows.length + ' dias com doses', left, 43);
+                        y = 51;
+                        doc.setFillColor(30, 41, 59);
+                        doc.rect(left, y, right - left, 11, 'F');
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(10);
+                        const xs = [18, 67, 96, 125, 164];
+                        ['Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total'].forEach((v, i) => doc.text(v, xs[i], y + 7));
+                        y += 11;
+                    };
+                    header();
+                    let total = 0;
+                    rows.forEach(({ day, log }, index) => {
+                        if (y + 10 > 278) { doc.addPage(); header(); }
+                        if (index % 2 === 0) {
+                            doc.setFillColor(240, 253, 250);
+                            doc.rect(left, y, right - left, 10, 'F');
+                        }
+                        const vals = [dateLabel(day.dateStr), ...['d1', 'd2', 'd3'].map(k => log[k] == null || log[k] === '' ? '-' : number(log[k])), number(getLogTotalInline(log))];
+                        total += getLogTotalInline(log);
+                        doc.setTextColor(30, 41, 59);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(10);
+                        vals.forEach((v, i) => doc.text(String(v), [18, 67, 96, 125, 164][i], y + 7));
+                        y += 10;
                     });
-                    savePdfDocument(doc, `dosecerta-lancamentos-${getTodayDateStr()}.pdf`);
+                    if (y + 13 > 278) { doc.addPage(); header(); }
+                    doc.setFillColor(204, 251, 241);
+                    doc.rect(left, y, right - left, 12, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(15, 118, 110);
+                    doc.text('TOTAL GERAL', 18, y + 8);
+                    doc.text(number(total), 164, y + 8);
+                    const count = doc.getNumberOfPages();
+                    for (let i = 1; i <= count; i++) {
+                        doc.setPage(i);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(8);
+                        doc.setTextColor(100, 116, 139);
+                        doc.text('Pagina ' + i + ' de ' + count, 196, 290, { align: 'right' });
+                    }
+                    doc.save('dosecerta-lancamentos-' + getTodayDateStr() + '.pdf');
+                    showToast('PDF gerado com sucesso!');
                 } catch (error) {
                     console.error('Erro ao gerar PDF da agenda:', error);
-                    showToast(error.message || 'Não foi possível gerar o PDF.', 'error');
+                    showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
                 }
             };
 
