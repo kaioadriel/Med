@@ -1495,8 +1495,9 @@ const auth = firebase.auth();
             const handlePrintAgendaPDF = () => {
                 try {
                     const medication = activeMedication || medications[0];
+                    const todayStr = getTodayDateStr();
                     const rows = Object.values(medication?.logs || {})
-                        .filter(log => hasDoseInLog(log) && isDateInsidePeriod(log?.data, agendaPeriod))
+                        .filter(log => hasDoseInLog(log) && log?.data >= todayStr && isDateInsidePeriod(log?.data, agendaPeriod))
                         .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
 
                     if (!rows.length) {
