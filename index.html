@@ -904,6 +904,54 @@ const auth = firebase.auth();
                 downloadBlobFile(doc.output('blob'), filename);
             };
 
+            const printAgendaPdf = () => {
+                const rows = agendaDisplayDays.map(day => {
+                    const med = getMedicationById(day.medicationId) || activeMedication;
+                    const log = med?.logs?.[day.dateStr];
+                    return { day, log, med };
+                }).filter(({ log }) => hasDoseInLog(log));
+                if (!rows.length) {
+                    showToast('Não há doses preenchidas para imprimir neste período.', 'error');
+                    return;
+                }
+                try {
+                    const doc = createPdfDocument('portrait');
+                    const medName = activeMedication?.name || 'Medicamento';
+                    const fmt = value => Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+                    const dateLabel = date => date.split('-').reverse().join('/');
+                    const total = rows.reduce((sum, { log }) => sum + getLogTotalInline(log), 0);
+                    doc.setFillColor(15, 118, 110);
+                    doc.rect(0, 0, 210, 37, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(19);
+                    doc.text('DoseCerta | Lançamentos', 14, 17);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.text(`Medicamento: ${medName}`, 14, 26, { maxWidth: 180 });
+                    doc.setTextColor(71, 85, 105);
+                    doc.setFontSize(9);
+                    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}  |  ${rows.length} dias preenchidos`, 14, 45);
+                    doc.autoTable({
+                        startY: 52,
+                        head: [['Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total']],
+                        body: rows.map(({ day, log }) => [dateLabel(day.dateStr), ...['d1','d2','d3'].map(key => log[key] === '' || log[key] == null ? '—' : fmt(log[key])), fmt(getLogTotalInline(log))]),
+                        foot: [['TOTAL', '', '', '', fmt(total)]],
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 10, cellPadding: 3.2, textColor: [30, 41, 59], halign: 'center' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold' },
+                        footStyles: { fillColor: [204, 251, 241], textColor: [15, 118, 110], fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [241, 245, 249] },
+                        columnStyles: { 0: { fontStyle: 'bold' } },
+                        margin: { left: 14, right: 14, bottom: 17 }
+                    });
+                    savePdfDocument(doc, `dosecerta-lancamentos-${getTodayDateStr()}.pdf`);
+                } catch (error) {
+                    console.error('Erro ao gerar PDF da agenda:', error);
+                    showToast(error.message || 'Não foi possível gerar o PDF.', 'error');
+                }
+            };
+
             const csvCell = (value) => {
                 const text = value === null || value === undefined ? '' : String(value);
                 return `"${text.replace(/"/g, '""')}"`;
@@ -2625,7 +2673,8 @@ const auth = firebase.auth();
                                 <div className="glass-card rounded-3xl overflow-hidden mt-3">
                                 <div className="p-4 bg-slate-800 text-white flex justify-between items-center gap-3">
                                     <h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                                        <button onClick={printAgendaPdf} title="Imprimir lançamentos em PDF" className="inline-flex items-center gap-1 rounded-lg bg-teal-500 px-2.5 py-2 text-[9px] font-black uppercase text-white shadow-sm"><IconDownload /> PDF / Imprimir</button>
                                         <button onClick={() => { setCopyData({ medicationId: activeMedicationId, sourceDate: getTodayDateStr(), startDate: getTodayDateStr(), days: 1 }); setShowCopyModal(true); }} className="text-[8px] font-black uppercase text-teal-200 transition-colors">Copiar</button>
                                         <button onClick={() => { setCutData({ medicationId: activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setShowCutModal(true); }} className="text-[8px] font-black uppercase text-sky-200 transition-colors">Recortar</button>
                                         <button onClick={() => { setDeleteData({ startDate: '', endDate: '' }); setShowDeleteModal(true); }} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Excluir</button>
