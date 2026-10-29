@@ -1493,7 +1493,7 @@ const auth = firebase.auth();
                 }
             };
 
-            const handlePrintAgendaExcel = () => {
+            const handlePrintAgendaExcel = (notifyUser = true) => {
                 try {
                     if (!window.XLSX) throw new Error('O gerador de Excel não foi carregado. Verifique a conexão e tente novamente.');
                     const medication = activeMedication || medications[0];
@@ -1503,8 +1503,8 @@ const auth = firebase.auth();
                         .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
 
                     if (!rows.length) {
-                        showToast('Não há doses preenchidas no período selecionado.', 'error');
-                        return;
+                        if (notifyUser) showToast('Não há doses preenchidas no período selecionado.', 'error');
+                        return false;
                     }
 
                     const medicationName = medication?.name || 'Medicação';
@@ -1543,11 +1543,92 @@ const auth = firebase.auth();
                     const workbook = window.XLSX.utils.book_new();
                     window.XLSX.utils.book_append_sheet(workbook, worksheet, 'Lançamentos');
                     window.XLSX.writeFile(workbook, `dosecerta-lancamentos-${getTodayDateStr()}.xlsx`);
-                    showToast('Arquivo Excel dos lançamentos baixado!');
+                    if (notifyUser) showToast('Arquivo Excel dos lançamentos baixado!');
+                    return true;
                 } catch (error) {
                     console.error('Falha ao gerar Excel dos lançamentos:', error);
-                    showToast(error?.message || 'Não foi possível gerar o Excel.', 'error');
+                    if (notifyUser) showToast(error?.message || 'Não foi possível gerar o Excel.', 'error');
+                    return false;
                 }
+            };
+
+            const handlePrintAgendaPDF = (notifyUser = true) => {
+                try {
+                    const medication = activeMedication || medications[0];
+                    const todayStr = getTodayDateStr();
+                    const rows = Object.values(medication?.logs || {})
+                        .filter(log => hasDoseInLog(log) && log?.data >= todayStr && isDateInsidePeriod(log?.data, agendaPeriod))
+                        .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+
+                    if (!rows.length) {
+                        if (notifyUser) showToast('Não há doses preenchidas no período selecionado.', 'error');
+                        return false;
+                    }
+
+                    const medicationName = medication?.name || 'Medicação';
+                    const normalizedPeriod = normalizeDatePeriod(agendaPeriod);
+                    const periodLabel = normalizedPeriod.start || normalizedPeriod.end
+                        ? `${normalizedPeriod.start ? formatDateShortYear(normalizedPeriod.start) : 'Início'} até ${normalizedPeriod.end ? formatDateShortYear(normalizedPeriod.end) : 'Fim'}`
+                        : 'Hoje e datas futuras';
+                    const totalDoses = rows.reduce((sum, log) => sum + getLogTotal(log), 0);
+                    const doc = createPdfDocument('portrait');
+
+                    doc.setFillColor(15, 118, 110);
+                    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 34, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(19);
+                    doc.text('DOSECERTA', 14, 14);
+                    doc.setFontSize(11);
+                    doc.text('LANÇAMENTOS DE DOSES', 14, 22);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.text(medicationName, 14, 44);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Período: ${periodLabel}  |  ${rows.length} dia(s)  |  Total: ${totalDoses} dose(s)`, 14, 50);
+                    doc.autoTable({
+                        startY: 57,
+                        head: [['Data', 'Dia da semana', 'Dose 1', 'Dose 2', 'Dose 3', 'Total']],
+                        body: rows.map(log => [
+                            formatDateBR(log.data),
+                            new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' }),
+                            String(log.d1 ?? ''), String(log.d2 ?? ''), String(log.d3 ?? ''), String(getLogTotal(log))
+                        ]),
+                        foot: [['', 'Total geral', '', '', '', String(totalDoses)]],
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 9, cellPadding: 3, textColor: [30, 41, 59], valign: 'middle' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                        footStyles: { fillColor: [236, 254, 255], textColor: [15, 118, 110], fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        columnStyles: {
+                            0: { cellWidth: 27, halign: 'center' }, 1: { cellWidth: 45 },
+                            2: { cellWidth: 23, halign: 'center' }, 3: { cellWidth: 23, halign: 'center' },
+                            4: { cellWidth: 23, halign: 'center' }, 5: { cellWidth: 23, halign: 'center', fontStyle: 'bold' }
+                        },
+                        margin: { top: 14, right: 14, bottom: 15, left: 14 }
+                    });
+                    savePdfDocument(doc, `dosecerta-lancamentos-${getTodayDateStr()}.pdf`);
+                    if (notifyUser) showToast('PDF dos lançamentos baixado!');
+                    return true;
+                } catch (error) {
+                    console.error('Falha ao gerar PDF dos lançamentos:', error);
+                    if (notifyUser) showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
+                    return false;
+                }
+            };
+
+            const handlePrintAgendaFiles = () => {
+                const excelCreated = handlePrintAgendaExcel(false);
+                const pdfCreated = handlePrintAgendaPDF(false);
+                if (excelCreated && pdfCreated) showToast('Excel e PDF dos lançamentos baixados!');
+                else if (!excelCreated && !pdfCreated) showToast('Não há doses preenchidas no período selecionado.', 'error');
+                else showToast('Um dos arquivos não pôde ser gerado.', 'error');
             };
 
             const handleAuth = async (e) => {
@@ -2690,7 +2771,7 @@ const auth = firebase.auth();
                                             <button onClick={() => { setCutData({ medicationId: activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setShowCutModal(true); }} className="text-[8px] font-black uppercase text-sky-200 transition-colors">Recortar</button>
                                             <button onClick={() => { setDeleteData({ startDate: '', endDate: '' }); setShowDeleteModal(true); }} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Excluir</button>
                                         </div>
-                                        <button onClick={handlePrintAgendaExcel} className="flex items-center gap-1 rounded-xl bg-white/10 px-2 py-1.5 text-[8px] font-black uppercase text-white transition-colors hover:bg-white/20" title="Gerar arquivo Excel com as doses preenchidas" aria-label="Gerar arquivo Excel com as doses preenchidas"><IconPrinter /><span>Imprimir</span></button>
+                                        <button onClick={handlePrintAgendaFiles} className="flex items-center gap-1 rounded-xl bg-white/10 px-2 py-1.5 text-[8px] font-black uppercase text-white transition-colors hover:bg-white/20" title="Baixar Excel e PDF com as doses preenchidas" aria-label="Baixar Excel e PDF com as doses preenchidas"><IconPrinter /><span>Imprimir</span></button>
                                     </div>
                                 </div>
                                 <div className="p-3 border-b border-slate-100 bg-white/70">
