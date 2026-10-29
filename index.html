@@ -197,6 +197,7 @@ const auth = firebase.auth();
         const IconBag = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>;
         const IconList = () => <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>;
         const IconDownload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const IconPrinter = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect><line x1="18" y1="13" x2="18.01" y2="13"></line></svg>;
         const IconUpload = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
         const IconInsertRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12h16"></path></svg>;
         const IconDeleteRow = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"></path></svg>;
@@ -904,87 +905,6 @@ const auth = firebase.auth();
                 downloadBlobFile(doc.output('blob'), filename);
             };
 
-            const printAgendaPdf = () => {
-                const rows = agendaDisplayDays.map(day => {
-                    const med = getMedicationById(day.medicationId) || activeMedication;
-                    return { day, log: med?.logs?.[day.dateStr] };
-                }).filter(({ log }) => hasDoseInLog(log));
-                if (!rows.length) {
-                    showToast('Não há doses preenchidas para imprimir neste período.', 'error');
-                    return;
-                }
-                try {
-                    const Constructor = window.jspdf?.jsPDF;
-                    if (!Constructor) throw new Error('Biblioteca de PDF indisponível. Conecte-se à internet e tente novamente.');
-                    const doc = new Constructor({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                    const number = v => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-                    const dateLabel = d => d.split('-').reverse().join('/');
-                    const width = 210, left = 14, right = 196;
-                    let y = 0, page = 0;
-                    const header = () => {
-                        page++;
-                        doc.setFillColor(15, 118, 110);
-                        doc.rect(0, 0, width, 34, 'F');
-                        doc.setTextColor(255, 255, 255);
-                        doc.setFont('helvetica', 'bold');
-                        doc.setFontSize(18);
-                        doc.text('DOSECERTA | LANCAMENTOS', left, 15);
-                        doc.setFontSize(10);
-                        const name = String(activeMedication?.name || 'Medicamento');
-                        doc.text(doc.splitTextToSize('Medicamento: ' + name, 180).slice(0, 1), left, 25);
-                        doc.setTextColor(71, 85, 105);
-                        doc.setFont('helvetica', 'normal');
-                        doc.setFontSize(9);
-                        doc.text('Gerado em ' + new Date().toLocaleString('pt-BR') + '  |  ' + rows.length + ' dias com doses', left, 43);
-                        y = 51;
-                        doc.setFillColor(30, 41, 59);
-                        doc.rect(left, y, right - left, 11, 'F');
-                        doc.setTextColor(255, 255, 255);
-                        doc.setFont('helvetica', 'bold');
-                        doc.setFontSize(10);
-                        const xs = [18, 67, 96, 125, 164];
-                        ['Data', 'Dose 1', 'Dose 2', 'Dose 3', 'Total'].forEach((v, i) => doc.text(v, xs[i], y + 7));
-                        y += 11;
-                    };
-                    header();
-                    let total = 0;
-                    rows.forEach(({ day, log }, index) => {
-                        if (y + 10 > 278) { doc.addPage(); header(); }
-                        if (index % 2 === 0) {
-                            doc.setFillColor(240, 253, 250);
-                            doc.rect(left, y, right - left, 10, 'F');
-                        }
-                        const vals = [dateLabel(day.dateStr), ...['d1', 'd2', 'd3'].map(k => log[k] == null || log[k] === '' ? '-' : number(log[k])), number(getLogTotalInline(log))];
-                        total += getLogTotalInline(log);
-                        doc.setTextColor(30, 41, 59);
-                        doc.setFont('helvetica', 'normal');
-                        doc.setFontSize(10);
-                        vals.forEach((v, i) => doc.text(String(v), [18, 67, 96, 125, 164][i], y + 7));
-                        y += 10;
-                    });
-                    if (y + 13 > 278) { doc.addPage(); header(); }
-                    doc.setFillColor(204, 251, 241);
-                    doc.rect(left, y, right - left, 12, 'F');
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(15, 118, 110);
-                    doc.text('TOTAL GERAL', 18, y + 8);
-                    doc.text(number(total), 164, y + 8);
-                    const count = doc.getNumberOfPages();
-                    for (let i = 1; i <= count; i++) {
-                        doc.setPage(i);
-                        doc.setFont('helvetica', 'normal');
-                        doc.setFontSize(8);
-                        doc.setTextColor(100, 116, 139);
-                        doc.text('Pagina ' + i + ' de ' + count, 196, 290, { align: 'right' });
-                    }
-                    doc.save('dosecerta-lancamentos-' + getTodayDateStr() + '.pdf');
-                    showToast('PDF gerado com sucesso!');
-                } catch (error) {
-                    console.error('Erro ao gerar PDF da agenda:', error);
-                    showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
-                }
-            };
-
             const csvCell = (value) => {
                 const text = value === null || value === undefined ? '' : String(value);
                 return `"${text.replace(/"/g, '""')}"`;
@@ -1568,6 +1488,83 @@ const auth = firebase.auth();
                     showToast('PDF baixado!');
                 } catch (error) {
                     console.error('Falha ao gerar PDF do relatório:', error);
+                    showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
+                }
+            };
+
+            const handlePrintAgendaPDF = () => {
+                try {
+                    const medication = activeMedication || medications[0];
+                    const rows = Object.values(medication?.logs || {})
+                        .filter(log => hasDoseInLog(log) && isDateInsidePeriod(log?.data, agendaPeriod))
+                        .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+
+                    if (!rows.length) {
+                        showToast('Não há doses preenchidas no período selecionado.', 'error');
+                        return;
+                    }
+
+                    const doc = createPdfDocument('portrait');
+                    const medicationName = medication?.name || 'Medicação';
+                    const normalizedPeriod = normalizeDatePeriod(agendaPeriod);
+                    const periodLabel = normalizedPeriod.start || normalizedPeriod.end
+                        ? `${normalizedPeriod.start ? formatDateShortYear(normalizedPeriod.start) : 'Início'} até ${normalizedPeriod.end ? formatDateShortYear(normalizedPeriod.end) : 'Fim'}`
+                        : 'Todos os lançamentos preenchidos';
+                    const totalDoses = rows.reduce((sum, log) => sum + getLogTotal(log), 0);
+
+                    doc.setFillColor(15, 118, 110);
+                    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 34, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(19);
+                    doc.text('DOSECERTA', 14, 14);
+                    doc.setFontSize(11);
+                    doc.text('LANÇAMENTOS DE DOSES', 14, 22);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                    doc.text(medicationName, 14, 44);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Período: ${periodLabel}  |  ${rows.length} dia(s)  |  Total: ${totalDoses} dose(s)`, 14, 50);
+
+                    doc.autoTable({
+                        startY: 57,
+                        head: [['Data', 'Dia da semana', 'Dose 1', 'Dose 2', 'Dose 3', 'Total']],
+                        body: rows.map(log => [
+                            formatDateBR(log.data),
+                            new Date(log.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long' }),
+                            String(log.d1 ?? ''),
+                            String(log.d2 ?? ''),
+                            String(log.d3 ?? ''),
+                            String(getLogTotal(log))
+                        ]),
+                        foot: [['', 'Total geral', '', '', '', String(totalDoses)]],
+                        theme: 'grid',
+                        styles: { font: 'helvetica', fontSize: 9, cellPadding: 3, textColor: [30, 41, 59], valign: 'middle' },
+                        headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                        footStyles: { fillColor: [236, 254, 255], textColor: [15, 118, 110], fontStyle: 'bold' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        columnStyles: {
+                            0: { cellWidth: 27, halign: 'center' },
+                            1: { cellWidth: 45 },
+                            2: { cellWidth: 23, halign: 'center' },
+                            3: { cellWidth: 23, halign: 'center' },
+                            4: { cellWidth: 23, halign: 'center' },
+                            5: { cellWidth: 23, halign: 'center', fontStyle: 'bold' }
+                        },
+                        margin: { top: 14, right: 14, bottom: 15, left: 14 }
+                    });
+
+                    savePdfDocument(doc, `dosecerta-lancamentos-${getTodayDateStr()}.pdf`);
+                    showToast('PDF dos lançamentos baixado!');
+                } catch (error) {
+                    console.error('Falha ao gerar PDF dos lançamentos:', error);
                     showToast(error?.message || 'Não foi possível gerar o PDF.', 'error');
                 }
             };
@@ -2706,8 +2703,8 @@ const auth = firebase.auth();
                                 <div className="glass-card rounded-3xl overflow-hidden mt-3">
                                 <div className="p-4 bg-slate-800 text-white flex justify-between items-center gap-3">
                                     <h2 className="text-[10px] font-black uppercase tracking-widest text-teal-300">Grade de Lançamento</h2>
-                                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                                        <button onClick={printAgendaPdf} title="Imprimir lançamentos em PDF" className="inline-flex items-center gap-1 rounded-lg bg-teal-500 px-2.5 py-2 text-[9px] font-black uppercase text-white shadow-sm"><IconDownload /> PDF / Imprimir</button>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={handlePrintAgendaPDF} className="flex items-center gap-1 rounded-xl bg-white/10 px-2 py-1.5 text-[8px] font-black uppercase text-white transition-colors hover:bg-white/20" title="Imprimir doses preenchidas" aria-label="Imprimir doses preenchidas"><IconPrinter /><span>Imprimir</span></button>
                                         <button onClick={() => { setCopyData({ medicationId: activeMedicationId, sourceDate: getTodayDateStr(), startDate: getTodayDateStr(), days: 1 }); setShowCopyModal(true); }} className="text-[8px] font-black uppercase text-teal-200 transition-colors">Copiar</button>
                                         <button onClick={() => { setCutData({ medicationId: activeMedicationId, startDate: getTodayDateStr(), endDate: getTodayDateStr(), pasteDate: getTodayDateStr() }); setShowCutModal(true); }} className="text-[8px] font-black uppercase text-sky-200 transition-colors">Recortar</button>
                                         <button onClick={() => { setDeleteData({ startDate: '', endDate: '' }); setShowDeleteModal(true); }} className="text-[8px] font-black uppercase text-rose-300 transition-colors">Excluir</button>
